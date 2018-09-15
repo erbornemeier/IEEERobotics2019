@@ -1,0 +1,48 @@
+MOTORS
+-------------------------------------
+    FL Motor
+        White  - Enc A - Mega A8
+        Yellow - Enc B - Mega A9
+        Blue   - Vcc   - Mega 5V
+        Green  - GND   - Mega GND
+        Red    - Mot_A - Left MC F-
+        Black  - Mot_B - Left MC F+
+    FR Motor
+        White  - Enc A - Mega A10
+        Yellow - Enc B - Mega A11
+        Blue   - Vcc   - Mega 5V
+        Green  - GND   - Mega GND
+        Red    - Mot_A - Right MC F+
+        Black  - Mot_B - Right MC F-
+    BL Motor
+        White  - Enc A - Mega 10
+        Yellow - Enc B - Mega 11
+        Blue   - Vcc   - Mega 5V
+        Green  - GND   - Mega GND
+        Red    - Mot_A - Left MC B-
+        Black  - Mot_B - Left MC B+
+    BR Motor
+        White  - Enc A - Mega 12
+        Yellow - Enc B - Mega 13
+        Blue   - Vcc   - Mega 5V
+        Green  - GND   - Mega GND
+        Red    - Mot_A - Left MC B+
+        Black  - Mot_B - Left MC B-
+    #TODO Stepper dir and step
+
+POWER CIRCUIT
+-------------------------------------
+    12 V 
+        Left MC  - Vs
+        Right MC - Vs
+    9 V
+        Mega     - Vin
+        Uno      - Vin
+    6 V
+        Stepper  - M+
+    GND (all tied!)
+        Left MC  - GND
+        Right MC - GND
+        Mega     - GND
+        Uno      - GND
+        Stepper  - GND (next to M+)

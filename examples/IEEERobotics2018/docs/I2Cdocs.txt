@@ -1,0 +1,18 @@
+
+Connecting I2C:
+ - Connect RPi and Arduino GND pins
+ - RPi pin 3 to Arduino SDA pin
+ - RPi pin 4 to Arduino SCL pin
+
+Arduino:
+ - https://www.arduino.cc/en/Reference/Wire
+ - Use Wire library to handle I2C connection
+
+RPi:
+ - https://pinout.xyz/pinout/i2c
+ - Use smbus library to handle I2C connection
+
+Helpful Resources:
+ - http://wiki.erazor-zone.de/wiki:linux:python:smbus:doc
+ - https://www.arduino.cc/en/Tutorial/MasterWriter
+ - http://radiostud.io/howto-i2c-communication-rpi/
