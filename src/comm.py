@@ -20,11 +20,11 @@ class i2c_comm:
             print("can't communicate with arduino")
 
     def serializeMsg(self, msg):
-	new_msg = []
+        new_msg = []
        	for num in msg:
-	     new_msg.append(num >> 8 & 0xff)
-	     new_msg.append(num & 0xff)
-	return new_msg
+             new_msg.append(num >> 8 & 0xff)
+             new_msg.append(num & 0xff)
+        return new_msg
 
 
 # Use this to debug this connection
@@ -33,7 +33,7 @@ if __name__ == "__main__":
         comm = i2c_comm(0x28)
         i = 1
         while i != -1:
-            i = input()
+            i = int(input())
             comm.sendLEDPos((i, i+2))
 
     except KeyboardInterrupt:
