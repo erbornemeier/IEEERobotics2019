@@ -14,14 +14,17 @@ class i2c_comm:
 
     def sendLEDPos(self, pos):
         try:
-            msg = NavToDrive.serializeMsg(list(pos))
+            msg = self.serializeMsg(list(pos))
             self.bus.write_block_data(self.addr, i2c_comm.SEND_LED_POS, msg)
         except IOError:
             print("can't communicate with arduino")
 
-    def serializeMsg(msg):
-        
-        return [b for num in msg for b in struct.pack('>h', num)]
+    def serializeMsg(self, msg):
+	new_msg = []
+       	for num in msg:
+	     new_msg.append(num >> 8 & 0xff)
+	     new_msg.append(num & 0xff)
+	return new_msg
 
 
 # Use this to debug this connection
@@ -31,7 +34,7 @@ if __name__ == "__main__":
         i = 1
         while i != -1:
             i = input()
-            comm.sendLEDPos([i, i+2])
+            comm.sendLEDPos((i, i+2))
 
     except KeyboardInterrupt:
         pass
