@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from comm import i2c_comm 
 
 BLUE_MASK = np.array([[100, 160, 205],
                       [179, 255, 255]])
@@ -31,10 +32,14 @@ def get_led_locations(frame, showContours=False, isRGBminArea=0.0, maxArea=float
             cv2.drawContours(frame, np.array([biggest]), -1, (0,255,0), 3)
             cv2.circle(frame, (cx, cy), 7, (0,0,255), -1)
 
+        return (cx, cy)
+
 
 def main():
 
     cap = cv2.VideoCapture(0)
+    comm = i2c_comm(0x28)
+    width, height = cap.get(3), cap.get(4)
 
     while True:
         #get next frame
@@ -44,7 +49,9 @@ def main():
         if not ret:
             raise IOError("Frame could not be read")
 
-        get_led_locations(frame, showContours=True)
+        center = get_led_locations(frame, showContours=True)
+        offset_from_center = width/2 - center[0]
+        comm.sendLEDPos(offset_from_center)
         cv2.imshow('test', frame)
 
         key = cv2.waitKey(1)
