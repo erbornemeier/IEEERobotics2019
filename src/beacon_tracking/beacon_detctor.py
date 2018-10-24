@@ -38,23 +38,29 @@ def get_led_locations(frame, showContours=False, isRGBminArea=0.0, maxArea=float
 def main():
 
     cap = cv2.VideoCapture(0)
+    # cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
     comm = i2c_comm(0x28)
     width, height = cap.get(3), cap.get(4)
+    print(width)
 
     while True:
         #get next frame
-        ret, frame = cap.read()
+        for i in range(0,5):
+            ret, frame = cap.read()
 
         #unsuccessful frame capture
         if not ret:
             raise IOError("Frame could not be read")
 
         center = get_led_locations(frame, showContours=True)
-        offset_from_center = width/2 - center[0]
-        comm.sendLEDPos(offset_from_center)
+        if center:
+                offset_from_center = -int(center[1] - height/2)
+                print(offset_from_center)
+                comm.sendLEDPos([offset_from_center])
         cv2.imshow('test', frame)
 
-        key = cv2.waitKey(1)
+        key = cv2.waitKey(100)
         if key == ord('q'):
             break
 
