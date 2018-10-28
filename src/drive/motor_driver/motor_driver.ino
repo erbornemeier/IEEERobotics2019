@@ -1,25 +1,60 @@
 #include <PinChangeInterrupt.h>
 
-//******MOTORS*****************************
+/*****************************************
+* MOTORS AND ENCODERS
+*****************************************/
 
-//2 wheel bot
+//helper enums
 enum MOTOR_IDS{L, R, NUM_MOTORS};
-enum TYPE {A, B};
+enum ENC_TYPE {A, B};
 
 //M is mode (direction), E is PWM (speed)
 enum MOTOR_PINS{ML=2, EL=3, MR=4, ER=5};
 
 // Encoder info
 volatile long enc_counts[2];
-unsigned int ENC_PINS[2][2] = { {8, 9},   // Left
-                                {10, 11} }; // Right
+unsigned int ENC_PINS[NUM_MOTORS][2] = { { 8,  9},   // Left
+                                         {10, 11} }; // Right
 
-//*****************************************
+/*****************************************
+* POSITION CONTROL & MOTOR FEEDBACK
+*****************************************/
 
+//control values
+#define MAX_SPEED         70
+#define MIN_SPEED         52
+#define MAX_CORRECTION    30
+#define OVERSHOOT_OFFSET  1/18.0
+#define ANGLE_OVERSHOOT_OFFSET 1/8.0
+#define K_P               0.05
+#define K_I               0.0
+#define K_DIFF            0.3
+#define ZERO_ERROR_MARGIN 80
+
+//robot specs
+#define COUNTS_PER_REV       3200
+#define WHEEL_DIAMETER       3.45
+#define DISTANCE_PER_REV    (WHEEL_DIAMETER*3.14159265)  
+#define ROBOT_WIDTH          9.75
+#define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*3.14159265)
+#define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
+
+
+volatile float actual_position[2] = {0.0,   // x_actual
+                                     0.0 }; // y_actual
+
+volatile float target_position[2] = {0.0,   // x_target
+                                     0.0 }; // y_target
+                                     
+/*****************************************/
+
+/*
+ * void setup()
+ */
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   
-  for (int i = 0; i < 2; i++){
+  for (int i = 0; i < NUM_MOTORS; i++){
       pinMode(ENC_PINS[i][A], INPUT_PULLUP);
       pinMode(ENC_PINS[i][B], INPUT_PULLUP);
   }
@@ -28,33 +63,202 @@ void setup() {
   pinMode(MR, OUTPUT);
   pinMode(ER, OUTPUT);
 
-  // put your setup code here, to run once:
+  // attach interrupts to four encoder pins
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][B]), LB_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
 }
 
+/*
+ * void loop()
+ */
 void loop() {
-  Serial.print(enc_counts[0]);
-  Serial.print(" , ");
-  Serial.println(enc_counts[1]);
+
+    delay(1000);
+    drive(36.0);
+    turn(180.0);
+    drive(36.0);
+    turn(180.0);
 }
 
-//set motor speeds
-//example -> setMotor(R, -150); for right motor to move in reverse
+/*                                                                              
+ * void drive()                                                                 
+ * Takes in a distance in inches and drives forwards/backwards until value is reached
+ */                                                                             
+void drive(float distance){ 
+
+    long enc_count_goals[NUM_MOTORS];
+    long enc_errors[NUM_MOTORS];
+
+    float offset = OVERSHOOT_OFFSET * distance;
+                                                    
+    resetEncoderCounts();                                                       
+
+                                                                
+    for (int i = 0; i < NUM_MOTORS; i++) {                                              
+        enc_count_goals[i] = (long) ((distance - offset) * 
+                                    COUNTS_PER_REV / DISTANCE_PER_REV);
+        
+    }                                                                        
+
+    do{                                                                            
+        do {                                                                        
+            for (int i = 0; i < NUM_MOTORS; i++){                                            
+                enc_errors[i] = enc_count_goals[i] - enc_counts[i];                                                              
+                                                                                    
+                int motorVal = errorToMotorOut(enc_errors, i, false); 
+                Serial.print(i);
+                Serial.print(": ");         
+                Serial.print(motorVal); 
+                Serial.print("  "); 
+                                                                                  
+                setMotor(i, motorVal);                                             
+            }    
+            Serial.println("");
+            //printErrors(enc_errors);
+                                                                                                                                        
+        } while (!isZero(enc_errors));
+        
+        stopMotors();
+        //recalculate errors after some delay without overshoot offset
+        delay(500);
+        for (int i = 0; i < NUM_MOTORS; i++){
+                enc_count_goals[i] = (long) (distance * COUNTS_PER_REV / DISTANCE_PER_REV);
+                enc_errors[i] = enc_count_goals[i] - enc_counts[i];  
+        }
+
+    }while (!isZero(enc_errors));
+                                           
+    stopMotors();                                                                            
+                                                                   
+}
+
+/*                                                                              
+ * void turn()                                                                 
+ * Takes in a distance in inches and drives forwards/backwards until value is reached
+ */                                                                             
+void turn(float angle){ 
+
+    long enc_count_goals[NUM_MOTORS];
+    long enc_errors[NUM_MOTORS];
+
+    float offset = ANGLE_OVERSHOOT_OFFSET * angle;
+                                                    
+    resetEncoderCounts();                                                       
+                                                                
+    for (int i = 0; i < NUM_MOTORS; i++){                                             
+        enc_count_goals[i] = (long) ((angle - offset) * 
+                                    COUNTS_PER_REV / ANGLE_PER_REV); 
+        if (i == R) enc_count_goals[i] *= -1;  
+    }                                                                       
+
+    do{                                                                            
+        do {                                                                        
+            for (int i = 0; i < NUM_MOTORS; i++){                                            
+                enc_errors[i] = enc_count_goals[i] - enc_counts[i];                                                              
+                                                                                    
+                int motorVal = errorToMotorOut(enc_errors, i, true); 
+                Serial.print(i);
+                Serial.print(": ");         
+                Serial.print(motorVal); 
+                Serial.print("  "); 
+                                                                                  
+                setMotor(i, motorVal);                                             
+            }    
+            Serial.println("");
+            //printErrors(enc_errors);
+                                                                                                                                        
+        } while (!isZero(enc_errors));
+        
+        stopMotors();
+        //recalculate errors after some delay without overshoot offset
+        delay(500);
+        for (int i = 0; i < NUM_MOTORS; i++){
+                enc_count_goals[i] = (long) (angle * COUNTS_PER_REV / ANGLE_PER_REV);
+                if (i == R) enc_count_goals[i] *= -1;
+                enc_errors[i] = enc_count_goals[i] - enc_counts[i];  
+        }
+
+    }while (!isZero(enc_errors));
+                                           
+    stopMotors();                                                                            
+                                                                   
+}       
+
+
+void printErrors(long* errors){
+  
+    for(int i = 0; i < NUM_MOTORS; i++){
+        Serial.print(errors[i]);
+        if (i != NUM_MOTORS-1)
+            Serial.print(", ");
+    }
+    Serial.println("");
+
+}
+/*                                                                              
+ * int errorToMotorOut()                                                        
+ * Takes in an error and gain value and converts it to a motor output with an   
+ * upper bound check of max speed                                               
+ */  
+int errorToMotorOut(long* errors, int motor, bool turning){
+    //base value from P controller
+    int baseVal = (int) (K_P * errors[motor]);
+    if (baseVal > MAX_SPEED)  baseVal =  MAX_SPEED;
+    if (baseVal < -MAX_SPEED) baseVal = -MAX_SPEED;
+    
+    // motor balance correction: logical only for 2 motor setup
+    int otherMotor = (motor+1)%NUM_MOTORS; 
+    long otherMotorError = (turning?-errors[otherMotor]:errors[otherMotor]);
+    int motorDiffCorrection = (int) (K_DIFF * (errors[motor] - otherMotorError));
+    if (motorDiffCorrection > MAX_CORRECTION)  motorDiffCorrection =  MAX_CORRECTION;
+    if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
+    
+    return baseVal + motorDiffCorrection;
+}
+
+/*                                                                              
+ * bool isZero()                                                                
+ * Takes in the list of errors values and determines if all of them are within the 
+ * margin set to be "zero". This helps prevent the encoders from causing the robot
+ * to oscillate back and forth due to it not being able to hit exactly zero.    
+ */                                                                             
+bool isZero(long* errors){                                    
+                                                                                
+    for (int i = 0; i < NUM_MOTORS; i++){                                                
+        if (abs(errors[i]) > ZERO_ERROR_MARGIN) return false;          
+    }                                                                           
+    return true;                                                                
+}    
+
+/*
+ * void setMotor()
+ * set the identified motor to the desired PWM value (uint_8)
+ */
 void setMotor(int m, int pwm){
 
+    if (pwm > -MIN_SPEED && pwm < 0) pwm = -MIN_SPEED;
+    if (pwm <  MIN_SPEED && pwm > 0) pwm =  MIN_SPEED;
+    
+    //negative on left motor is forwards
+    pwm = (m==L) ? -pwm:pwm;
+
     //get motor pins
-    int M = (m==L?ML:MR);
-    int E = (m==L?EL:ER);
+    int M_pin = (m==L) ? ML:MR;
+    int E_pin = (m==L) ? EL:ER;
+    
 
     //set direction and speed
-    digitalWrite(M, pwm > 0 ? HIGH:LOW);
-    analogWrite (E, abs(pwm));
+    digitalWrite(M_pin, pwm > 0 ? HIGH:LOW);
+    analogWrite (E_pin, abs(pwm));
 
 }
 
+/*
+ * void stopMotors()
+ * set both motors to zero speed
+ */
 void stopMotors(){
     setMotor(L,0);
     setMotor(R,0);
@@ -65,7 +269,7 @@ void stopMotors(){
  * Resets each of the encoder counts to zero
  */
 void resetEncoderCounts(){
-    for (int i = 0; i < 2; i++) enc_counts[i] = 0;
+    for (int i = 0; i < NUM_MOTORS; i++) enc_counts[i] = 0;
 }
 
 /*
@@ -76,7 +280,7 @@ void resetEncoderCounts(){
  *
  */
 void encoderCount(int enc, int type){
-    int inc = enc == R ? -1 : 1;
+    int inc = (enc == R) ? -1 : 1;
 
     if (type == A){
       //low to high
@@ -89,8 +293,7 @@ void encoderCount(int enc, int type){
           else                                        enc_counts[enc]-=inc;
     }
 
-    else
-    if (type == B){
+    else if (type == B){
       //low to high
       if (digitalRead(ENC_PINS[enc][B]) == HIGH)
           if (digitalRead( ENC_PINS[enc][A]) == HIGH) enc_counts[enc]+=inc;
