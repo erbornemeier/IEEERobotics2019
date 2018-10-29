@@ -22,20 +22,18 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 8,  9},   // Left
 
 //control values
 #define MAX_SPEED         70
-#define MIN_SPEED         52
+#define MIN_SPEED         55
 #define MAX_CORRECTION    30
-#define OVERSHOOT_OFFSET  1/18.0
-#define ANGLE_OVERSHOOT_OFFSET 1/8.0
-#define K_P               0.05
+#define K_P               0.008
 #define K_I               0.0
 #define K_DIFF            0.3
-#define ZERO_ERROR_MARGIN 80
+#define ZERO_ERROR_MARGIN  50
 
 //robot specs
 #define COUNTS_PER_REV       3200
 #define WHEEL_DIAMETER       3.45
 #define DISTANCE_PER_REV    (WHEEL_DIAMETER*3.14159265)  
-#define ROBOT_WIDTH          9.75
+#define ROBOT_WIDTH          9.85
 #define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*3.14159265)
 #define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
 
@@ -89,34 +87,33 @@ void loop() {
 void drive(float distance){ 
 
     long enc_count_goals[NUM_MOTORS];
-    long enc_errors[NUM_MOTORS];
-
-    float offset = OVERSHOOT_OFFSET * distance;
+    long enc_errors[NUM_MOTORS] = {0, 0};
+    long last_errors[NUM_MOTORS];
                                                     
     resetEncoderCounts();                                                       
 
                                                                 
     for (int i = 0; i < NUM_MOTORS; i++) {                                              
-        enc_count_goals[i] = (long) ((distance - offset) * 
-                                    COUNTS_PER_REV / DISTANCE_PER_REV);
+        enc_count_goals[i] = (long) (distance * COUNTS_PER_REV / DISTANCE_PER_REV);
         
     }                                                                        
 
+    long lastDiff = millis();
     do{                                                                            
         do {                                                                        
             for (int i = 0; i < NUM_MOTORS; i++){                                            
+                last_errors[i] = enc_errors[i];  
                 enc_errors[i] = enc_count_goals[i] - enc_counts[i];                                                              
-                                                                                    
-                int motorVal = errorToMotorOut(enc_errors, i, false); 
-                Serial.print(i);
-                Serial.print(": ");         
-                Serial.print(motorVal); 
-                Serial.print("  "); 
-                                                                                  
+                if (last_errors[i] != enc_errors[i]) lastDiff = millis();
+                                                                                   
+                int motorVal = errorToMotorOut(enc_errors, i, false);                                                                 
                 setMotor(i, motorVal);                                             
             }    
-            Serial.println("");
-            //printErrors(enc_errors);
+            if (millis() - lastDiff > 2000){
+                stopMotors();
+                return;  
+            }
+            
                                                                                                                                         
         } while (!isZero(enc_errors));
         
@@ -124,7 +121,6 @@ void drive(float distance){
         //recalculate errors after some delay without overshoot offset
         delay(500);
         for (int i = 0; i < NUM_MOTORS; i++){
-                enc_count_goals[i] = (long) (distance * COUNTS_PER_REV / DISTANCE_PER_REV);
                 enc_errors[i] = enc_count_goals[i] - enc_counts[i];  
         }
 
@@ -141,33 +137,35 @@ void drive(float distance){
 void turn(float angle){ 
 
     long enc_count_goals[NUM_MOTORS];
-    long enc_errors[NUM_MOTORS];
-
-    float offset = ANGLE_OVERSHOOT_OFFSET * angle;
+    long enc_errors[NUM_MOTORS] = {0, 0};
+    long last_errors[NUM_MOTORS];
                                                     
     resetEncoderCounts();                                                       
                                                                 
     for (int i = 0; i < NUM_MOTORS; i++){                                             
-        enc_count_goals[i] = (long) ((angle - offset) * 
-                                    COUNTS_PER_REV / ANGLE_PER_REV); 
+        enc_count_goals[i] = (long) (angle  * COUNTS_PER_REV / ANGLE_PER_REV); 
         if (i == R) enc_count_goals[i] *= -1;  
     }                                                                       
 
+    long lastDiff = millis();
+
     do{                                                                            
-        do {                                                                        
-            for (int i = 0; i < NUM_MOTORS; i++){                                            
+        do {  
+            bool same = true;                                                                      
+            for (int i = 0; i < NUM_MOTORS; i++){
+                last_errors[i] = enc_errors[i];                                            
                 enc_errors[i] = enc_count_goals[i] - enc_counts[i];                                                              
-                                                                                    
+                if (last_errors[i] != enc_errors[i]) lastDiff = millis();
+                                                                             
                 int motorVal = errorToMotorOut(enc_errors, i, true); 
-                Serial.print(i);
-                Serial.print(": ");         
-                Serial.print(motorVal); 
-                Serial.print("  "); 
                                                                                   
                 setMotor(i, motorVal);                                             
             }    
-            Serial.println("");
-            //printErrors(enc_errors);
+            if (millis() - lastDiff > 2000){
+                stopMotors();
+                return; 
+            }
+           
                                                                                                                                         
         } while (!isZero(enc_errors));
         
@@ -175,8 +173,6 @@ void turn(float angle){
         //recalculate errors after some delay without overshoot offset
         delay(500);
         for (int i = 0; i < NUM_MOTORS; i++){
-                enc_count_goals[i] = (long) (angle * COUNTS_PER_REV / ANGLE_PER_REV);
-                if (i == R) enc_count_goals[i] *= -1;
                 enc_errors[i] = enc_count_goals[i] - enc_counts[i];  
         }
 
