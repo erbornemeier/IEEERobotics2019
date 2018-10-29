@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 def nothing(x):
     pass
@@ -16,6 +16,9 @@ h,s,v = 100,100,100
 cv2.createTrackbar('h', 'result',0,179,nothing)
 cv2.createTrackbar('s', 'result',0,255,nothing)
 cv2.createTrackbar('v', 'result',0,255,nothing)
+cv2.createTrackbar('h_high', 'result',0,179,nothing)
+cv2.createTrackbar('s_high', 'result',0,255,nothing)
+cv2.createTrackbar('v_high', 'result',0,255,nothing)
 
 while(1):
 
@@ -28,10 +31,13 @@ while(1):
     h = cv2.getTrackbarPos('h','result')
     s = cv2.getTrackbarPos('s','result')
     v = cv2.getTrackbarPos('v','result')
+    h_high = cv2.getTrackbarPos('h_high','result')
+    s_high = cv2.getTrackbarPos('s_high','result')
+    v_high = cv2.getTrackbarPos('v_high','result')
 
     # Normal masking algorithm
     lower_blue = np.array([h,s,v])
-    upper_blue = np.array([180,255,255])
+    upper_blue = np.array([h_high,s_high,v_high])
 
     mask = cv2.inRange(hsv,lower_blue, upper_blue)
 
