@@ -1,12 +1,13 @@
 import cv2
 import numpy as np
 
-LED_MASK = np.array([[ 85, 190, 158],
-                      [130, 255, 255]])
-LINE_THRESHOLD = 100 
-PIXEL2INCH = 1.0 / 262.0 
 
 class beacon_tracker:
+    
+    LED_MASK = np.array([[ 85, 190, 158],
+                          [130, 255, 255]])
+    LINE_THRESHOLD = 100 
+    PIXEL2INCH = 1.0 / (262.0*12) 
     
     def __init__(self, servoID):
         self.servoID = servoID
@@ -41,7 +42,7 @@ class beacon_tracker:
             pixels =  ((top[0] - bottom[0]) ** 2 + (top[1] - bottom[1])**2) ** 0.5
             #convert to inches
             if pixels > 4:
-                inches = 12 / (pixels * PIXEL2INCH)
+                inches = pixels * self.PIXEL2INCH
                 return inches
         return False
 
@@ -50,7 +51,7 @@ class beacon_tracker:
         #convert to HSV
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         #threshold on color
-        mask = cv2.inRange(hsv, LED_MASK[0], LED_MASK[1])
+        mask = cv2.inRange(hsv, self.LED_MASK[0], self.LED_MASK[1])
         #dilate image to expand contours
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (12,12)) 
         mask = cv2.dilate(mask, kernel)
@@ -91,7 +92,7 @@ class beacon_tracker:
                             if middle_diff < smallestDiff:
                                 smallestDiff = middle_diff
                                 top, middle, bottom = c_top, c_middle, c_bottom 
-        if smallestDiff < LINE_THRESHOLD:
+        if smallestDiff < self.LINE_THRESHOLD:
             if show:
                 cv2.line(frame, (int(top[0]), int(top[1])), (int(bottom[0]), int(bottom[1])), (255,255,0), 5)
             return (top, middle, bottom)
