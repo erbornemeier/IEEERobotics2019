@@ -12,7 +12,7 @@ enum ENC_TYPE {A, B};
 enum MOTOR_PINS{ML=2, EL=3, MR=4, ER=5};
 
 // Encoder info
-volatile long enc_counts[2];
+volatile long encCounts[2];
 unsigned int ENC_PINS[NUM_MOTORS][2] = { { 8,  9},   // Left
                                          {10, 11} }; // Right
 
@@ -32,9 +32,9 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 8,  9},   // Left
 //robot specs
 #define COUNTS_PER_REV       3200
 #define WHEEL_DIAMETER       3.45
-#define DISTANCE_PER_REV    (WHEEL_DIAMETER*3.14159265)  
+#define DISTANCE_PER_REV    (WHEEL_DIAMETER*PI)  
 #define ROBOT_WIDTH          9.85
-#define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*3.14159265)
+#define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
 
 
@@ -86,27 +86,26 @@ void loop() {
  */                                                                             
 void drive(float distance){ 
 
-    long enc_count_goals[NUM_MOTORS];
-    long enc_errors[NUM_MOTORS] = {0, 0};
-    long last_errors[NUM_MOTORS];
+    long encCountGoals[NUM_MOTORS];
+    long encErrors[NUM_MOTORS] = {0, 0};
+    long lastErrors[NUM_MOTORS];
                                                     
     resetEncoderCounts();                                                       
 
                                                                 
     for (int i = 0; i < NUM_MOTORS; i++) {                                              
-        enc_count_goals[i] = (long) (distance * COUNTS_PER_REV / DISTANCE_PER_REV);
-        
+        encCountGoals[i] = (long) (distance * COUNTS_PER_REV / DISTANCE_PER_REV);
     }                                                                        
 
     long lastDiff = millis();
     do{                                                                            
         do {                                                                        
             for (int i = 0; i < NUM_MOTORS; i++){                                            
-                last_errors[i] = enc_errors[i];  
-                enc_errors[i] = enc_count_goals[i] - enc_counts[i];                                                              
-                if (last_errors[i] != enc_errors[i]) lastDiff = millis();
+                lastErrors[i] = encErrors[i];  
+                encErrors[i] = encCountGoals[i] - encCounts[i];                                                              
+                if (lastErrors[i] != encErrors[i]) lastDiff = millis();
                                                                                    
-                int motorVal = errorToMotorOut(enc_errors, i, false);                                                                 
+                int motorVal = errorToMotorOut(encErrors, i, false);                                                                 
                 setMotor(i, motorVal);                                             
             }    
             if (millis() - lastDiff > 2000){
@@ -115,16 +114,16 @@ void drive(float distance){
             }
             
                                                                                                                                         
-        } while (!isZero(enc_errors));
+        } while (!isZero(encErrors));
         
         stopMotors();
         //recalculate errors after some delay without overshoot offset
         delay(500);
         for (int i = 0; i < NUM_MOTORS; i++){
-                enc_errors[i] = enc_count_goals[i] - enc_counts[i];  
+                encErrors[i] = encCountGoals[i] - encCounts[i];  
         }
 
-    }while (!isZero(enc_errors));
+    }while (!isZero(encErrors));
                                            
     stopMotors();                                                                            
                                                                    
@@ -132,19 +131,19 @@ void drive(float distance){
 
 /*                                                                              
  * void turn()                                                                 
- * Takes in a distance in inches and drives forwards/backwards until value is reached
+ * Takes in an angle in degrees and rotates until that value is reached
  */                                                                             
 void turn(float angle){ 
 
-    long enc_count_goals[NUM_MOTORS];
-    long enc_errors[NUM_MOTORS] = {0, 0};
-    long last_errors[NUM_MOTORS];
+    long encCountGoals[NUM_MOTORS];
+    long encErrors[NUM_MOTORS] = {0, 0};
+    long lastErrors[NUM_MOTORS];
                                                     
     resetEncoderCounts();                                                       
                                                                 
     for (int i = 0; i < NUM_MOTORS; i++){                                             
-        enc_count_goals[i] = (long) (angle  * COUNTS_PER_REV / ANGLE_PER_REV); 
-        if (i == R) enc_count_goals[i] *= -1;  
+        encCountGoals[i] = (long) (angle  * COUNTS_PER_REV / ANGLE_PER_REV); 
+        if (i == R) encCountGoals[i] *= -1;  
     }                                                                       
 
     long lastDiff = millis();
@@ -153,11 +152,11 @@ void turn(float angle){
         do {  
             bool same = true;                                                                      
             for (int i = 0; i < NUM_MOTORS; i++){
-                last_errors[i] = enc_errors[i];                                            
-                enc_errors[i] = enc_count_goals[i] - enc_counts[i];                                                              
-                if (last_errors[i] != enc_errors[i]) lastDiff = millis();
+                lastErrors[i] = encErrors[i];                                            
+                encErrors[i] = encCountGoals[i] - encCounts[i];                                                              
+                if (lastErrors[i] != encErrors[i]) lastDiff = millis();
                                                                              
-                int motorVal = errorToMotorOut(enc_errors, i, true); 
+                int motorVal = errorToMotorOut(encErrors, i, true); 
                                                                                   
                 setMotor(i, motorVal);                                             
             }    
@@ -167,16 +166,16 @@ void turn(float angle){
             }
            
                                                                                                                                         
-        } while (!isZero(enc_errors));
+        } while (!isZero(encErrors));
         
         stopMotors();
         //recalculate errors after some delay without overshoot offset
         delay(500);
         for (int i = 0; i < NUM_MOTORS; i++){
-                enc_errors[i] = enc_count_goals[i] - enc_counts[i];  
+                encErrors[i] = encCountGoals[i] - encCounts[i];  
         }
 
-    }while (!isZero(enc_errors));
+    }while (!isZero(encErrors));
                                            
     stopMotors();                                                                            
                                                                    
@@ -265,7 +264,7 @@ void stopMotors(){
  * Resets each of the encoder counts to zero
  */
 void resetEncoderCounts(){
-    for (int i = 0; i < NUM_MOTORS; i++) enc_counts[i] = 0;
+    for (int i = 0; i < NUM_MOTORS; i++) encCounts[i] = 0;
 }
 
 /*
@@ -281,23 +280,23 @@ void encoderCount(int enc, int type){
     if (type == A){
       //low to high
       if (digitalRead(ENC_PINS[enc][A]) == HIGH)
-          if (digitalRead( ENC_PINS[enc][B]) == LOW)  enc_counts[enc]+=inc;
-          else                                        enc_counts[enc]-=inc;
+          if (digitalRead( ENC_PINS[enc][B]) == LOW)  encCounts[enc]+=inc;
+          else                                        encCounts[enc]-=inc;
       //high to low
       else
-          if (digitalRead( ENC_PINS[enc][B]) == HIGH) enc_counts[enc]+=inc;
-          else                                        enc_counts[enc]-=inc;
+          if (digitalRead( ENC_PINS[enc][B]) == HIGH) encCounts[enc]+=inc;
+          else                                        encCounts[enc]-=inc;
     }
 
     else if (type == B){
       //low to high
       if (digitalRead(ENC_PINS[enc][B]) == HIGH)
-          if (digitalRead( ENC_PINS[enc][A]) == HIGH) enc_counts[enc]+=inc;
-          else                                        enc_counts[enc]-=inc;
+          if (digitalRead( ENC_PINS[enc][A]) == HIGH) encCounts[enc]+=inc;
+          else                                        encCounts[enc]-=inc;
       //high to low
       else
-          if (digitalRead( ENC_PINS[enc][A]) == LOW)  enc_counts[enc]+=inc;
-          else                                        enc_counts[enc]-=inc;
+          if (digitalRead( ENC_PINS[enc][A]) == LOW)  encCounts[enc]+=inc;
+          else                                        encCounts[enc]-=inc;
     }
 }
 
