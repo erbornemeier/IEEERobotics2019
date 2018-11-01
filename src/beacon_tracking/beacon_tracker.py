@@ -9,9 +9,6 @@ class beacon_tracker:
     LINE_THRESHOLD = 100 
     PIXEL2INCH = 1.0 / (262.0*12) 
     
-    def __init__(self, servoID):
-        self.servoID = servoID
-
     def get_LED_locations(self, frame, show=False):
         #get potential LED locations
         contours = self.__find_potential_LEDs__(frame, show=show)
