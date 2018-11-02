@@ -7,7 +7,7 @@ class beacon_tracker:
     LED_MASK = np.array([[ 85, 190, 158],
                           [130, 255, 255]])
     LINE_THRESHOLD = 100 
-    PIXEL2INCH = 1.0 / (262.0*12) 
+    PIXEL2INCH = 1.0 / 262.0 
     
     def get_LED_locations(self, frame, show=False):
         #get potential LED locations
@@ -18,12 +18,12 @@ class beacon_tracker:
         #find the center of all potential LEDs
         centers = []
         for c in contours:
-           center = self.__get_center_of_contour__(c, show=show) 
+           center = self.__get_center_of_contour__(frame, c, show=show) 
            if center:
                centers.append(center)
 
         #find the three LEDs that best form a straight line
-        leds = self.__find_LED_line__(centers, show=show)
+        leds = self.__find_LED_line__(frame, centers, show=show)
         if not leds:
             return False
 
@@ -39,7 +39,7 @@ class beacon_tracker:
             pixels =  ((top[0] - bottom[0]) ** 2 + (top[1] - bottom[1])**2) ** 0.5
             #convert to inches
             if pixels > 4:
-                inches = pixels * self.PIXEL2INCH
+                inches = 12 / (pixels * self.PIXEL2INCH)
                 return inches
         return False
 
@@ -63,7 +63,7 @@ class beacon_tracker:
         return contours 
 
 
-    def __get_center_of_contour__(self, contour, show=False):
+    def __get_center_of_contour__(self, frame, contour, show=False):
         # get moments of contour
         M = cv2.moments(contour)
         #if large enough to have center
@@ -76,7 +76,7 @@ class beacon_tracker:
         return False
 
 
-    def __find_LED_line__(self, centers, show=False):
+    def __find_LED_line__(self, frame, centers, show=False):
         top, middle, bottom = None, None, None 
         smallestDiff = float('inf')
         for c_top in centers:
