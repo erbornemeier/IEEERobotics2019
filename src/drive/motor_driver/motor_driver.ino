@@ -26,7 +26,7 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 8,  9},   // Left
 #define MAX_CORRECTION    30
 #define K_P               0.008
 #define K_I               0.0
-#define K_DIFF            0.3
+#define K_DIFF            0.15
 #define ZERO_ERROR_MARGIN  50
 
 //robot specs
@@ -74,10 +74,17 @@ void setup() {
 void loop() {
 
     delay(1000);
-    drive(36.0);
+    turn(-45.0);
+    drive(sqrt(8.0)*12); 
+    turn(45.0);
+    drive(24);
+    turn(45.0);
+    drive(sqrt(8.0)*12);
+    turn(135.0);
+    drive(72.0);
     turn(180.0);
-    drive(36.0);
-    turn(180.0);
+    
+    while(true); //stop here****
 }
 
 /*                                                                              
