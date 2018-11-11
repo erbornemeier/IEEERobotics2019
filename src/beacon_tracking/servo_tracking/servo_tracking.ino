@@ -12,10 +12,13 @@
 #define SERVO_MIN 0
 #define SERVO_MAX 180
 
+#define K_P (1/90.0)
+
 Servo servo;
 volatile double servoRotation = 90;
 
 void setup() {
+  
   servo.attach(SERVO_PIN);
   servo.write(servoRotation);
 
@@ -24,9 +27,11 @@ void setup() {
   Wire.onRequest(onRequestI2C);
 
   Serial.begin(9600);
+  
 }
 
 void loop() {
+  
     servo.write((int)servoRotation);
     
     delay(10);
@@ -38,20 +43,20 @@ void loop() {
 void onReceiveI2C(int numBytes) {
   
   while(Wire.available()) {
-    Wire.read();
-    Wire.read();
+    int cmd = Wire.read();
+    int dataSize = Wire.read();
     
     int value = get16BitInt();
-    Serial.println(value);
+    //Serial.println(value);
 
     if(value > -5 && value < 5) {
         return;
     } else if(value < 0) {
-      if(servoRotation < 180) {
+      if(servoRotation < SERVO_MAX) {
         servoRotation -= (double)value / 90;
       }
     } else if(value > 0) {
-      if(servoRotation > 0) {
+      if(servoRotation > SERVO_MIN) {
         servoRotation -= (double)value / 90;
       }  
     }

@@ -1,11 +1,51 @@
 import cv2
-from servo import servo
+#from servo import servo
 from beacon_tracker import beacon_tracker
 from threading import Thread
 
-def get_global_position(l_dist, r_dist):
-    #TODO: return intersection of circles with radius l_dist and r_dist
-    return None
+def get_global_position(beacon_l, beacon_r, radius_l, radius_r):
+
+    #get distance between the two beacons
+    p1x, p1y = beacon_l
+    p2x, p2y = beacon_r
+    d = ((p1x - p2x)**2 + (p1y-p2y)**2)**0.5
+
+    # circles intersect zero or infinite times
+    if d > radius_l + radius_r or\
+       d < abs(radius_l - radius_r) or\
+      (d == 0 and radius_l == radius_r):
+        return False
+
+    #get legs of triangles
+    a = (radius_l**2 - radius_r**2 + d**2) / (2*d)
+    h = (radius_l**2 - a**2)**0.5
+
+    #get possible intersection points
+    mid_x = p1x + a*(p2x - p1x)/d
+    mid_y = p1y + a*(p2y - p1y)/d
+    intersect1x = mid_x + h*(p2y - p1y)/d
+    intersect2x = mid_x - h*(p2y - p1y)/d
+    intersect1y = mid_y - h*(p2x - p1x)/d
+    intersect2y = mid_y + h*(p2x - p1x)/d
+    intersect1 = (intersect1x, intersect1y)
+    intersect2 = (intersect2x, intersect2y)
+
+    #check if the intersection is contained on the board
+    #only one point should be contained on the board given a good
+    #data set
+    def is_on_board(p):
+        for c in p:
+            if c < 0.0 or c > 96.0:
+                return False
+        return True
+    
+
+    #return intersection 1 if its on the board
+    #otherwise just return intersection 2
+    if is_on_board(intersect1):
+        return intersect1
+    return intersect2
+
 
 def updateServo():
     L_servo.update()
