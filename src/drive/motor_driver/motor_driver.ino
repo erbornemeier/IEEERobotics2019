@@ -9,12 +9,12 @@ enum MOTOR_IDS{L, R, NUM_MOTORS};
 enum ENC_TYPE {A, B};
 
 //M is mode (direction), E is PWM (speed)
-enum MOTOR_PINS{ML=2, EL=3, MR=4, ER=5};
+enum MOTOR_PINS{ML=8, EL=10, MR=7, ER=9, ENABLE=4};
 
 // Encoder info
 volatile long encCounts[2];
-unsigned int ENC_PINS[NUM_MOTORS][2] = { { 8,  9},   // Left
-                                         {10, 11} }; // Right
+unsigned int ENC_PINS[NUM_MOTORS][2] = { { 2,  3},   // Left
+                                         { 5,  6} }; // Right
 
 /*****************************************
 * POSITION CONTROL & MOTOR FEEDBACK
@@ -56,6 +56,8 @@ void setup() {
       pinMode(ENC_PINS[i][A], INPUT_PULLUP);
       pinMode(ENC_PINS[i][B], INPUT_PULLUP);
   }
+  pinMode(ENABLE,  OUTPUT);
+  digitalWrite(ENABLE, HIGH);
   pinMode(ML, OUTPUT);
   pinMode(EL, OUTPUT);
   pinMode(MR, OUTPUT);
@@ -74,15 +76,10 @@ void setup() {
 void loop() {
 
     delay(1000);
-    turn(-45.0);
-    drive(sqrt(8.0)*12); 
-    turn(45.0);
-    drive(24);
-    turn(45.0);
-    drive(sqrt(8.0)*12);
-    turn(135.0);
-    drive(72.0);
-    turn(180.0);
+    drive(36);
+    turn(180);
+    drive(36);
+    turn(180);
     
     while(true); //stop here****
 }
