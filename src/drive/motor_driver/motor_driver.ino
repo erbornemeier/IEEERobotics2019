@@ -1,4 +1,13 @@
 #include <PinChangeInterrupt.h>
+#include <Wire.h>
+
+/*****************************************
+* COMMUNICATION
+*****************************************/
+#define SLAVE_ADDRESS 0x28
+enum DATA_FLAGS {MOVE_COMMAND=0};
+volatile int newMoveCommand = false;
+volatile int moveDist, moveRot;
 
 /*****************************************
 * MOTORS AND ENCODERS
@@ -43,6 +52,7 @@ volatile float actual_position[2] = {0.0,   // x_actual
 
 volatile float target_position[2] = {0.0,   // x_target
                                      0.0 }; // y_target
+
                                      
 /*****************************************/
 
@@ -51,6 +61,9 @@ volatile float target_position[2] = {0.0,   // x_target
  */
 void setup() {
   Serial.begin(115200);
+  Wire.begin(SLAVE_ADDRESS);
+  Wire.onReceive(onReceiveI2C);
+  //Wire.onRequest(onRequestI2C);
   
   for (int i = 0; i < NUM_MOTORS; i++){
       pinMode(ENC_PINS[i][A], INPUT_PULLUP);
@@ -75,13 +88,12 @@ void setup() {
  */
 void loop() {
 
-    delay(1000);
-    drive(36);
-    turn(180);
-    drive(36);
-    turn(180);
-    
-    while(true); //stop here****
+    if (newMoveCommand){
+        drive(moveDist);
+        turn(moveRot);
+        newMoveCommand = false;
+    }
+
 }
 
 /*                                                                              
@@ -312,3 +324,31 @@ void LA_changed(){encoderCount(L, A);}
 void LB_changed(){encoderCount(L, B);}
 void RA_changed(){encoderCount(R, A);}
 void RB_changed(){encoderCount(R, B);}
+
+// numBytes: total number of bytes
+// First byte: flag
+// Second byte: number of data bytes
+void onReceiveI2C(int numBytes) {
+  
+  while(Wire.available()) {
+    
+    int cmd = Wire.read();
+    int dataSize = Wire.read();
+
+    switch(cmd){
+        case MOVE_COMMAND:
+            moveDist = get16BitInt();
+            moveRot  = get16BitInt();
+            newMoveCommand = true; 
+            break;
+        default:
+            break;
+      
+    }
+    
+  }
+}
+
+int get16BitInt() {
+  return (Wire.read() << 8) | Wire.read();
+}
