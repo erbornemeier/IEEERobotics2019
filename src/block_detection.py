@@ -1,6 +1,11 @@
 import cv2
+import numpy as np
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
+
+orange_lower = np.array([4,100,9])
+orange_upper = np.array([18,255,255])
+kernel = np.ones((7,7),np.uint8)
 
 while True:
     _, frame = cap.read()
@@ -8,25 +13,42 @@ while True:
     #threshold the image
     thresh = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     thresh = cv2.GaussianBlur(thresh, (5,5), 0)
-    _, thresh = cv2.threshold(thresh, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    thresh = cv2.adaptiveThreshold(thresh, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,5,2)
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
 
-    #get the contours in the image
-    _, white_contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    #convert to hsv
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     
-    #invert and get the other contours in the image
+    #get the orange contours in the image
+    orange_mask = cv2.inRange(hsv, orange_lower, orange_upper)
+    orange_mask = cv2.morphologyEx(orange_mask, cv2.MORPH_OPEN, kernel)
+    orange_mask = cv2.morphologyEx(orange_mask, cv2.MORPH_CLOSE, kernel)
+    orange_contours, _ = cv2.findContours(orange_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    #get the non orange contours in the image
+    non_orange_mask = cv2.bitwise_not(orange_mask)
+    non_orange_contours, _ = cv2.findContours(non_orange_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    #get the white contours in the image
+    white_contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+    #invert and get the black contours in the image
     thresh2 = cv2.bitwise_not(thresh)
-    _, black_contours, _ = cv2.findContours(thresh2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    black_contours, _ = cv2.findContours(thresh2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    #find black contours within white ones
-    for w in white_contours:
-        w_x, w_y, w_dx, w_dy = cv2.boundingRect(w)
-        for b in black_contours:
-            b_x, b_y, b_dx, b_dy = cv2.boundingRect(b)
-            if w_x < b_x and w_x + w_dx > b_x + b_dx and w_y < b_y and w_y + w_dy > b_y + b_dy:
-                cv2.drawContours(frame, [b], 0, (0,255,0), 3)
 
-    cv2.imshow('Block Detection Test', thresh)
+    #find nonorange contours within orange ones
+    for no in non_orange_contours:
+        no_x, no_y, no_dx, no_dy = cv2.boundingRect(no)
+        for o in orange_contours:
+            o_x, o_y, o_dx, o_dy = cv2.boundingRect(o)
+            if no_dx > 50 and no_dy > 50 and  no_x > o_x and no_x + no_dx < o_x + o_dx and no_y > o_y and no_y + no_dy < o_y + o_dy:
+                
+                cv2.drawContours(frame, [no], 0, (0,255,0), 3)
+
+    #cv2.imshow('Block Detection Test', thresh)
     cv2.imshow('hopefully a block', frame)
+    cv2.imshow('Orange', orange_mask)
 
     key = cv2.waitKey(1)
     if key == ord('q'):
