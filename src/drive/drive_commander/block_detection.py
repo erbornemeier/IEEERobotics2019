@@ -3,7 +3,7 @@ import numpy as np
 
 class block_detector:
     def __init__(self):
-        self.board_lower = np.array([4,100,9])
+        self.board_lower = np.array([4,100,100])
         self.board_upper = np.array([18,255,255])
         self.kernel = np.ones((7,7), np.uint8)
 
@@ -26,6 +26,8 @@ class block_detector:
         orange_mask = cv2.morphologyEx(orange_mask, cv2.MORPH_OPEN, self.kernel)
         orange_mask = cv2.morphologyEx(orange_mask, cv2.MORPH_CLOSE, self.kernel)
         _, orange_contours, _ = cv2.findContours(orange_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        #cv2.imshow('mask', orange_mask)
 
         #get the non orange contours in the image
         non_orange_mask = cv2.bitwise_not(orange_mask)
