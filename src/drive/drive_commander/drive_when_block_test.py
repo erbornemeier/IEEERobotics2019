@@ -22,10 +22,12 @@ while True:
         print(len(blocks))
         center = get_cnt_center(blocks[0])
         print(center)
-        if center[1] > screen_w/2. + 20:
-            dc.send_movement(0,-5)
-        elif center[1] < screen_w/2 - 20:
-            dc.send_movement(0,5)
+        if center[1] > screen_w/2. + 80:
+            dc.send_movement(0,10)
+        elif center[1] < screen_w/2. - 80:
+            dc.send_movement(0,-10)
+        else:
+            dc.send_movement(4,0)
 
     #cv2.drawContours(frame, blocks, -1, (0,255,0), 3)
     #cv2.imshow('frame', frame)
