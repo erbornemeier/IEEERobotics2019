@@ -1,13 +1,20 @@
 #include <PinChangeInterrupt.h>
 #include <Wire.h>
+#include <Servo.h>
 
 /*****************************************
 * COMMUNICATION
 *****************************************/
 #define SLAVE_ADDRESS 0x28
-enum DATA_FLAGS {MOVE_COMMAND=0};
-volatile int newMoveCommand = false;
-volatile int moveDist, moveRot;
+enum DATA_FLAGS {START_TRACKING=0, STOP_TRACKING=1, TRACK_INFO=2};
+
+/*****************************************
+* TRACKING INFO
+*****************************************/
+Servo cameraTilt;
+enum COORD {x, y};
+volatile int blockPos[2];
+volatile int newBlockPos = false;
 
 /*****************************************
 * MOTORS AND ENCODERS
@@ -18,12 +25,12 @@ enum MOTOR_IDS{L, R, NUM_MOTORS};
 enum ENC_TYPE {A, B};
 
 //M is mode (direction), E is PWM (speed)
-enum MOTOR_PINS{ML=8, EL=10, MR=7, ER=9, ENABLE=4};
+enum MOTOR_PINS{ML=7, EL=9, MR=8, ER=10, ENABLE=4};
 
 // Encoder info
 volatile long encCounts[2];
-unsigned int ENC_PINS[NUM_MOTORS][2] = { { 2,  3},   // Left
-                                         { 5,  6} }; // Right
+unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
+                                         { 52,  53} }; // Right
 
 /*****************************************
 * POSITION CONTROL & MOTOR FEEDBACK
@@ -42,7 +49,7 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 2,  3},   // Left
 #define COUNTS_PER_REV       3200
 #define WHEEL_DIAMETER       3.45
 #define DISTANCE_PER_REV    (WHEEL_DIAMETER*PI)  
-#define ROBOT_WIDTH          9.85
+#define ROBOT_WIDTH          7.6
 #define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
 
@@ -76,6 +83,8 @@ void setup() {
   pinMode(MR, OUTPUT);
   pinMode(ER, OUTPUT);
 
+  cameraTilt.attach(11);
+
   // attach interrupts to four encoder pins
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][B]), LB_changed,  CHANGE);
@@ -88,10 +97,25 @@ void setup() {
  */
 void loop() {
 
-    if (newMoveCommand){
-        drive(moveDist);
-        turn(moveRot);
-        newMoveCommand = false;
+    if (newBlockPos){
+        //drive(moveDist);
+        //turn(moveRot);
+        //newMoveCommand = false;
+    }
+    else{
+        /*drive(24);
+        turn(180);
+        drive(24);
+        turn(-180);*/
+        while(1){
+            for (int i = 30; i <= 80; i+=10){
+              cameraTilt.write(i);
+              delay(500);
+            }
+        }
+        
+        
+        
     }
 
 }
@@ -128,7 +152,7 @@ void drive(float distance){
                 stopMotors();
                 return;  
             }
-            
+            printErrors(encErrors);
                                                                                                                                         
         } while (!isZero(encErrors));
         
@@ -180,6 +204,7 @@ void turn(float angle){
                 stopMotors();
                 return; 
             }
+            printErrors(encErrors);
            
                                                                                                                                         
         } while (!isZero(encErrors));
@@ -336,10 +361,10 @@ void onReceiveI2C(int numBytes) {
     int dataSize = Wire.read();
 
     switch(cmd){
-        case MOVE_COMMAND:
-            moveDist = get16BitInt();
-            moveRot  = get16BitInt();
-            newMoveCommand = true; 
+        case TRACK_INFO:
+            blockPos[x] = get16BitInt();
+            blockPos[y] = get16BitInt();
+            newBlockPos = true; 
             break;
         default:
             break;
