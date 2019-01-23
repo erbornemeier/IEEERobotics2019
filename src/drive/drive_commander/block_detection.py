@@ -3,18 +3,18 @@ import numpy as np
 
 class block_detector:
     def __init__(self):
-        self.board_lower = np.array([4,100,100])
+        self.board_lower = np.array([4,100,50])
         self.board_upper = np.array([18,255,255])
         self.kernel = np.ones((7,7), np.uint8)
 
     def is_contained(self, bb1, bb2):
         a_x, a_y, a_w, a_h = bb1
         b_x, b_y, b_w, b_h = bb2
-        return  a_x > b_x\
-            and a_y > b_y\
-            and a_x + a_w < b_x + b_w\
-            and a_y + a_h < b_y + b_h\
-            and a_w > 50 and a_h > 50
+        return  a_x >= b_x\
+            and a_y >= b_y\
+            and a_x + a_w <= b_x + b_w\
+            and a_y + a_h <= b_y + b_h\
+            and a_w >= 50 and a_h >= 50
 
     def get_block_contours(self, frame):
 
