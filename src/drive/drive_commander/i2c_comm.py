@@ -9,9 +9,9 @@ class i2c_comm:
         self.max_attempts = max_send_attempts
 
     def send_cmd(self, flag, data):
-        for attempt in range(self.max_send_attempts):
+        for attempt in range(self.max_attempts):
             try:
-                msg = self.serializeMsg(list(pos))
+                msg = self.serializeMsg(list(data))
                 self.bus.write_block_data(self.addr, flag, msg)
                 return True
             except IOError:

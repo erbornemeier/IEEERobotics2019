@@ -1,4 +1,20 @@
 #include <PinChangeInterrupt.h>
+#include <Wire.h>
+#include <Servo.h>
+
+/*****************************************
+* COMMUNICATION
+*****************************************/
+#define SLAVE_ADDRESS 0x28
+enum DATA_FLAGS {START_TRACKING=0, STOP_TRACKING=1, TRACK_INFO=2};
+
+/*****************************************
+* TRACKING INFO
+*****************************************/
+Servo cameraTilt;
+enum COORD {x, y};
+volatile int blockPos[2];
+volatile int newBlockPos = false;
 
 /*****************************************
 * MOTORS AND ENCODERS
@@ -9,12 +25,12 @@ enum MOTOR_IDS{L, R, NUM_MOTORS};
 enum ENC_TYPE {A, B};
 
 //M is mode (direction), E is PWM (speed)
-enum MOTOR_PINS{ML=8, EL=10, MR=7, ER=9, ENABLE=4};
+enum MOTOR_PINS{ML=7, EL=9, MR=8, ER=10, ENABLE=4};
 
 // Encoder info
 volatile long encCounts[2];
-unsigned int ENC_PINS[NUM_MOTORS][2] = { { 2,  3},   // Left
-                                         { 5,  6} }; // Right
+unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
+                                         { 52,  53} }; // Right
 
 /*****************************************
 * POSITION CONTROL & MOTOR FEEDBACK
@@ -33,7 +49,7 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 2,  3},   // Left
 #define COUNTS_PER_REV       3200
 #define WHEEL_DIAMETER       3.45
 #define DISTANCE_PER_REV    (WHEEL_DIAMETER*PI)  
-#define ROBOT_WIDTH          9.85
+#define ROBOT_WIDTH          7.6
 #define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
 
@@ -43,6 +59,7 @@ volatile float actual_position[2] = {0.0,   // x_actual
 
 volatile float target_position[2] = {0.0,   // x_target
                                      0.0 }; // y_target
+
                                      
 /*****************************************/
 
@@ -51,6 +68,9 @@ volatile float target_position[2] = {0.0,   // x_target
  */
 void setup() {
   Serial.begin(115200);
+  Wire.begin(SLAVE_ADDRESS);
+  Wire.onReceive(onReceiveI2C);
+  //Wire.onRequest(onRequestI2C);
   
   for (int i = 0; i < NUM_MOTORS; i++){
       pinMode(ENC_PINS[i][A], INPUT_PULLUP);
@@ -62,6 +82,8 @@ void setup() {
   pinMode(EL, OUTPUT);
   pinMode(MR, OUTPUT);
   pinMode(ER, OUTPUT);
+
+  cameraTilt.attach(11);
 
   // attach interrupts to four encoder pins
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
@@ -75,13 +97,27 @@ void setup() {
  */
 void loop() {
 
-    delay(1000);
-    drive(36);
-    turn(180);
-    drive(36);
-    turn(180);
-    
-    while(true); //stop here****
+    if (newBlockPos){
+        //drive(moveDist);
+        //turn(moveRot);
+        //newMoveCommand = false;
+    }
+    else{
+        /*drive(24);
+        turn(180);
+        drive(24);
+        turn(-180);*/
+        while(1){
+            for (int i = 30; i <= 80; i+=10){
+              cameraTilt.write(i);
+              delay(500);
+            }
+        }
+        
+        
+        
+    }
+
 }
 
 /*                                                                              
@@ -116,7 +152,7 @@ void drive(float distance){
                 stopMotors();
                 return;  
             }
-            
+            printErrors(encErrors);
                                                                                                                                         
         } while (!isZero(encErrors));
         
@@ -168,6 +204,7 @@ void turn(float angle){
                 stopMotors();
                 return; 
             }
+            printErrors(encErrors);
            
                                                                                                                                         
         } while (!isZero(encErrors));
@@ -312,3 +349,31 @@ void LA_changed(){encoderCount(L, A);}
 void LB_changed(){encoderCount(L, B);}
 void RA_changed(){encoderCount(R, A);}
 void RB_changed(){encoderCount(R, B);}
+
+// numBytes: total number of bytes
+// First byte: flag
+// Second byte: number of data bytes
+void onReceiveI2C(int numBytes) {
+  
+  while(Wire.available()) {
+    
+    int cmd = Wire.read();
+    int dataSize = Wire.read();
+
+    switch(cmd){
+        case TRACK_INFO:
+            blockPos[x] = get16BitInt();
+            blockPos[y] = get16BitInt();
+            newBlockPos = true; 
+            break;
+        default:
+            break;
+      
+    }
+    
+  }
+}
+
+int get16BitInt() {
+  return (Wire.read() << 8) | Wire.read();
+}

@@ -1,6 +1,49 @@
 import cv2
 import numpy as np
 
+class block_detector:
+    def __init__(self):
+        self.board_lower = np.array([4,100,50])
+        self.board_upper = np.array([18,255,255])
+        self.kernel = np.ones((7,7), np.uint8)
+
+    def is_contained(self, bb1, bb2):
+        a_x, a_y, a_w, a_h = bb1
+        b_x, b_y, b_w, b_h = bb2
+        return  a_x >= b_x\
+            and a_y >= b_y\
+            and a_x + a_w <= b_x + b_w\
+            and a_y + a_h <= b_y + b_h\
+            and a_w >= 50 and a_h >= 50
+
+    def get_block_contours(self, frame):
+
+        #convert to hsv
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        #get the orange contours in the image
+        orange_mask = cv2.inRange(hsv, self.board_lower, self.board_upper)
+        orange_mask = cv2.morphologyEx(orange_mask, cv2.MORPH_OPEN, self.kernel)
+        orange_mask = cv2.morphologyEx(orange_mask, cv2.MORPH_CLOSE, self.kernel)
+        _, orange_contours, _ = cv2.findContours(orange_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        #cv2.imshow('mask', orange_mask)
+
+        #get the non orange contours in the image
+        non_orange_mask = cv2.bitwise_not(orange_mask)
+        _, non_orange_contours, _ = cv2.findContours(non_orange_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        #find nonorange contours within orange ones
+        block_contours = []
+        for no in non_orange_contours:
+            no_bb = cv2.boundingRect(no)
+            for o in orange_contours:
+                o_bb = cv2.boundingRect(o)
+                if self.is_contained(no_bb, o_bb):
+                    block_contours.append(no)
+        return block_contours
+
+'''
 cap = cv2.VideoCapture(1)
 
 orange_lower = np.array([4,100,9])
@@ -54,3 +97,4 @@ while True:
     if key == ord('q'):
         break
 
+'''
