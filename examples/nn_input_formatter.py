@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import random
 
 def find_rect_pts(pts):
     new_pts = pts
@@ -8,6 +9,24 @@ def find_rect_pts(pts):
         epsilon += 1
         new_pts = cv2.approxPolyDP(pts, epsilon, True)
     return new_pts
+
+def sp_noise(image,prob):
+    '''
+    Add salt and pepper noise to image
+    prob: Probability of the noise
+    '''
+    output = np.zeros(image.shape,np.uint8)
+    thres = 1 - prob 
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            rdn = random.random()
+            if rdn < prob:
+                output[i][j] = 0
+            elif rdn > thres:
+                output[i][j] = 255
+            else:
+                output[i][j] = image[i][j]
+    return output
 
 orange_lower = np.array([4,100,0])
 orange_upper = np.array([18,255,255])
@@ -47,16 +66,37 @@ for image_index in photos:
     block_corners = [*block_corners[0], *block_corners[1]]
 
     orig_pts = np.array(block_corners, dtype=np.float32)
-    ortho_pts = np.array([[200,0],[0,0],[0,200],[200,200]], dtype=np.float32)
+    ortho_pts = np.array([[102,0],[0,0],[0,102],[102,102]], dtype=np.float32)
     H = cv2.getPerspectiveTransform(orig_pts, ortho_pts)
-    warp = cv2.warpPerspective(img, H, (200,200))
+    warp = cv2.warpPerspective(img, H, (102,102))
 
     thresh = cv2.cvtColor(warp, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(thresh, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
+    rows, cols = thresh.shape
+    up = thresh
+    up = up[1:101,1:101]
+    #adding noise
+    M = cv2.getRotationMatrix2D((cols/2,rows/2),90,1)
+    left1 = cv2.warpAffine(thresh, M, (cols,rows))
+    left = left1[1:101,1:101]
+    down1 = cv2.warpAffine(left1, M, (cols,rows))
+    down = down1[1:101,1:101]
+    right1 = cv2.warpAffine(down1, M, (cols,rows))
+    right = right1[1:101,1:101]
+
+    up = sp_noise(up,0.05)
+    left = sp_noise(left,0.05)
+    down = sp_noise(down,0.05)
+    right = sp_noise(right,0.05)
+
+
     while(True):
         #cv2.imshow('original', img)
-        cv2.imshow(image_index, thresh)
+        cv2.imshow(image_index, up)
+        cv2.imshow("left", left)
+        cv2.imshow("down", down)
+        cv2.imshow("right", right)
         #cv2.imshow('black_mask', black_mask)
         #cv2.imshow('mask',mask)
         #cv2.imshow('non-orange', non_orange_mask)
