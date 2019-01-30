@@ -1,0 +1,2 @@
+Don't forget to run the following command on the py file:
+chmod u+x my_python_file.py

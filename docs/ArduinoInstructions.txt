@@ -1,0 +1,15 @@
+----- Setup ------
+cd ros_ws/src
+git clone https://github.com/ros-drivers/rosserial.git
+cd ros_ws
+catkin_make
+
+cd <ArduinoSketchbook>/libraries
+rm -rf ros_lib
+rosrun rosserial_arduino make_libraries.py .
+
+
+
+----- Run node ------
+rosrun rosserial_python serial_node.py _port:=/dev/ttyACM0 _baud:=115200
+_port and _baud are optional

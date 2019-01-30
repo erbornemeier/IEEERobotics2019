@@ -1,0 +1,12 @@
+1. Create folder in package named 'msg'
+2. Create .msg file
+
+3. Follow step 3: http://wiki.ros.org/msg
+    Note: use exec_depend instead of run_depend
+
+4. source setup.bash
+
+5. If using Arduino:
+cd <ArduinoSketchbook>/libraries
+rm -rf ros_lib
+rosrun rosserial_arduino make_libraries.py .
