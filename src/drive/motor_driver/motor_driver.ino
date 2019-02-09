@@ -25,7 +25,12 @@ enum MOTOR_IDS{L, R, NUM_MOTORS};
 enum ENC_TYPE {A, B};
 
 //M is mode (direction), E is PWM (speed)
-enum MOTOR_PINS{ML=7, EL=9, MR=8, ER=10, ENABLE=4};
+enum MOTOR_PINS{ML=7, EL=9, MR=8, ER=10};
+enum CLAW_PINS{CLAW_PWM=2, IN1=3, IN2=5};
+enum GRIPPER_ACTIONS{GRIP, UNGRIP, UNPOWER};
+
+//Claw Servo
+Servo clawServo;
 
 // Encoder info
 volatile long encCounts[2];
@@ -76,14 +81,17 @@ void setup() {
       pinMode(ENC_PINS[i][A], INPUT_PULLUP);
       pinMode(ENC_PINS[i][B], INPUT_PULLUP);
   }
-  pinMode(ENABLE,  OUTPUT);
-  digitalWrite(ENABLE, HIGH);
-  pinMode(ML, OUTPUT);
-  pinMode(EL, OUTPUT);
-  pinMode(MR, OUTPUT);
-  pinMode(ER, OUTPUT);
+  pinMode(ML,       OUTPUT);
+  pinMode(EL,       OUTPUT);
+  pinMode(MR,       OUTPUT);
+  pinMode(ER,       OUTPUT);
+  pinMode(CLAW_PWM, OUTPUT);
+  pinMode(IN1,      OUTPUT);
+  pinMode(IN2,      OUTPUT);
+  analogWrite(CLAW_PWM, 0);
 
   cameraTilt.attach(11);
+  clawServo.attach(12);
 
   // attach interrupts to four encoder pins
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
@@ -96,28 +104,48 @@ void setup() {
  * void loop()
  */
 void loop() {
+    while(1){
+      clawServo.write(10);
+      delay(500);
+      clawServo.write(20);
+      delay(500);
+      clawServo.write(30);
+      delay(500);
+      clawServo.write(40);
+      delay(1000);
 
-    if (newBlockPos){
-        //drive(moveDist);
-        //turn(moveRot);
-        //newMoveCommand = false;
     }
-    else{
-        /*drive(24);
-        turn(180);
-        drive(24);
-        turn(-180);*/
-        while(1){
-            for (int i = 30; i <= 80; i+=10){
-              cameraTilt.write(i);
-              delay(500);
-            }
-        }
-        
-        
-        
+    while (1){
+    gripClaw(GRIP);
+    delay(3000);
+    gripClaw(UNPOWER);
+    delay(1000);
+    gripClaw(UNGRIP);
+    delay(1000);
+    gripClaw(UNPOWER);
+    delay(1000);
     }
 
+}
+
+void gripClaw(int action){
+    switch(action){
+        case GRIP:
+          digitalWrite(IN1, HIGH);
+          digitalWrite(IN2, LOW);
+          analogWrite(CLAW_PWM, 80);
+          clawServo.write(30);
+          break;  
+        case UNGRIP:
+          digitalWrite(IN1, LOW);
+          digitalWrite(IN2, HIGH);
+          analogWrite(CLAW_PWM, 255);
+          clawServo.write(0);
+          break; 
+        case UNPOWER:
+          analogWrite(CLAW_PWM, 0);
+          break;
+    }
 }
 
 /*                                                                              
