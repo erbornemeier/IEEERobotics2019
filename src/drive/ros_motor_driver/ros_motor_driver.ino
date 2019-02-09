@@ -2,21 +2,21 @@
 #include <Wire.h>
 #include <Servo.h>
 
-//#include <ros.h>
-//#include <std_msgs/Float32.h>
+#include <ros.h>
+#include <std_msgs/Float32.h>
 
 /*****************************************
 * ROS
 *****************************************/
-//ros::NodeHandle nh;
-//
-//void cmdCallback(const std_msgs::Float32& moveCmd) {
-//  float data = moveCmd.data;
-//  nh.loginfo(String(data).c_str());
-//  drive(data);
-//}
-//
-//ros::Subscriber<std_msgs::Float32> sub("drive_command", &cmdCallback);
+ros::NodeHandle nh;
+
+void cmdCallback(const std_msgs::Float32& moveCmd) {
+  float data = moveCmd.data;
+  nh.loginfo(String(data).c_str());
+  drive(data);
+}
+
+ros::Subscriber<std_msgs::Float32> sub("drive_command", &cmdCallback);
 
 /*****************************************
 * COMMUNICATION
@@ -83,7 +83,7 @@ volatile float target_position[2] = {0.0,   // x_target
  * void setup()
  */
 void setup() {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   Wire.begin(SLAVE_ADDRESS);
   Wire.onReceive(onReceiveI2C);
   //Wire.onRequest(onRequestI2C);
@@ -107,42 +107,23 @@ void setup() {
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
 
-  //nh.initNode();
-  //nh.subscribe(sub);
+  nh.initNode();
+  nh.subscribe(sub);
 
-//  while(!nh.connected()) {
-//    nh.spinOnce();
-//  }
-  Serial.println("Ready");
+  while(!nh.connected()) {
+    nh.spinOnce();
+  }
+  //Serial.println("Ready");
 }
 
 /*
  * void loop()
  */
 void loop() {
-    //nh.spinOnce();
-    drive(50);
-
-    if (newBlockPos){
-        //drive(moveDist);
-        //turn(moveRot);
-        //newMoveCommand = false;
-    }
-    else{
-        /*drive(24);
-        turn(180);
-        drive(24);
-        turn(-180);*/
-//        while(1){
-//            for (int i = 30; i <= 80; i+=10){
-//              cameraTilt.write(i);
-//              delay(500);
-//            }
-//        }
+    
+     nh.spinOnce();   
         
-        
-        
-    }
+     
 
 }
 
@@ -152,7 +133,7 @@ void loop() {
  */                                                                             
 void drive(float distance){ 
 
-    Serial.println("Driving!");
+    //Serial.println("Driving!");
 
     long encCountGoals[NUM_MOTORS];
     long encErrors[NUM_MOTORS] = {0, 0};
@@ -254,15 +235,15 @@ void turn(float angle){
 void printErrors(long* errors){
   
     for(int i = 0; i < NUM_MOTORS; i++){
-        Serial.print(errors[i]);
+        //Serial.print(errors[i]);
         //nh.loginfo(String(errors[i]).c_str());
         if (i != NUM_MOTORS-1) {
-            Serial.print(", ");
+            //Serial.print(", ");
             //nh.loginfo(", ");
         }
             
     }
-    Serial.println("");
+    ////Serial.println("");
     //nh.loginfo("--------");
 }
 /*                                                                              
@@ -305,7 +286,7 @@ bool isZero(long* errors){
  * set the identified motor to the desired PWM value (uint_8)
  */
 void setMotor(int m, int pwm){
-    Serial.println(pwm);
+    //Serial.println(pwm);
 
     if (pwm > -MIN_SPEED && pwm < 0) pwm = -MIN_SPEED;
     if (pwm <  MIN_SPEED && pwm > 0) pwm =  MIN_SPEED;
