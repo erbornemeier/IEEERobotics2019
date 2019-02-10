@@ -4,6 +4,51 @@
 #include <Colorduino.h>
 enum LETTERS{A,B,C,D,E,F};
 
+void loading_screen(){
+
+  uint8_t letter_m[] = {
+                    0x11,
+                    0x12,
+                    0x13,
+                    0x14,
+                    0x15,
+                    0x16,
+                    0x25,
+                    0x34,
+                    0x44,
+                    0x55,
+                    0x66,
+                    0x65,
+                    0x64,
+                    0x63,
+                    0x62,
+                    0x61
+                      };
+  
+    //blue on
+    for (int i = 0; i < 16; i++){
+        Colorduino.FlipPage();
+        int x = letter_m[i]&0x0F;
+        int y = letter_m[i]>>4;
+        Colorduino.SetPixel(x,y, 0x21, 0x31, 0x8d);
+        Colorduino.FlipPage();
+        delay(50);
+        
+    }
+    delay(1000);
+    
+    //blue off
+    for (int i = 0; i < 16; i++){
+        Colorduino.FlipPage();
+        int x = letter_m[15-i]&0x0F;
+        int y = letter_m[15-i]>>4;
+        Colorduino.SetPixel(x,y, 0x0, 0x0, 0x0);
+        Colorduino.FlipPage();
+        delay(50);
+        
+    }
+}
+
 
 void _draw_array(uint8_t* a){
     while (a[0] != 0xFF){

@@ -6,16 +6,16 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
 def publisher():
-    pub = rospy.Publisher("camera_image", Image, queue_size=5) 
+    pub = rospy.Publisher("camera_image", Image, queue_size=3) 
     rospy.init_node("camera_publisher", anonymous=True)
     bridge = CvBridge()
+
     cap = cv2.VideoCapture(0)
 
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(20)
     while not rospy.is_shutdown():
         ret, img = cap.read()
         img = bridge.cv2_to_imgmsg(img, "bgr8")
-        rospy.loginfo('got frame')
         pub.publish(img)
         rate.sleep()
 
