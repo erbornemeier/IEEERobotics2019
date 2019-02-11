@@ -1,36 +1,34 @@
 #include <PinChangeInterrupt.h>
-#include <Wire.h>
 #include <Servo.h>
 
 #include <ros.h>
 #include <std_msgs/Float32.h>
+#include <geometry_msgs/Pose2D.h>
 
 /*****************************************
 * ROS
 *****************************************/
 ros::NodeHandle nh;
 
-void cmdCallback(const std_msgs::Float32& moveCmd) {
+void dcCallback(const std_msgs::Float32& moveCmd) {
   float data = moveCmd.data;
   nh.loginfo(String(data).c_str());
   drive(data);
 }
 
-ros::Subscriber<std_msgs::Float32> sub("drive_command", &cmdCallback);
+ros::Subscriber<std_msgs::Float32> dc("drive_command", &dcCallback);
+
+geometry_msgs::Pose2D robot_pose;
+ros::Publisher pose_pub("robot_pose", &robot_pose);
+
 
 /*****************************************
-* COMMUNICATION
+* HARDWARE
 *****************************************/
-#define SLAVE_ADDRESS 0x28
-enum DATA_FLAGS {START_TRACKING=0, STOP_TRACKING=1, TRACK_INFO=2};
-
-/*****************************************
-* TRACKING INFO
-*****************************************/
-//Servo cameraTilt;
-enum COORD {x, y};
-volatile int blockPos[2];
-volatile int newBlockPos = false;
+Servo cameraServo;
+#define cameraServoPin 11
+Servo clawServo;
+#define clawServoPin 12
 
 /*****************************************
 * MOTORS AND ENCODERS
@@ -41,7 +39,7 @@ enum MOTOR_IDS{L, R, NUM_MOTORS};
 enum ENC_TYPE {A, B};
 
 //M is mode (direction), E is PWM (speed)
-enum MOTOR_PINS{ML=7, EL=9, MR=8, ER=10, ENABLE=4};
+enum MOTOR_PINS{ML=7, EL=9, MR=8, ER=10};
 
 // Encoder info
 volatile long encCounts[2];
@@ -53,7 +51,7 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
 *****************************************/
 
 //control values
-#define MAX_SPEED         70
+#define MAX_SPEED         120
 #define MIN_SPEED         55
 #define MAX_CORRECTION    30
 #define K_P               0.008
@@ -69,13 +67,6 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
 #define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
 
-
-volatile float actual_position[2] = {0.0,   // x_actual
-                                     0.0 }; // y_actual
-
-volatile float target_position[2] = {0.0,   // x_target
-                                     0.0 }; // y_target
-
                                      
 /*****************************************/
 
@@ -83,23 +74,25 @@ volatile float target_position[2] = {0.0,   // x_target
  * void setup()
  */
 void setup() {
-  //Serial.begin(9600);
-  Wire.begin(SLAVE_ADDRESS);
-  Wire.onReceive(onReceiveI2C);
-  //Wire.onRequest(onRequestI2C);
+
+  robot_pose.x = 3;
+  robot_pose.y = 3;
+  robot_pose.theta = 90;
   
   for (int i = 0; i < NUM_MOTORS; i++){
       pinMode(ENC_PINS[i][A], INPUT_PULLUP);
       pinMode(ENC_PINS[i][B], INPUT_PULLUP);
   }
-  pinMode(ENABLE,  OUTPUT);
-  digitalWrite(ENABLE, HIGH);
+  
   pinMode(ML, OUTPUT);
   pinMode(EL, OUTPUT);
   pinMode(MR, OUTPUT);
   pinMode(ER, OUTPUT);
 
-//  cameraTilt.attach(11);
+  cameraServo.attach(cameraServoPin);
+  cameraServo.write(0);
+  clawServo.attach(clawServoPin);
+  clawServo.write(0);
 
   // attach interrupts to four encoder pins
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
@@ -108,23 +101,30 @@ void setup() {
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
 
   nh.initNode();
-  nh.subscribe(sub);
+  nh.subscribe(dc);
+  nh.advertise(pose_pub);
+  
 
   while(!nh.connected()) {
     nh.spinOnce();
   }
-  //Serial.println("Ready");
 }
 
 /*
  * void loop()
  */
 void loop() {
-    
-     nh.spinOnce();   
-        
      
-
+     for (int i = 0; i < 8; i++){
+        for (int j = 0; j < 8; j++){
+          robot_pose.x = i;
+          robot_pose.y = j;
+          pose_pub.publish(&robot_pose);
+          delay(50);
+          nh.spinOnce();
+        }
+     }
+     
 }
 
 /*                                                                              
@@ -133,15 +133,12 @@ void loop() {
  */                                                                             
 void drive(float distance){ 
 
-    //Serial.println("Driving!");
-
     long encCountGoals[NUM_MOTORS];
     long encErrors[NUM_MOTORS] = {0, 0};
     long lastErrors[NUM_MOTORS];
                                                     
     resetEncoderCounts();                                                       
 
-                                                                
     for (int i = 0; i < NUM_MOTORS; i++) {                                              
         encCountGoals[i] = (long) (distance * COUNTS_PER_REV / DISTANCE_PER_REV);
     }                                                                        
@@ -363,31 +360,3 @@ void LA_changed(){encoderCount(L, A);}
 void LB_changed(){encoderCount(L, B);}
 void RA_changed(){encoderCount(R, A);}
 void RB_changed(){encoderCount(R, B);}
-
-// numBytes: total number of bytes
-// First byte: flag
-// Second byte: number of data bytes
-void onReceiveI2C(int numBytes) {
-  
-  while(Wire.available()) {
-    
-    int cmd = Wire.read();
-    int dataSize = Wire.read();
-
-    switch(cmd){
-        case TRACK_INFO:
-            blockPos[x] = get16BitInt();
-            blockPos[y] = get16BitInt();
-            newBlockPos = true; 
-            break;
-        default:
-            break;
-      
-    }
-    
-  }
-}
-
-int get16BitInt() {
-  return (Wire.read() << 8) | Wire.read();
-}
