@@ -6,7 +6,10 @@ import os
 import time as t
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 
+import tensorflow as tf
 from keras.models import Sequential, load_model
+from keras.backend import clear_session
+clear_session()
 
 import rospy
 from sensor_msgs.msg import Image
@@ -20,8 +23,6 @@ black_lower = np.array([0,0,0])
 black_upper = np.array([255,255,150])
 kernel = np.ones((5,5),np.uint8)
 
-model = load_model("letter_recognizer.h5")
-model._make_predict_function()
 
 pub = rospy.Publisher("letter_identifier", Int32, queue_size=1)
 
@@ -32,6 +33,15 @@ def find_rect_pts(pts):
         epsilon += 1
         new_pts = cv2.approxPolyDP(pts, epsilon, True)
     return new_pts
+
+def load_h5_model():
+    global model
+    model = load_model("letter_recognizer.h5")
+    model._make_predict_function()
+    global graph
+    graph = tf.get_default_graph()
+
+load_h5_model()
 
 
 def image_recieved(data):
@@ -73,19 +83,21 @@ def image_recieved(data):
         input_img /= 255.
         input_img = input_img.reshape(1,784)
 
-        guess = model.predict(input_img).tolist()[0] 
-        print("confidence: " + str(max(guess)))
-        guess = guess.index(max(guess))
-        print("Guess: " + str(chr(guess + ord('A'))))
-        pub.publish(guess)
+        with graph.as_default():
+            guess = model.predict(input_img).tolist()[0] 
+            print("confidence: " + str(max(guess)))
+            guess = guess.index(max(guess))
+            print("Guess: " + str(chr(guess + ord('A'))))
+            pub.publish(guess)
 
-        cv2.imshow("thresh", thresh)
+        #cv2.imshow("thresh", thresh)
+
     except Exception as e:
         print(e)
 
-    cv2.imshow("img", img)
+    #cv2.imshow("img", img)
     
-    key = cv2.waitKey(1)
+    #key = cv2.waitKey(1)
 
 
 rospy.init_node("letter_classify", anonymous=True)
