@@ -49,6 +49,15 @@ void loading_screen(){
     }
 }
 
+void showRobotPos(uint8_t x, uint8_t y){
+  
+        Colorduino.FlipPage();
+        Colorduino.ColorFill(0,0,0);
+        Colorduino.SetPixel(x,y, 0x20, 0x0, 0x0);
+        Colorduino.FlipPage();
+  
+}
+
 
 void _draw_array(uint8_t* a){
     while (a[0] != 0xFF){
