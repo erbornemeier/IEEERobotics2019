@@ -3,33 +3,58 @@
 #include "claw.h"
 
 #include <ros.h>
-#include <std_msgs/Float32.h>
+#include <std_msgs/UInt8.h>
 #include <geometry_msgs/Pose2D.h>
+
+/*****************************************
+* HARDWARE
+*****************************************/
+#define cameraServoPin 11
+Servo cameraServo;
+uint8_t cameraAngle = 0;
+
+Claw claw;
+
+geometry_msgs::Pose2D robot_pose;
 
 /*****************************************
 * ROS
 *****************************************/
 ros::NodeHandle nh;
 
-void dcCallback(const std_msgs::Float32& moveCmd) {
-  float data = moveCmd.data;
-  nh.loginfo(String(data).c_str());
-  drive(data);
+void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
+    float turnAngle = moveCmd.theta - robot_pose.theta;
+    float dist = sqrt(pow(robot_pose.x - moveCmd.x, 2) 
+                    + pow(robot_pose.y - moveCmd.y, 2));
+    turn(turnAngle);
+    drive(dist);
 }
 
-ros::Subscriber<std_msgs::Float32> dc("drive_command", &dcCallback);
+#define PICKUP 0
+#define PUTDOWN 1
+void ccCallback(const std_msgs::UInt8& clawCmd) {
+    uint8_t cmd = clawCmd.data;
+    nh.loginfo(String(cmd).c_str());
+    if (cmd == PICKUP){
+        claw.Gripper_Close();
+        claw.Servo_SetLevel();
+    }
+    else if (cmd == PUTDOWN){
+        claw.Servo_SetMin();
+        claw.Gripper_Open();
+    }
+}
 
-geometry_msgs::Pose2D robot_pose;
+void camCallback(const std_msgs::UInt8& camCmd) {
+    cameraAngle = camCmd.data;
+    cameraServo.write(round(cameraAngle));
+}
+
+ros::Subscriber<geometry_msgs::Pose2D> dc ("drive_command", &dcCallback);
+ros::Subscriber<std_msgs::UInt8>   cc ("claw_command",  &ccCallback);
+ros::Subscriber<std_msgs::UInt8> cam("cam_command",   &camCallback);
+
 ros::Publisher pose_pub("robot_pose", &robot_pose);
-
-
-/*****************************************
-* HARDWARE
-*****************************************/
-Servo cameraServo;
-#define cameraServoPin 11
-
-Claw claw;
 
 /*****************************************
 * MOTORS AND ENCODERS
@@ -65,8 +90,8 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
 //robot specs
 #define COUNTS_PER_REV       3200
 #define WHEEL_DIAMETER       3.45
-#define DISTANCE_PER_REV    (WHEEL_DIAMETER*PI)  
 #define ROBOT_WIDTH          7.6
+#define DISTANCE_PER_REV    (WHEEL_DIAMETER*PI)  
 #define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
 
@@ -97,7 +122,6 @@ void setup() {
 
   claw.Claw_init();
 
-
   // attach interrupts to four encoder pins
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][B]), LB_changed,  CHANGE);
@@ -106,12 +130,13 @@ void setup() {
 
   nh.initNode();
   nh.subscribe(dc);
+  nh.subscribe(cc);
+  nh.subscribe(cam);
   nh.advertise(pose_pub);
-  
+  while(!nh.connected()) {
+    nh.spinOnce();
+  }
 
-//  while(!nh.connected()) {
-//    nh.spinOnce();
-//  }
 }
 
 /*
@@ -121,24 +146,6 @@ void loop() {
 
     pose_pub.publish(&robot_pose);
     nh.spinOnce();
-
-    test_claw();
-
-
-}
-
-void test_claw(){
-  
-  while (1){
-
-      claw.Gripper_Open(); 
-      claw.Servo_SetMin();
-      claw.Gripper_Close();
-      claw.Servo_SetLevel();
-      claw.Servo_SetMin();
-    
-  }  
-  
 }
 
 /*                                                                              
@@ -209,8 +216,7 @@ void turn(float angle){
     long lastDiff = millis();
 
     do{                                                                            
-        do {  
-            bool same = true;                                                                      
+        do {                                                                       
             for (int i = 0; i < NUM_MOTORS; i++){
                 lastErrors[i] = encErrors[i];                                            
                 encErrors[i] = encCountGoals[i] - encCounts[i];                                                              
@@ -308,7 +314,6 @@ void setMotor(int m, int pwm){
     //get motor pins
     int M_pin = (m==L) ? ML:MR;
     int E_pin = (m==L) ? EL:ER;
-    
 
     //set direction and speed
     digitalWrite(M_pin, pwm > 0 ? HIGH:LOW);
