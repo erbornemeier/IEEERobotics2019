@@ -16,14 +16,13 @@ current_letter = 0
 def recieve_letter(msg):
     global current_letter
     current_letter = msg.data
-    print("letter: " + str(current_letter))
 
 rospy.Subscriber("letter_identifier", UInt8, recieve_letter)
 
 rospy.init_node("scheduler")                         
 
 def send_drive_command(x, y, theta):
-    msg = Pose2d()
+    msg = Pose2D()
     msg.x = x
     msg.y = y
     msg.theta = theta
@@ -43,7 +42,7 @@ def send_cam_command(angle):
 
 def display_letter(letter):
     msg = UInt8()
-    msg.data = current_letter 
+    msg.data = letter 
     print("Sending: " + str(msg.data))
     display_letter_pub.publish(msg)
 
@@ -56,8 +55,11 @@ def display_pos(pose):
 
 while not rospy.is_shutdown():
     _ = raw_input("Press enter to start")
+    send_drive_command(0,6,0)
+    t.sleep(5)
     send_claw_command(PICKUP)
     send_cam_command(37)
+    display_letter(0xFF)
     t.sleep(8)
     display_letter(current_letter)
     send_claw_command(PUTDOWN)

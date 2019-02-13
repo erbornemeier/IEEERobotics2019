@@ -14,7 +14,7 @@ clear_session()
 import rospy
 import rospkg
 from sensor_msgs.msg import Image
-from std_msgs.msg import UInt8 
+from object_detection.srv import *
 from cv_bridge import CvBridge
 
 rospack = rospkg.RosPack()
@@ -25,7 +25,6 @@ black_lower = np.array([0,0,0])
 black_upper = np.array([255,255,150])
 kernel = np.ones((5,5),np.uint8)
 
-pub = rospy.Publisher("letter_identifier", UInt8, queue_size=1)
 
 def find_rect_pts(pts):
     new_pts = pts
@@ -47,7 +46,10 @@ load_h5_model()
 print("loaded model!")
 
 def image_recieved(data):
+    global img
     img = bridge.imgmsg_to_cv2(data, "bgr8")
+
+def classify_block():
     try:
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
@@ -90,7 +92,7 @@ def image_recieved(data):
             if max(guess) > 0.95:
                 guess = guess.index(max(guess))
                 print("Guess: " + str( guess))
-                pub.publish(guess)
+                return LetterResponse(guess) 
 
         #cv2.imshow("thresh", thresh)
 
@@ -104,5 +106,6 @@ def image_recieved(data):
 
 rospy.init_node("letter_classify", anonymous=True)
 rospy.Subscriber("camera_image", Image, image_recieved)
+letter_srv = rospy.Service("letter_identifier", Letter, classify_block )
 rospy.spin()
 
