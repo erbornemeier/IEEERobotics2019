@@ -12,7 +12,8 @@ ros::NodeHandle_<ArduinoHardware, 2, 0, 80, 105> nh;
 void letterCallback(const std_msgs::UInt8& data) {
     uint8_t letter = data.data;
     nh.loginfo(String(letter+'A').c_str());
-    displayLetter(letter);
+    if (letter == 0xFF) clear_screen();
+    else displayLetter(letter);
 }
 
 void positionCallback(const geometry_msgs::Pose2D& data) {

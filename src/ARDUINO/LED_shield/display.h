@@ -66,6 +66,12 @@ void _draw_array(uint8_t* a){
     }
 }
 
+void clear_screen(){
+    Colorduino.FlipPage();
+    Colorduino.ColorFill(0,0,0);
+    Colorduino.FlipPage();
+}
+
 void displayLetter(int letter){
     
 uint8_t letter_a[] = {0x01,

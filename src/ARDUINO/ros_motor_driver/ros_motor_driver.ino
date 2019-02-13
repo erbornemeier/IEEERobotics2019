@@ -23,9 +23,9 @@ geometry_msgs::Pose2D robot_pose;
 ros::NodeHandle nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
-    float turnAngle = moveCmd.theta - robot_pose.theta;
-    float dist = sqrt(pow(robot_pose.x - moveCmd.x, 2) 
-                    + pow(robot_pose.y - moveCmd.y, 2));
+    float turnAngle = moveCmd.theta;
+    float dist = sqrt(pow(moveCmd.x, 2) 
+                    + pow(moveCmd.y, 2));
     turn(turnAngle);
     drive(dist);
 }
