@@ -19,8 +19,8 @@ void positionCallback(const geometry_msgs::Pose2D& data) {
     showRobotPos(round(data.x-0.5),round(data.y-0.5));
 }
 
-ros::Subscriber<std_msgs::UInt8> li("letter_identifier", &letterCallback);
-ros::Subscriber<geometry_msgs::Pose2D> rp_led("robot_pose", &positionCallback);
+ros::Subscriber<std_msgs::UInt8> li("display_letter", &letterCallback);
+ros::Subscriber<geometry_msgs::Pose2D> rp_led("display_robot_pos", &positionCallback);
   
 void setup()
 {

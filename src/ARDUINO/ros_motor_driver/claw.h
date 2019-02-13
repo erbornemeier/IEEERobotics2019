@@ -12,7 +12,7 @@
 #define MS_PER_DEG 10
 
 enum CLAW_PINS{CLAW_PWM=2, IN1=3, IN2=5};
-enum GRIPPER_STATE{GRIPPING, NOT_GRIPPING, UNPOWERED};
+enum GRIPPER_STATE{GRIPPING, NOT_GRIPPING};
 
 class Claw {
   public:
@@ -20,28 +20,36 @@ class Claw {
       Servo clawServo;
       GRIPPER_STATE state;
       uint8_t servo_pos;
+      bool gripper_closed = true;
       
       void Claw_init(){
           clawServo.attach(clawServoPin);
           Servo_SetMin();
           Gripper_Open();
-          state = UNPOWERED;
       }
 
       void Gripper_Open(){
-            digitalWrite(IN1, LOW);
-            digitalWrite(IN2, HIGH);
-            analogWrite(CLAW_PWM, gripperOpenPower);
-            delay(gripperOpenTime);
-            Gripper_UnPower();
+            if (gripper_closed){
+                digitalWrite(IN1, LOW);
+                digitalWrite(IN2, HIGH);
+                analogWrite(CLAW_PWM, gripperOpenPower);
+                delay(gripperOpenTime);
+                Gripper_UnPower();
+                gripper_closed = false;
+            }
+            
       }
       
       void Gripper_Close(){
-            digitalWrite(IN1, HIGH);
-            digitalWrite(IN2, LOW);
-            analogWrite(CLAW_PWM, gripperClosePower);  
-            delay(gripperCloseTime);
-            Gripper_UnPower();
+            if (!gripper_closed){
+                digitalWrite(IN1, HIGH);
+                digitalWrite(IN2, LOW);
+                analogWrite(CLAW_PWM, gripperClosePower);  
+                delay(gripperCloseTime);
+                Gripper_UnPower();
+                gripper_closed = true;
+            }
+            
       }
       
       void Gripper_UnPower(){
@@ -52,8 +60,7 @@ class Claw {
           while (servo_pos != angle){
               if      (servo_pos < angle) servo_pos++;
               else if (servo_pos > angle) servo_pos--;
-              clawServo.write(servo_pos);
-              delay(MS_PER_DEG);
+              delayWithWrite();
           }
         
       }
@@ -64,6 +71,11 @@ class Claw {
 
       void Servo_SetMin(){
           Servo_SetAngle(servoMin);  
+      }
+
+      void delayWithWrite(){
+          long s = millis();
+          while (millis()-s < MS_PER_DEG) clawServo.write(servo_pos);
       }
   
   
