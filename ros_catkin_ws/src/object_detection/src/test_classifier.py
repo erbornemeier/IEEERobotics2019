@@ -13,7 +13,7 @@ clear_session()
 
 import rospy
 from sensor_msgs.msg import Image
-from std_msgs.msg import Int32
+from std_msgs.msg import UInt8 
 from cv_bridge import CvBridge
 
 bridge = CvBridge()
@@ -23,8 +23,7 @@ black_lower = np.array([0,0,0])
 black_upper = np.array([255,255,150])
 kernel = np.ones((5,5),np.uint8)
 
-
-pub = rospy.Publisher("letter_identifier", Int32, queue_size=1)
+pub = rospy.Publisher("letter_identifier", UInt8, queue_size=1)
 
 def find_rect_pts(pts):
     new_pts = pts
