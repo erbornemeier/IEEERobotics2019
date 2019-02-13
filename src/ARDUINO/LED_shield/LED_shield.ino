@@ -1,6 +1,6 @@
 #include <Colorduino.h>
 #include <ros.h>
-#include <std_msgs/Int32.h>
+#include <std_msgs/UInt8.h>
 #include <geometry_msgs/Pose2D.h>
 #include "display.h"
 
@@ -9,17 +9,17 @@
 *****************************************/
 ros::NodeHandle_<ArduinoHardware, 2, 0, 80, 105> nh;
 
-void letterCallback(const std_msgs::Int32& data) {
+void letterCallback(const std_msgs::UInt8& data) {
     uint8_t letter = data.data;
-    nh.loginfo(String(letter).c_str());
+    nh.loginfo(String(letter+'A').c_str());
     displayLetter(letter);
 }
 
 void positionCallback(const geometry_msgs::Pose2D& data) {
-    showRobotPos(round(data.x),round(data.y));
+    showRobotPos(round(data.x-0.5),round(data.y-0.5));
 }
 
-ros::Subscriber<std_msgs::Int32> li("letter_identifier", &letterCallback);
+ros::Subscriber<std_msgs::UInt8> li("letter_identifier", &letterCallback);
 ros::Subscriber<geometry_msgs::Pose2D> rp_led("robot_pose", &positionCallback);
   
 void setup()

@@ -1,5 +1,6 @@
 #include <PinChangeInterrupt.h>
 #include <Servo.h>
+#include "claw.h"
 
 #include <ros.h>
 #include <std_msgs/Float32.h>
@@ -27,8 +28,8 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 *****************************************/
 Servo cameraServo;
 #define cameraServoPin 11
-Servo clawServo;
-#define clawServoPin 12
+
+Claw claw;
 
 /*****************************************
 * MOTORS AND ENCODERS
@@ -45,6 +46,8 @@ enum MOTOR_PINS{ML=7, EL=9, MR=8, ER=10};
 volatile long encCounts[2];
 unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
                                          { 52,  53} }; // Right
+
+
 
 /*****************************************
 * POSITION CONTROL & MOTOR FEEDBACK
@@ -75,8 +78,8 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
  */
 void setup() {
 
-  robot_pose.x = 3;
-  robot_pose.y = 3;
+  robot_pose.x = 3.5;
+  robot_pose.y = 3.5;
   robot_pose.theta = 90;
   
   for (int i = 0; i < NUM_MOTORS; i++){
@@ -91,8 +94,9 @@ void setup() {
 
   cameraServo.attach(cameraServoPin);
   cameraServo.write(0);
-  clawServo.attach(clawServoPin);
-  clawServo.write(0);
+
+  claw.Claw_init();
+
 
   // attach interrupts to four encoder pins
   attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
@@ -105,26 +109,36 @@ void setup() {
   nh.advertise(pose_pub);
   
 
-  while(!nh.connected()) {
-    nh.spinOnce();
-  }
+//  while(!nh.connected()) {
+//    nh.spinOnce();
+//  }
 }
 
 /*
  * void loop()
  */
 void loop() {
-     
-     for (int i = 0; i < 8; i++){
-        for (int j = 0; j < 8; j++){
-          robot_pose.x = i;
-          robot_pose.y = j;
-          pose_pub.publish(&robot_pose);
-          delay(50);
-          nh.spinOnce();
-        }
-     }
-     
+
+    pose_pub.publish(&robot_pose);
+    nh.spinOnce();
+
+    test_claw();
+
+
+}
+
+void test_claw(){
+  
+  while (1){
+
+      claw.Gripper_Open(); 
+      claw.Servo_SetMin();
+      claw.Gripper_Close();
+      claw.Servo_SetLevel();
+      claw.Servo_SetMin();
+    
+  }  
+  
 }
 
 /*                                                                              
@@ -137,7 +151,7 @@ void drive(float distance){
     long encErrors[NUM_MOTORS] = {0, 0};
     long lastErrors[NUM_MOTORS];
                                                     
-    resetEncoderCounts();                                                       
+    resetEncoderCounts();
 
     for (int i = 0; i < NUM_MOTORS; i++) {                                              
         encCountGoals[i] = (long) (distance * COUNTS_PER_REV / DISTANCE_PER_REV);

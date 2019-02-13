@@ -53,7 +53,7 @@ void showRobotPos(uint8_t x, uint8_t y){
   
         Colorduino.FlipPage();
         Colorduino.ColorFill(0,0,0);
-        Colorduino.SetPixel(x,y, 0x20, 0x0, 0x0);
+        Colorduino.SetPixel(x,y, 0x60, 0x0, 0x0);
         Colorduino.FlipPage();
   
 }
