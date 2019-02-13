@@ -12,10 +12,12 @@ from keras.backend import clear_session
 clear_session()
 
 import rospy
+import rospkg
 from sensor_msgs.msg import Image
 from std_msgs.msg import UInt8 
 from cv_bridge import CvBridge
 
+rospack = rospkg.RosPack()
 bridge = CvBridge()
 orange_lower = np.array([4,100,0])
 orange_upper = np.array([18,255,255])
@@ -35,13 +37,14 @@ def find_rect_pts(pts):
 
 def load_h5_model():
     global model
-    model = load_model("letter_recognizer.h5")
+    path = rospack.get_path('object_detection') + '/src/letter_recognizer.h5'
+    model = load_model(path)
     model._make_predict_function()
     global graph
     graph = tf.get_default_graph()
 
 load_h5_model()
-
+print("loaded model!")
 
 def image_recieved(data):
     img = bridge.imgmsg_to_cv2(data, "bgr8")
@@ -84,10 +87,10 @@ def image_recieved(data):
 
         with graph.as_default():
             guess = model.predict(input_img).tolist()[0] 
-            print("confidence: " + str(max(guess)))
-            guess = guess.index(max(guess))
-            print("Guess: " + str(chr(guess + ord('A'))))
-            pub.publish(guess)
+            if max(guess) > 0.95:
+                guess = guess.index(max(guess))
+                print("Guess: " + str( guess))
+                pub.publish(guess)
 
         #cv2.imshow("thresh", thresh)
 

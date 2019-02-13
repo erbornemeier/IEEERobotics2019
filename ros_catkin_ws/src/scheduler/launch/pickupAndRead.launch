@@ -1,0 +1,11 @@
+<launch>
+	<node pkg="rosserial_python" type="serial_node.py" name="arduino_1" args="/dev/ttyACM0" />
+	<node pkg="rosserial_python" type="serial_node.py" name="arduino_2" args="/dev/ttyACM1" />
+	<node pkg="object_detection" type="camera_publisher.py" name="camera" respawn="True" />
+
+	<node pkg="object_detection" type="test_classifier.py" name="classifier" />
+
+	<node pkg="scheduler" type="scheduler.py" name="scheduler" />
+
+
+</launch>
