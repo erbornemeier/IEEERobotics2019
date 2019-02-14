@@ -49,7 +49,7 @@ def image_recieved(data):
     global img
     img = bridge.imgmsg_to_cv2(data, "bgr8")
 
-def classify_block():
+def classify_block(_):
     try:
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 

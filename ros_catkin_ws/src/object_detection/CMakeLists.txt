@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
+  message_generation
 )
 
 find_package(OpenCV REQUIRED)
@@ -57,11 +58,10 @@ find_package(OpenCV REQUIRED)
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  Letter.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -71,10 +71,11 @@ find_package(OpenCV REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   sensor_msgs#   std_msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   sensor_msgs#   std_msgs
+   object_detection
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -110,6 +111,7 @@ catkin_package(
 #  LIBRARIES object_detection
 #  CATKIN_DEPENDS cv_bridge opencv2 rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
+   DEPENDS message_runtime
 )
 
 ###########

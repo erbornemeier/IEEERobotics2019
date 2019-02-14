@@ -1,5 +1,6 @@
 from state_machine.state import State
 from std_msgs.msg import UInt8
+from object_detection.srv import * 
 import commands
 import rospy
 
