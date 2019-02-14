@@ -20,6 +20,7 @@ class DetectLetterState(State):
         self.display_letter_pub = rospy.Publisher("display_letter", UInt8, queue_size = 1)
         commands.display_letter(self.display_letter_pub, detected_letter.letter)
 
+
     def run(self):
         rospy.loginfo("Doing nothing")
         return self
