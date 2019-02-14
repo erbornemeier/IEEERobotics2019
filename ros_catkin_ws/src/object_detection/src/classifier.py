@@ -43,7 +43,7 @@ def load_h5_model():
     graph = tf.get_default_graph()
 
 load_h5_model()
-print("loaded model!")
+rospy.loginfo("loaded model!")
 
 def image_recieved(data):
     global img
@@ -93,11 +93,12 @@ def classify_block(_):
                 guess = guess.index(max(guess))
                 print("Guess: " + str( guess))
                 return LetterResponse(guess) 
-
+        
         #cv2.imshow("thresh", thresh)
 
     except Exception as e:
         print(e)
+        return LetterResponse(0xFF)
 
     #cv2.imshow("img", img)
     
