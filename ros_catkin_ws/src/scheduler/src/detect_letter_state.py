@@ -15,10 +15,11 @@ class DetectLetterState(State):
         self.letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
         detected_letter = self.letter_srv()
 
-        rospy.loginfo(detected_letter.data)
+        rospy.loginfo(detected_letter.letter)
 
         self.display_letter_pub = rospy.Publisher("display_letter", UInt8, queue_size = 1)
-        commands.display_letter(self.display_letter_pub, detected_letter.data)
+        commands.display_letter(self.display_letter_pub, detected_letter.letter)
+
 
     def run(self):
         rospy.loginfo("Doing nothing")
