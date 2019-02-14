@@ -1,6 +1,6 @@
 from state_machine.state import State
 from std_msgs.msg import UInt8
-from object_detection.srv import * 
+from object_detection.srv import *
 import commands
 import rospy
 
@@ -13,12 +13,13 @@ class DetectLetterState(State):
 
         rospy.wait_for_service("letter_identifier")
         self.letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
-        detected_letter = self.letter_srv()
 
-        rospy.loginfo(detected_letter)
+        data = UInt8()
+        data.data = self.letter_srv()
+        rospy.loginfo(data.data)
 
         self.display_letter_pub = rospy.Publisher("display_letter", UInt8, queue_size = 1)
-        commands.display_letter(self.display_letter_pub, detected_letter)
+        commands.display_letter(self.display_letter_pub, data)
 
     def run(self):
         rospy.loginfo("Doing nothing")
