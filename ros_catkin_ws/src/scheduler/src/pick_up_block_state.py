@@ -1,5 +1,5 @@
 from state_machine.state import State
-from null_state import NullState
+from detect_letter_state import DetectLetterState
 import commands
 import time as t
 import rospy
@@ -13,17 +13,18 @@ class PickUpBlockState(State):
         self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
         self.display_letter_pub = rospy.Publisher("display_letter", UInt8, queue_size = 1)
-        print("Starting test state")
+        rospy.loginfo("Starting test state")
 
     def run(self):
         commands.send_claw_command(self.claw_pub, commands.PICKUP)
         commands.send_cam_command(self.cam_pub, 37)
         commands.display_letter(self.display_letter_pub, 0xFF)
         t.sleep(1)
-        return NullState()
+        rospy.loginfo("Picked up block")
+        return DetectLetterState()
 
     def finish(self):
         self.claw_pub.unregister()
         self.cam_pub.unregister()
         self.display_letter_pub.unregister()
-        print("Finishing test state")
+        rospy.loginfo("Finishing test state")
