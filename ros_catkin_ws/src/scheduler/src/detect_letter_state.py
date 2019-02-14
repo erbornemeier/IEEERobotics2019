@@ -11,8 +11,8 @@ class DetectLetterState(State):
         rospy.loginfo("Entering detect letter state")
 
         rospy.wait_for_service("letter_identifier")
-        letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
-        detected_letter = letter_srv()
+        self.letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
+        detected_letter = self.letter_srv()
 
         rospy.loginfo(detected_letter)
 
@@ -25,4 +25,5 @@ class DetectLetterState(State):
 
     def finish(self):
         self.display_letter_pub.unregister()
-        print("Exiting detect letter state")
+        self.letter_srv.close()
+        rospy.loginfo("Exiting detect letter state")
