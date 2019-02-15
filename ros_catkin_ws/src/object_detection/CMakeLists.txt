@@ -61,6 +61,7 @@ find_package(OpenCV REQUIRED)
 add_service_files(
   FILES
   Letter.srv
+  Block.srv
 )
 
 ## Generate actions in the 'action' folder

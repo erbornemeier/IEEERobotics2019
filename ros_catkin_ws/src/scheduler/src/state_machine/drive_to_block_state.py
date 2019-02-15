@@ -1,6 +1,8 @@
 from state import State
 from std_msgs.msg import UInt8
+from std_msgs.msg import Bool 
 from geometry_msgs.msg import Pose2D
+from object_detection.srv import *
 import commands
 import time as t
 import rospy
@@ -9,22 +11,44 @@ class DriveToBlockState(State):
     def __init__(self):
         super(DriveToBlockState, self).__init__("Drive to Block State")
 
+    def get_block_pos_cb(self, msg):
+        self.block_pos = (msg.x, msg.y)
+
     def start(self):
         rospy.loginfo("Entering drive to block state")
         self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
-        self.block_pos_sub = rospy.Subscriber("block_pos", Pose2D, queue_size=1)
+        self.block_pos = (None, None)
+        # self.block_pos_sub = rospy.Subscriber("block_pos", Pose2D, self.get_block_pos_cb)
+        rospy.wait_for_service("block_pos")
+        self.block_srv = rospy.ServiceProxy("block_pos", Block)
+        
+        self.cameraAngle = 20
+        commands.send_cam_command(self.cam_pub, self.cameraAngle)
+        t.delay(1)
 
     def run(self):
-        #TODO: incorporate actual block data
-        commands.send_drive_command(self.drive_pub, 6, 0, 180 )
-        t.sleep(8)
 
-        from pick_up_block_state import * 
-        return PickUpBlockState()
+        # Coordinate system [0,1] top left corner is (0,0)
+        block_pos = self.block_srv()
+        rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y))
 
+        if block_pos.y > 0.5:
+            self.cameraAngle -= 0.1
+        elif block_pos.y < 0.5:
+            self.cameraAngle += 0.1
+
+        commands.send_cam_command(self.cam_pub, self.cameraAngle)
+        
+        if self.cameraAngle >= 47:
+            from pick_up_block_state import *
+            return PickUpBlockState()
+        else:
+            return self
+        
     def finish(self):
         self.drive_pub.unregister()
         self.cam_pub.unregister()
         self.block_pos_sub.unregister()
+        self.block_srv.close()
         rospy.loginfo("Exiting drive to block state")
