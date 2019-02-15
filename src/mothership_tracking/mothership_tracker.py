@@ -4,8 +4,10 @@ import numpy as np
 
 class mothership_tracker:
     
-    LED_MASK = np.array([[ 30, 0, 50],
-                          [95, 255, 255]])
+    #LED_MASK = np.array([[ 46, 110, 0],
+    #                      [95, 255, 245]])
+    LED_MASK = np.array([[0, 0, 255],
+                         [180, 255, 255]])
     LINE_THRESHOLD = 100 
     PIXEL2INCH = 1.0 / 262.0 
     
@@ -50,8 +52,9 @@ class mothership_tracker:
         #threshold on color
         mask = cv2.inRange(hsv, self.LED_MASK[0], self.LED_MASK[1])
         #dilate image to expand contours
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (12,12)) 
-        mask = cv2.dilate(mask, kernel)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5)) 
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        #mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         #find contours
         _, contours, _= cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -96,18 +99,21 @@ class mothership_tracker:
         return False
 
 
+cap = cv2.VideoCapture(1)
+
+tracker = mothership_tracker()
 
 #TEST OF BEACON TRACKER
 if __name__ == '__main__':
 
-    tracker = mothership_tracker()
-
-    frame = cv2.imread('green_leds.png')
-    width, height = len(frame), len(frame[0])
-
-    leds = tracker.__find_potential_LEDs__(frame, show=True)
     while True:
-        cv2.imshow('Beacon Tracker Test', frame)
+
+        _, img = cap.read()
+        width, height = len(img), len(img[0])
+
+        leds = tracker.__find_potential_LEDs__(img, show=True)
+
+        cv2.imshow('Beacon Tracker Test', img)
 
         key = cv2.waitKey(100)
         if key == ord('q'):

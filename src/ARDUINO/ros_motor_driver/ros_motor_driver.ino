@@ -24,8 +24,7 @@ ros::NodeHandle nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
     float turnAngle = moveCmd.theta;
-    float dist = sqrt(pow(moveCmd.x, 2) 
-                    + pow(moveCmd.y, 2));
+    float dist = moveCmd.x;
     turn(turnAngle);
     drive(dist);
 }
@@ -90,7 +89,7 @@ unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
 //robot specs
 #define COUNTS_PER_REV       3200
 #define WHEEL_DIAMETER       3.45
-#define ROBOT_WIDTH          7.6
+#define ROBOT_WIDTH          7.62
 #define DISTANCE_PER_REV    (WHEEL_DIAMETER*PI)  
 #define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
