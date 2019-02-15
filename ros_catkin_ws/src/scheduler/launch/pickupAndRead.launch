@@ -6,6 +6,7 @@
 	<node pkg="object_detection" type="classifier.py" name="classifier" output="screen" />
 
 	<node pkg="scheduler" type="scheduler.py" name="scheduler" output="screen" />
+	<node pkg="object_detection" type="block_position_finder.py" name="block_position_finder" output="screen" />
 
 
 </launch>

@@ -38,7 +38,7 @@ def get_block_pos(_):
         mask = cv2.bitwise_and(white_mask, non_orange_mask)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel2)
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         if (len(contours) > 0):
             block = max(contours, key=cv2.contourArea)
             M = cv2.moments(block)
