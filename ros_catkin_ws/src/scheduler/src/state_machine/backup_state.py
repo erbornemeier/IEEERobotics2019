@@ -15,7 +15,7 @@ class BackupState(State):
 
     def run(self):
         #TODO: incorporate actual block data
-        commands.send_drive_command(self.drive_pub, -6, 0, 0 )
+        commands.send_drive_command(self.drive_pub, 0, 0, 0 )
         t.sleep(8)
 
         from drive_to_block_state import * 

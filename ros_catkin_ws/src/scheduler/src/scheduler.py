@@ -12,7 +12,9 @@ rospy.init_node("scheduler")
 
 state_machine = StateMachine(PickUpBlockState())
 
+t.sleep(5)
 _ = raw_input("Press enter to start")
+
 
 while not rospy.is_shutdown():
     state_machine.run()

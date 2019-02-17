@@ -12,9 +12,11 @@ def publisher():
 
     cap = cv2.VideoCapture(0)
 
-    rate = rospy.Rate(60)
+    rate = rospy.Rate(100)
     while not rospy.is_shutdown():
-        ret, img = cap.read()
+        for _ in range(3):
+            ret, img = cap.read()
+        img = cv2.resize(img, (0,0), fx=0.5, fy=0.5)
         img = bridge.cv2_to_imgmsg(img, "bgr8")
         pub.publish(img)
         rate.sleep()

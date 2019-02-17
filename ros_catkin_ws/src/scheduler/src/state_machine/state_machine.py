@@ -10,6 +10,6 @@ class StateMachine:
         if nextState != self.currentState:
             rospy.loginfo("[State Machine] Transitioning from [" + str(self.currentState) + "] to [" + str(nextState) + "]")
 
-            self.currentState.finish()
+            #self.currentState.finish()
             self.currentState = nextState
             self.currentState.start()
