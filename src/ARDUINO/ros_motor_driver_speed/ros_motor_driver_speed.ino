@@ -1,10 +1,10 @@
 #include <PinChangeInterrupt.h>
-//#include <Servo.h>
+#include <Servo.h>
 #include "claw.h"
 
-//#include <ros.h>
-//#include <std_msgs/UInt8.h>
-//#include <geometry_msgs/Pose2D.h>
+#include <ros.h>
+#include <std_msgs/UInt8.h>
+#include <geometry_msgs/Pose2D.h>
 
 /*****************************************
 * HARDWARE DEFINITIONS
@@ -27,19 +27,25 @@ volatile long encCounts[2];
 unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
                                          { 52,  53} }; // Right
 
-//geometry_msgs::Pose2D robot_pose;
+geometry_msgs::Pose2D robot_pose;
+
+double velocitySetpoint[2] = {0,0};
 
 /*****************************************
 * ROS
 *****************************************/
-/*
-ros::NodeHandle nh;
+
+ros::NodeHandle_<ArduinoHardware, 5, 5, 1024, 512> nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
-    float turnAngle = moveCmd.theta;
-    float dist = moveCmd.x;
-    turn(turnAngle);
-    drive(dist);
+    if (moveCmd.theta != 0){
+        velocitySetpoint[L] = -moveCmd.theta;
+        velocitySetpoint[R] = moveCmd.theta;
+    }
+    else {
+      velocitySetpoint[L] = moveCmd.x;  
+      velocitySetpoint[R] = moveCmd.x;
+    }
 }
 
 #define PICKUP 0
@@ -59,25 +65,25 @@ void ccCallback(const std_msgs::UInt8& clawCmd) {
 
 void camCallback(const std_msgs::UInt8& camCmd) {
     cameraAngle = camCmd.data;
-    cameraServo.write(round(cameraAngle));
+    cameraServo.write(cameraAngle);
+    nh.loginfo("Got it!");
 }
 
 ros::Subscriber<geometry_msgs::Pose2D> dc ("drive_command", &dcCallback);
 ros::Subscriber<std_msgs::UInt8>   cc ("claw_command",  &ccCallback);
 ros::Subscriber<std_msgs::UInt8> cam("cam_command",   &camCallback);
 
-ros::Publisher pose_pub("robot_pose", &robot_pose);*/
+ros::Publisher pose_pub("robot_pose", &robot_pose);
 
 /*****************************************
 * POSITION CONTROL & MOTOR FEEDBACK
 *****************************************/
 
 //control values
-#define SAMPLE_PERIOD           0.01
+#define SAMPLE_PERIOD           10
+#define SECONDS_PER_MILLISECOND 0.001
 #define K_P                     19.4
 #define K_I                     270
-
-
 
 //robot specs
 #define COUNTS_PER_REV       3200
@@ -88,15 +94,18 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);*/
 #define TURN_CIRCUMFERENCE  (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV       ((DISTANCE_PER_REV/TURN_CIRCUMFERENCE) * 360)
 
+
 float integralControlValue[NUM_MOTORS] = {0};
 /*
  * void setup()
  */
 void setup() {
 
-  //robot_pose.x = 3.5;
-  //robot_pose.y = 3.5;
-  //robot_pose.theta = 90;
+//  Serial.begin(115200);
+
+  robot_pose.x = 3.5;
+  robot_pose.y = 3.5;
+  robot_pose.theta = 90;
   
   for (int i = 0; i < NUM_MOTORS; i++){
       pinMode(ENC_PINS[i][A], INPUT_PULLUP);
@@ -119,15 +128,14 @@ void setup() {
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
 
-  /*nh.initNode();
+  nh.initNode();
   nh.subscribe(dc);
   nh.subscribe(cc);
   nh.subscribe(cam);
   nh.advertise(pose_pub);
-  while(!nh.connected()) {
-    nh.spinOnce();
-  }*/
-
+//  while(!nh.connected()) {
+//    nh.spinOnce();
+//  }
 }
 
 /*
@@ -135,90 +143,40 @@ void setup() {
  */
 void loop() {
 
-    /*pose_pub.publish(&robot_pose);
-    nh.spinOnce();*/
+    pose_pub.publish(&robot_pose);
+    nh.spinOnce();
+    drive();
 }
 
 /*                                                                              
  * void drive()                                                                 
  * Takes in a velocity setpoint and drives forward at that speed. 
  */                                                                             
-void drive(float velocitySetpoint){ 
+void drive(){ 
     unsigned long timeRef = millis();
-    if (velocitySetpoint != 0){
+    if (velocitySetpoint[0] != 0){
         for (int i = 0; i < NUM_MOTORS; i++){                                            
-            float velocityError = velocitySetpoint - getVelocity(i);                                                              
-            int motorVal = errorToMotorOut(velocityError, i, false);                            
+            float velocityError = velocitySetpoint[i] - getVelocity(i);
+            int motorVal = errorToMotorOut(velocityError, i);                 
             setMotor(i, motorVal);   
         }  
     }
     else stopMotors();    
 
     if (millis() > timeRef + SAMPLE_PERIOD) Serial.println("Error! Execution time too slow");
-    while (millis() < timeRef + SAMPLE_PERIOD){}
+    while (millis() < timeRef + SAMPLE_PERIOD){nh.spinOnce();}
 }
 
 
 float getVelocity(int motor){
     static long lastCounts[NUM_MOTORS] = {0,0};
     long newEncCounts = encCounts[motor];
-    long deltaPosition = lastCounts[motor] - newEncCounts;
+    long deltaPosition = newEncCounts - lastCounts[motor];
     lastCounts[motor] = newEncCounts;
-    return (deltaPosition*WHEEL_CIRC)/(SAMPLE_PERIOD*COUNTS_PER_REV);
+    float velocity = (deltaPosition*2*PI)/(SAMPLE_PERIOD*SECONDS_PER_MILLISECOND*COUNTS_PER_REV);
+    Serial.println("Motor " + String(motor) + " vel: " + String(velocity));
+    return velocity;
 }
-
-/*                                                                              
- * void turn()                                                                 
- * Takes in an angle in degrees and rotates until that value is reached
- */                                                                             
-/*void turn(float angle){ 
-
-    long encCountGoals[NUM_MOTORS];
-    long encErrors[NUM_MOTORS] = {0, 0};
-    long lastErrors[NUM_MOTORS];
-                                                    
-    resetEncoderCounts();                                                       
-                                                                
-    for (int i = 0; i < NUM_MOTORS; i++){                                             
-        encCountGoals[i] = (long) (angle  * COUNTS_PER_REV / ANGLE_PER_REV); 
-        if (i == R) encCountGoals[i] *= -1;  
-    }                                                                       
-
-    long lastDiff = millis();
-
-    do{                                                                            
-        do {                                                                       
-            for (int i = 0; i < NUM_MOTORS; i++){
-                lastErrors[i] = encErrors[i];                                            
-                encErrors[i] = encCountGoals[i] - encCounts[i];                                                              
-                if (lastErrors[i] != encErrors[i]) lastDiff = millis();
-                                                                             
-                int motorVal = errorToMotorOut(encErrors, true); 
-                                                                                  
-                setMotor(i, motorVal);                                             
-            }    
-            if (millis() - lastDiff > 2000){
-                stopMotors();
-                return; 
-            }
-            printErrors(encErrors);
-           
-                                                                                                                                        
-        } while (!isZero(encErrors));
-        
-        stopMotors();
-        //recalculate errors after some delay without overshoot offset
-        delay(500);
-        for (int i = 0; i < NUM_MOTORS; i++){
-                encErrors[i] = encCountGoals[i] - encCounts[i];  
-        }
-
-    }while (!isZero(encErrors));
-                                           
-    stopMotors();                                                                            
-                                                                   
-}*/       
-
 
 void printErrors(long* errors){
   
@@ -239,9 +197,9 @@ void printErrors(long* errors){
  * Takes in an error and gain value and converts it to a motor output with an   
  * upper bound check of max speed                                               
  */  
-int errorToMotorOut(float error, int motor,  bool turning){
+int errorToMotorOut(float error, int motor){
   
-    integralControlValue[motor] += SAMPLE_PERIOD*error;
+    integralControlValue[motor] += SAMPLE_PERIOD*SECONDS_PER_MILLISECOND*error;
     
     int PWMSetpoint = (int)(error*K_P + integralControlValue[motor]*K_I);
     
@@ -272,9 +230,6 @@ int errorToMotorOut(float error, int motor,  bool turning){
  */
 void setMotor(int m, int pwm){
     //Serial.println(pwm);
-
-    if (pwm > -MIN_SPEED && pwm < 0) pwm = -MIN_SPEED;
-    if (pwm <  MIN_SPEED && pwm > 0) pwm =  MIN_SPEED;
     
     //negative on left motor is forwards
     pwm = (m==L) ? -pwm:pwm;
