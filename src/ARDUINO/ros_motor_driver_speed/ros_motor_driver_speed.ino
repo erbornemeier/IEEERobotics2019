@@ -38,14 +38,10 @@ double velocitySetpoint[2] = {0,0};
 ros::NodeHandle_<ArduinoHardware, 5, 5, 1024, 512> nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
-    if (moveCmd.theta != 0){
-        velocitySetpoint[L] = -moveCmd.theta;
-        velocitySetpoint[R] = moveCmd.theta;
-    }
-    else {
-      velocitySetpoint[L] = moveCmd.x;  
-      velocitySetpoint[R] = moveCmd.x;
-    }
+    velocitySetpoint[L] = -moveCmd.theta;
+    velocitySetpoint[R] = moveCmd.theta;
+    velocitySetpoint[L] += moveCmd.x;  
+    velocitySetpoint[R] += moveCmd.x;
 }
 
 #define PICKUP 0
@@ -128,14 +124,16 @@ void setup() {
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
 
+  nh.getHardware()->setBaud(115200);
   nh.initNode();
+  
   nh.subscribe(dc);
   nh.subscribe(cc);
   nh.subscribe(cam);
   nh.advertise(pose_pub);
-//  while(!nh.connected()) {
-//    nh.spinOnce();
-//  }
+  while(!nh.connected()) {
+    nh.spinOnce();
+  }
 }
 
 /*
