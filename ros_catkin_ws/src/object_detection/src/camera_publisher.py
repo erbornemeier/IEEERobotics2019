@@ -7,19 +7,17 @@ from cv_bridge import CvBridge, CvBridgeError
 
 def publisher():
     pub = rospy.Publisher("camera_image", Image, queue_size=1) 
-    rospy.init_node("camera_publisher", anonymous=True)
+    rospy.init_node("camera_publisher")
     bridge = CvBridge()
 
     cap = cv2.VideoCapture(0)
 
-    rate = rospy.Rate(100)
     while not rospy.is_shutdown():
         for _ in range(3):
             ret, img = cap.read()
         img = cv2.resize(img, (0,0), fx=0.5, fy=0.5)
         img = bridge.cv2_to_imgmsg(img, "bgr8")
         pub.publish(img)
-        rate.sleep()
 
 def main():
     try:
