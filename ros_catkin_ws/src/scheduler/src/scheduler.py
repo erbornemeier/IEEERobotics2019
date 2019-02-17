@@ -10,7 +10,7 @@ import time as t
 
 rospy.init_node("scheduler")
 
-state_machine = StateMachine(PickUpBlockState())
+state_machine = StateMachine(DriveToBlockState())
 
 t.sleep(5)
 _ = raw_input("Press enter to start")
