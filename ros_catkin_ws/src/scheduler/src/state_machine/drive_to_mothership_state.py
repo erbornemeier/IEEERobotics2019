@@ -97,7 +97,7 @@ class DriveToMothershipState(State):
         rospy.loginfo("Mothership Pos: " + str(mothership_pos.x) + ", " + str(mothership_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
         # TODO: Handle end condition
-        if self.cameraAngle == 47:
+        if self.cameraAngle == 37:
             commands.send_drive_command(self.drive_pub, 0, 0, 0)
             # from pick_up_block_state import *
             # return PickUpBlockState()
