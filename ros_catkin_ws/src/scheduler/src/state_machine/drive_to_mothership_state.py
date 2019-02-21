@@ -26,6 +26,7 @@ class DriveToMothershipState(State):
         self.turn_gain = 2
         self.cameraAngle = 20
         self.rate = rospy.Rate(5)
+        self.target_camera_angle = 37
 
         commands.send_cam_command(self.cam_pub, self.cameraAngle)
         rospy.loginfo("Set camera to starting angle 20")
@@ -57,8 +58,8 @@ class DriveToMothershipState(State):
 
         if self.cameraAngle < 20:
             self.cameraAngle = 20
-        elif self.cameraAngle > 47:
-            self.cameraAngle = 47
+        elif self.cameraAngle > self.target_camera_angle:
+            self.cameraAngle = self.target_camera_angle
 
         commands.send_cam_command(self.cam_pub, int(self.cameraAngle))
 
@@ -76,7 +77,7 @@ class DriveToMothershipState(State):
             commands.send_drive_command(self.drive_pub, forward_speed, 0, 0)
         '''
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
-        forward_speed = self.drive_gain * (47 - self.cameraAngle) + 0.2
+        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.2
         commands.send_drive_command(self.drive_pub, forward_speed, 0, turn_speed)
 
 
@@ -97,7 +98,7 @@ class DriveToMothershipState(State):
         rospy.loginfo("Mothership Pos: " + str(mothership_pos.x) + ", " + str(mothership_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
         # TODO: Handle end condition
-        if self.cameraAngle == 37:
+        if self.cameraAngle == self.target_camera_angle:
             commands.send_drive_command(self.drive_pub, 0, 0, 0)
             # from pick_up_block_state import *
             # return PickUpBlockState()
