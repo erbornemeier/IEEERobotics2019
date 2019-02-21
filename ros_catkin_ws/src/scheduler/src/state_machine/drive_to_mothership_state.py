@@ -9,7 +9,7 @@ import rospy
 
 class DriveToMothershipState(State):
     def __init__(self):
-        super(DriveToBlockState, self).__init__("Drive to Mothership State")
+        super(DriveToMothershipState, self).__init__("Drive to Mothership State")
 
     def start(self):
         rospy.loginfo("Entering drive to mothership state")
