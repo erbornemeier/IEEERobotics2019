@@ -19,7 +19,7 @@ class PickUpBlockState(State):
         commands.send_cam_command(self.cam_pub, 40) 
         t.sleep(0.5)
         commands.send_grip_command(self.claw_grip_pub, commands.CLAW_CLOSED)
-        commands.send_claw_command(self.claw_pub, commands.PICKUP)
+        commands.send_claw_command(self.claw_pub, commands.PICKUP_ANGLE)
         rospy.loginfo("Picked up block")
         t.sleep(0.5)
         from detect_letter_state import * 
