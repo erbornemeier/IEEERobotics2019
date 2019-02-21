@@ -19,7 +19,7 @@ class DriveToMothershipState(State):
 
         # TODO: Change to mothership service
         rospy.wait_for_service("mothership")
-        self.block_srv = rospy.ServiceProxy("mothership", Pose2D)
+        self.block_srv = rospy.ServiceProxy("mothership", Mothership)
 
         self.cam_gain = 6 
         self.drive_gain = 2/27.
@@ -37,7 +37,7 @@ class DriveToMothershipState(State):
             return self.block_srv()
         except Exception as e:
             print(e)
-            mothership_pos = Pose2D()
+            mothership_pos = MothershipResponse()
             mothership_pos.x = -1
             mothership_pos.y = -1
             mothership_pos.theta = -1
