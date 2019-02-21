@@ -62,6 +62,7 @@ add_service_files(
   FILES
   Letter.srv
   Block.srv
+  Mothership.srv
 )
 
 ## Generate actions in the 'action' folder
