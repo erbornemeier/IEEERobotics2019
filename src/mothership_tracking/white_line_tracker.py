@@ -5,9 +5,10 @@ import numpy as np
 
 class beacon_tracker:
     
-    LED_MASK = np.array([[ 85, 190, 158],
-                          [130, 255, 255]])
-    LINE_THRESHOLD = 100 
+    LED_MASK = np.array([[ 35, 100, 150],
+                          [80, 255, 255]])
+    LINE_THRESHOLD = 200 
+    LINE_LEN_THRESH = 200 
     PIXEL2INCH = 1.0 / 262.0 
     
     def get_LED_locations(self, frame, show=False):
@@ -47,9 +48,14 @@ class beacon_tracker:
 
     def __find_potential_LEDs__(self, frame, show=False):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        _, mask = cv2.threshold(gray, 255, 255, cv2.THRESH_BINARY)
+        _, mask = cv2.threshold(gray, 230, 255, cv2.THRESH_BINARY)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask_green = cv2.inRange(hsv, self.LED_MASK[0], self.LED_MASK[1])
+        mask = cv2.bitwise_or(mask, mask_green)
         #dilate image to expand contours
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (12,12)) 
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5)) 
+        mask = cv2.erode(mask, kernel)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11,11)) 
         mask = cv2.dilate(mask, kernel)
         #find contours
         _, contours, _= cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -81,16 +87,21 @@ class beacon_tracker:
         for c_top in centers:
             for c_bottom in centers:
                 if c_top != c_bottom:
-                    midpt = ((c_top[0] + c_bottom[0]) // 2, (c_top[1] + c_bottom[1]) // 2)
-                    for c_middle in centers:
-                        if c_middle not in [c_top, c_bottom]:
-                            middle_diff = (c_middle[0] - midpt[0])**2 + (c_middle[1] - midpt[1])**2
-                            if middle_diff < smallestDiff:
-                                smallestDiff = middle_diff
-                                top, middle, bottom = c_top, c_middle, c_bottom 
-        if smallestDiff < self.LINE_THRESHOLD:
+                    if (c_top[0] - c_bottom[0])**2 + (c_top[1] - c_bottom[1])**2 > self.LINE_LEN_THRESH:
+                        midpt = ((c_top[0] + c_bottom[0]) // 2, (c_top[1] + c_bottom[1]) // 2)
+                        for c_middle in centers:
+                            if c_middle not in [c_top, c_bottom]:
+                                middle_diff = (c_middle[0] - midpt[0])**2 + (c_middle[1] - midpt[1])**2
+                                if middle_diff < smallestDiff:
+                                    smallestDiff = middle_diff
+                                    top, middle, bottom = c_top, c_middle, c_bottom 
+        if top is not None and smallestDiff < self.LINE_THRESHOLD:
             if show:
                 cv2.line(frame, (int(top[0]), int(top[1])), (int(bottom[0]), int(bottom[1])), (255,255,0), 5)
+            if top[0] > bottom[0]:
+                temp = top
+                top = bottom
+                bottom = temp
             return (top, middle, bottom)
         return False
 
