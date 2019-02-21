@@ -4,6 +4,7 @@
 
 #include <ros.h>
 #include <std_msgs/UInt8.h>
+#include <std_msgs/Bool.h>
 #include <geometry_msgs/Pose2D.h>
 
 /*****************************************
@@ -44,19 +45,15 @@ void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
     velocitySetpoint[R] += moveCmd.x;
 }
 
-#define PICKUP 0
-#define PUTDOWN 1
 void ccCallback(const std_msgs::UInt8& clawCmd) {
-    uint8_t cmd = clawCmd.data;
-    nh.loginfo(String(cmd).c_str());
-    if (cmd == PICKUP){
-        claw.Gripper_Close();
-        claw.Servo_SetLevel();
-    }
-    else if (cmd == PUTDOWN){
-        claw.Servo_SetMin();
-        claw.Gripper_Open();
-    }
+    uint8_t angle = clawCmd.data;
+    claw.Servo_SetAngle(angle);
+}
+
+
+void gcCallback(const std_msgs::Bool& gripCmd) {
+    bool doClose = gripCmd.data;
+    doClose ? claw.Gripper_Close():claw.Gripper_Open();
 }
 
 void camCallback(const std_msgs::UInt8& camCmd) {
@@ -67,6 +64,7 @@ void camCallback(const std_msgs::UInt8& camCmd) {
 
 ros::Subscriber<geometry_msgs::Pose2D> dc ("drive_command", &dcCallback);
 ros::Subscriber<std_msgs::UInt8>   cc ("claw_command",  &ccCallback);
+ros::Subscriber<std_msgs::Bool>   gc ("grip_command",  &gcCallback);
 ros::Subscriber<std_msgs::UInt8> cam("cam_command",   &camCallback);
 
 ros::Publisher pose_pub("robot_pose", &robot_pose);
@@ -129,6 +127,7 @@ void setup() {
   
   nh.subscribe(dc);
   nh.subscribe(cc);
+  nh.subscribe(gc);
   nh.subscribe(cam);
   nh.advertise(pose_pub);
   while(!nh.connected()) {

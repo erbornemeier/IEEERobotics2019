@@ -16,6 +16,8 @@ class DriveToMothershipState(State):
 
         self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
+        self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
+
 
         # TODO: Change to mothership service
         rospy.wait_for_service("mothership")
@@ -29,6 +31,7 @@ class DriveToMothershipState(State):
         self.target_camera_angle = 37
 
         commands.send_cam_command(self.cam_pub, self.cameraAngle)
+        commands.send_claw_command(self.claw_pub, commands.CARRY_ANGLE)
         rospy.loginfo("Set camera to starting angle 20")
 
     def __get_mothership_pos__(self):
