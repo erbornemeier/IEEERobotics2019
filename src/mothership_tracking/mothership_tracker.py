@@ -1,14 +1,14 @@
+#!/usr/bin/python3
 import cv2
 import numpy as np
 
 
-class mothership_tracker:
+class beacon_tracker:
     
-    #LED_MASK = np.array([[ 46, 110, 0],
-    #                      [95, 255, 245]])
-    LED_MASK = np.array([[0, 0, 255],
-                         [180, 255, 255]])
-    LINE_THRESHOLD = 100 
+    LED_MASK = np.array([[ 35, 100, 150],
+                          [80, 255, 255]])
+    LINE_THRESHOLD = 200 
+    LINE_LEN_THRESH = 200 
     PIXEL2INCH = 1.0 / 262.0 
     
     def get_LED_locations(self, frame, show=False):
@@ -47,14 +47,16 @@ class mothership_tracker:
 
 
     def __find_potential_LEDs__(self, frame, show=False):
-        #convert to HSV
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        _, mask = cv2.threshold(gray, 230, 255, cv2.THRESH_BINARY)
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        #threshold on color
-        mask = cv2.inRange(hsv, self.LED_MASK[0], self.LED_MASK[1])
+        mask_green = cv2.inRange(hsv, self.LED_MASK[0], self.LED_MASK[1])
+        mask = cv2.bitwise_or(mask, mask_green)
         #dilate image to expand contours
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5)) 
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        #mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.erode(mask, kernel)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11,11)) 
+        mask = cv2.dilate(mask, kernel)
         #find contours
         _, contours, _= cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -85,35 +87,54 @@ class mothership_tracker:
         for c_top in centers:
             for c_bottom in centers:
                 if c_top != c_bottom:
-                    midpt = ((c_top[0] + c_bottom[0]) // 2, (c_top[1] + c_bottom[1]) // 2)
-                    for c_middle in centers:
-                        if c_middle not in [c_top, c_bottom]:
-                            middle_diff = (c_middle[0] - midpt[0])**2 + (c_middle[1] - midpt[1])**2
-                            if middle_diff < smallestDiff:
-                                smallestDiff = middle_diff
-                                top, middle, bottom = c_top, c_middle, c_bottom 
-        if smallestDiff < self.LINE_THRESHOLD:
+                    if (c_top[0] - c_bottom[0])**2 + (c_top[1] - c_bottom[1])**2 > self.LINE_LEN_THRESH:
+                        midpt = ((c_top[0] + c_bottom[0]) // 2, (c_top[1] + c_bottom[1]) // 2)
+                        for c_middle in centers:
+                            if c_middle not in [c_top, c_bottom]:
+                                middle_diff = (c_middle[0] - midpt[0])**2 + (c_middle[1] - midpt[1])**2
+                                if middle_diff < smallestDiff:
+                                    smallestDiff = middle_diff
+                                    top, middle, bottom = c_top, c_middle, c_bottom 
+        if top is not None and smallestDiff < self.LINE_THRESHOLD:
             if show:
                 cv2.line(frame, (int(top[0]), int(top[1])), (int(bottom[0]), int(bottom[1])), (255,255,0), 5)
+            if top[0] > bottom[0]:
+                temp = top
+                top = bottom
+                bottom = temp
             return (top, middle, bottom)
         return False
 
 
-cap = cv2.VideoCapture(1)
-
-tracker = mothership_tracker()
 
 #TEST OF BEACON TRACKER
 if __name__ == '__main__':
 
+    cap = cv2.VideoCapture(1)
+    # cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0 )	
+
+    tracker = beacon_tracker()
+
+    width, height = cap.get(3), cap.get(4)
+
     while True:
+        #get next frame
+        for i in range(0,6):
+            ret, frame = cap.read()
 
-        _, img = cap.read()
-        width, height = len(img), len(img[0])
+        #unsuccessful frame capture
+        if not ret:
+            raise IOError("Frame could not be read")
 
-        leds = tracker.__find_potential_LEDs__(img, show=True)
-
-        cv2.imshow('Beacon Tracker Test', img)
+        leds = tracker.get_LED_locations(frame, show=True)
+        if leds:
+            dist_to_beacon = tracker.estimate_distance_to_beacon(leds)
+            middle = leds[1]
+            dist_to_middle = (width/2 - middle[0])
+            if dist_to_beacon:
+                print("To beacon (in): {}\tTo middle (px): {}".format(dist_to_beacon, dist_to_middle))
+        cv2.imshow('Beacon Tracker Test', frame)
 
         key = cv2.waitKey(100)
         if key == ord('q'):
