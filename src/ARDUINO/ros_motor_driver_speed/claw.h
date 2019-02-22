@@ -9,7 +9,7 @@
 #define gripperOpenTime 800
 #define gripperCloseTime 1000
 
-#define MS_PER_DEG 10
+#define MS_PER_DEG 2
 
 enum CLAW_PINS{CLAW_PWM=2, IN1=3, IN2=5};
 enum GRIPPER_STATE{GRIPPING, NOT_GRIPPING};

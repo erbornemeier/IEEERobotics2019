@@ -36,13 +36,16 @@ double velocitySetpoint[2] = {0,0};
 * ROS
 *****************************************/
 
-ros::NodeHandle_<ArduinoHardware, 5, 5, 1024, 512> nh;
+ros::NodeHandle_<ArduinoHardware, 5, 5, 2048, 2048> nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
-    velocitySetpoint[L] = -moveCmd.theta;
-    velocitySetpoint[R] = moveCmd.theta;
-    velocitySetpoint[L] += moveCmd.x;  
-    velocitySetpoint[R] += moveCmd.x;
+    if (moveCmd.x == 0 && moveCmd.theta == 0) stopMotors();
+    else {
+      velocitySetpoint[L] = -moveCmd.theta;
+      velocitySetpoint[R] = moveCmd.theta;
+      velocitySetpoint[L] += moveCmd.x;  
+      velocitySetpoint[R] += moveCmd.x;
+    }
 }
 
 void ccCallback(const std_msgs::UInt8& clawCmd) {
@@ -140,7 +143,7 @@ void setup() {
  */
 void loop() {
 
-    pose_pub.publish(&robot_pose);
+    //pose_pub.publish(&robot_pose);
     nh.spinOnce();
     drive();
 }
@@ -248,6 +251,7 @@ void setMotor(int m, int pwm){
 void stopMotors(){
     setMotor(L,0);
     setMotor(R,0);
+    velocitySetpoint[L] = velocitySetpoint[R] = 0;
 }
 
 /*
