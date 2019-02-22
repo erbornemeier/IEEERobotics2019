@@ -1,3 +1,4 @@
+import globals
 from state import State
 from std_msgs.msg import UInt8, Bool
 from object_detection.srv import *
@@ -17,7 +18,7 @@ class PutDownBlockState(State):
     def run(self):
         commands.send_cam_command(self.cam_pub, 0)
         commands.send_grip_command(self.claw_grip_pub, commands.CLAW_OPEN)
-        commands.send_claw_command(self.claw_pub, commands.PUTDOWN)
+        commands.send_claw_command(self.claw_pub, commands.DROP_ANGLE)
         from backup_state import * 
         return BackupState()
 

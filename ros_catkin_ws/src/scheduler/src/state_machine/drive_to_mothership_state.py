@@ -1,3 +1,4 @@
+import globals
 from state import State
 from std_msgs.msg import UInt8
 from std_msgs.msg import Bool 
@@ -26,7 +27,7 @@ class DriveToMothershipState(State):
         self.cam_gain = 6 
         self.drive_gain = 2/27.
         self.turn_gain = 2
-        self.cameraAngle = 20
+        self.cameraAngle = 15
         self.rate = rospy.Rate(5)
         self.target_camera_angle = 37
 
@@ -59,8 +60,8 @@ class DriveToMothershipState(State):
         elif mothership_pos.y < 0.47:
             self.cameraAngle -= self.cam_gain * (0.5 - mothership_pos.y) 
 
-        if self.cameraAngle < 20:
-            self.cameraAngle = 20
+        if self.cameraAngle < 15:
+            self.cameraAngle = 15
         elif self.cameraAngle > self.target_camera_angle:
             self.cameraAngle = self.target_camera_angle
 
@@ -103,8 +104,8 @@ class DriveToMothershipState(State):
         # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
             commands.send_drive_command(self.drive_pub, 0, 0, 0)
-            # from pick_up_block_state import *
-            # return PickUpBlockState()
+            from place_in_slot_state import *
+            return PlaceInSlotState()
         else:
             return self
         

@@ -1,3 +1,4 @@
+import globals
 from state import State
 from std_msgs.msg import UInt8
 from object_detection.srv import *
@@ -20,6 +21,7 @@ class DetectLetterState(State):
         t.sleep(5)
         try:
             detected_letter = self.letter_srv()
+            globals.current_letter = detected_letter.letter
         except Exception as e:
             print(e)
             return self

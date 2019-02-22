@@ -119,7 +119,7 @@ def image_recieved(data):
 
 tracker = mothership_tracker()
 def get_line_params(_):
-    msg = Mothership()
+    msg = MothershipResponse()
     try:
         left, mid, right = tracker.get_LED_locations(img)
         msg.x = mid[0] / width
