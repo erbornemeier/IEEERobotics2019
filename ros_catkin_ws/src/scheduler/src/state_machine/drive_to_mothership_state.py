@@ -103,6 +103,8 @@ class DriveToMothershipState(State):
         # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
             commands.send_drive_command(self.drive_pub, 0, 0, 0)
+            from throw_block_state import *
+            return ThrowBlockState()
             # from pick_up_block_state import *
             # return PickUpBlockState()
         else:
