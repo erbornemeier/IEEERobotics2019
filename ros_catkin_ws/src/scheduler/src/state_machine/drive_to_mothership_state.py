@@ -90,7 +90,6 @@ class DriveToMothershipState(State):
 
         #camera to motherboard
         mothership_pos = self.__get_mothership_pos__()
-        rospy.loginfo("Mothership Light Angle: " + str(mothership_pos.theta))
         if mothership_pos.y < 0:
             self.__reset__()
             return self
@@ -104,7 +103,8 @@ class DriveToMothershipState(State):
         # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
             commands.send_drive_command(self.drive_pub, 0, 0, 0)
-            return self
+            from throw_block_state import *
+            return ThrowBlockState()
             # from pick_up_block_state import *
             # return PickUpBlockState()
         else:
