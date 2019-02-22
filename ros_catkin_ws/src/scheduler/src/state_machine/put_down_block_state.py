@@ -1,3 +1,4 @@
+import globals
 from state import State
 from std_msgs.msg import UInt8, Bool
 from object_detection.srv import *

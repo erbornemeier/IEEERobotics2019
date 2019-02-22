@@ -1,3 +1,4 @@
+import globals
 from state import State
 import commands
 import time as t
@@ -17,7 +18,7 @@ class PickUpBlockState(State):
 
     def run(self):
         commands.send_cam_command(self.cam_pub, 40) 
-        t.sleep(0.5)
+        rospy.Rate(2).sleep()
         commands.send_grip_command(self.claw_grip_pub, commands.CLAW_CLOSED)
         rospy.Rate(2).sleep()
         commands.send_claw_command(self.claw_pub, commands.PICKUP_ANGLE)
@@ -29,5 +30,6 @@ class PickUpBlockState(State):
     def finish(self):
         self.claw_pub.unregister()
         self.cam_pub.unregister()
+        self.claw_grip_pub.unregister()
         self.display_letter_pub.unregister()
         rospy.loginfo("Finished pick up block state")

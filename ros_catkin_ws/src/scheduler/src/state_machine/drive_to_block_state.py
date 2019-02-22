@@ -1,3 +1,4 @@
+import globals
 from state import State
 from std_msgs.msg import UInt8
 from std_msgs.msg import Bool 
@@ -14,6 +15,7 @@ class DriveToBlockState(State):
     def start(self):
         rospy.loginfo("Entering drive to block state")
 
+        self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
         self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
         rospy.wait_for_service("block_pos")
@@ -79,6 +81,9 @@ class DriveToBlockState(State):
     def run(self):
 
         self.rate.sleep()
+
+        commands.send_claw_command(self.claw_pub, commands.DROP_ANGLE)
+
 
         #camera to block
         block_pos = self.__get_block_pos__()

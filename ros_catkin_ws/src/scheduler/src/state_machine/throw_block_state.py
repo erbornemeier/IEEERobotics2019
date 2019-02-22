@@ -1,3 +1,4 @@
+import globals
 from state import State
 import commands
 import time as t
@@ -19,8 +20,8 @@ class ThrowBlockState(State):
         t.sleep(0.5)
         commands.send_grip_command(self.claw_grip_pub, commands.CLAW_CLOSED)
         rospy.Rate(2).sleep()
-        commands.send_claw_command(self.claw_pub, commands.70)
         commands.send_grip_command(self.claw_grip_pub, commands.CLAW_OPEN)
+        commands.send_claw_command(self.claw_pub, 70)
         rospy.loginfo("Picked up block")
         t.sleep(0.5)
         from detect_letter_state import * 
