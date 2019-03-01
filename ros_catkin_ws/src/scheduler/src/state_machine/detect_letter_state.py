@@ -1,3 +1,4 @@
+import globals
 from state import State
 from std_msgs.msg import UInt8
 from object_detection.srv import *
@@ -20,14 +21,17 @@ class DetectLetterState(State):
         t.sleep(5)
         try:
             detected_letter = self.letter_srv()
+            globals.current_letter = detected_letter.letter
         except Exception as e:
             print(e)
             return self
         commands.display_letter(self.display_letter_pub, detected_letter.letter)
         rospy.loginfo(detected_letter.letter)
 
-        from put_down_block_state import * 
-        return PutDownBlockState()
+        # from put_down_block_state import * 
+        # return PutDownBlockState()
+        from drive_to_mothership_state import *
+        return DriveToMothershipState()
 
     def finish(self):
         self.display_letter_pub.unregister()

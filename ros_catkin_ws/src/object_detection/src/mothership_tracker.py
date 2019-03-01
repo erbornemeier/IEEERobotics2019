@@ -1,9 +1,14 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 import cv2
 import numpy as np
+import math
+import rospy
+from sensor_msgs.msg import Image
+from object_detection.srv import *
+from cv_bridge import CvBridge
+bridge = CvBridge()
 
-
-class beacon_tracker:
+class mothership_tracker:
     
     LED_MASK = np.array([[ 35, 100, 150],
                           [80, 255, 255]])
@@ -33,7 +38,7 @@ class beacon_tracker:
         return leds
 
 
-    def estimate_distance_to_beacon(self, leds):
+    def estimate_distance_to_mothership(self, leds):
         top, _, bottom = leds
         #if the top and bottom were found
         if top is not None and bottom is not None:
@@ -105,38 +110,31 @@ class beacon_tracker:
             return (top, middle, bottom)
         return False
 
+def image_recieved(data):
+    global img
+    global width
+    global height
+    img = bridge.imgmsg_to_cv2(data, "bgr8")
+    width, height = len(img[0]), len(img)
 
+tracker = mothership_tracker()
+def get_line_params(_):
+    msg = MothershipResponse()
+    try:
+        left, mid, right = tracker.get_LED_locations(img)
+        msg.x = mid[0] / width
+        msg.y = mid[1] / height
+        dx, dy = right[0] - left[0], right[1] - left[1]
+        msg.theta = math.atan2(dy, dx)
+        return msg 
+    except Exception as e:
+        print(e)
+        msg.x, msg.y = -1, -1
+        return msg
+    
 
-#TEST OF BEACON TRACKER
-if __name__ == '__main__':
-
-    cap = cv2.VideoCapture(1)
-    # cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0 )	
-
-    tracker = beacon_tracker()
-
-    width, height = cap.get(3), cap.get(4)
-
-    while True:
-        #get next frame
-        for i in range(0,6):
-            ret, frame = cap.read()
-
-        #unsuccessful frame capture
-        if not ret:
-            raise IOError("Frame could not be read")
-
-        leds = tracker.get_LED_locations(frame, show=True)
-        if leds:
-            dist_to_beacon = tracker.estimate_distance_to_beacon(leds)
-            middle = leds[1]
-            dist_to_middle = (width/2 - middle[0])
-            if dist_to_beacon:
-                print("To beacon (in): {}\tTo middle (px): {}".format(dist_to_beacon, dist_to_middle))
-        cv2.imshow('Beacon Tracker Test', frame)
-
-        key = cv2.waitKey(100)
-        if key == ord('q'):
-            break
+rospy.init_node("mothership_tracker")
+rospy.Subscriber("camera_image", Image, image_recieved)
+block_pos_srv = rospy.Service("mothership", Mothership, get_line_params)
+rospy.spin()
 
