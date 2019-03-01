@@ -2,9 +2,10 @@
 #include <Servo.h>
 #include "claw.h"
 
-//#include <ros.h>
-//#include <std_msgs/UInt8.h>
-//#include <geometry_msgs/Pose2D.h>
+#include <ros.h>
+#include <std_msgs/Bool.h>
+#include <std_msgs/UInt8.h>
+#include <geometry_msgs/Pose2D.h>
 
 /*****************************************
   HARDWARE DEFINITIONS
@@ -28,61 +29,77 @@ volatile long encCounts[2];
 unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
                                          { 52,  53} }; // Right
 
-//geometry_msgs::Pose2D robot_pose;
+geometry_msgs::Pose2D robot_pose;
 
 // Global variables
-double velocitySetpoint[NUM_MOTORS] = {0, 0};
-long lastCounts[NUM_MOTORS] = {0, 0};
-float distanceSetpoint = 0;
-float angleSetpoint = 0;
-int moveState = CONST_VEL;
+volatile double velocitySetpoint[NUM_MOTORS] = {0, 0};
+volatile long lastCounts[NUM_MOTORS] = {0, 0};
+volatile float distanceSetpoint = 0;
+volatile float angleSetpoint = 0;
+volatile int moveState = CONST_VEL;
+volatile bool newDriveCmd = false;
 
 /*****************************************
   ROS
 *****************************************/
 
-/*ros::NodeHandle_<ArduinoHardware, 5, 5, 1024, 512> nh;
+ros::NodeHandle_<ArduinoHardware, 5, 5, 1024, 512> nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
-  velocitySetpoint[L] = -moveCmd.theta;
-  velocitySetpoint[R] = moveCmd.theta;
-  velocitySetpoint[L] += moveCmd.x;
-  velocitySetpoint[R] += moveCmd.x;
+    switch((uint8_t)moveCmd.y){
+        case CONST_VEL:
+            velocitySetpoint[L] = -moveCmd.theta;
+            velocitySetpoint[R] = moveCmd.theta;
+            velocitySetpoint[L] += moveCmd.x;
+            velocitySetpoint[R] += moveCmd.x;
+            break;
+        case DRIVE_DIST:
+            newDriveCmd = true;
+            distanceSetpoint = moveCmd.x;
+            break;
+        case TURN_ANGLE:
+            newDriveCmd = true;
+            angleSetpoint = moveCmd.theta;
+            break;
+        default:
+            break;
+        }
+     moveState = moveCmd.y;
 }
 
-#define PICKUP 0
-#define PUTDOWN 1
 void ccCallback(const std_msgs::UInt8& clawCmd) {
-  uint8_t cmd = clawCmd.data;
-  nh.loginfo(String(cmd).c_str());
-  if (cmd == PICKUP) {
-    claw.Gripper_Close();
-    claw.Servo_SetLevel();
-  }
-  else if (cmd == PUTDOWN) {
-    claw.Servo_SetMin();
-    claw.Gripper_Open();
-  }
+    uint8_t angle = clawCmd.data;
+    claw.Servo_SetAngle(angle);
+}
+
+
+void gcCallback(const std_msgs::Bool& gripCmd) {
+    bool doClose = gripCmd.data;
+    doClose ? claw.Gripper_Close():claw.Gripper_Open();
 }
 
 void camCallback(const std_msgs::UInt8& camCmd) {
-  cameraAngle = camCmd.data;
-  cameraServo.write(cameraAngle);
-  nh.loginfo("Got it!");
+    cameraAngle = camCmd.data;
+    cameraServo.write(cameraAngle);
+    nh.loginfo("Got it!");
 }
+
 
 ros::Subscriber<geometry_msgs::Pose2D> dc ("drive_command", &dcCallback);
 ros::Subscriber<std_msgs::UInt8>   cc ("claw_command",  &ccCallback);
+ros::Subscriber<std_msgs::Bool> gc ("grip_command", &gcCallback);
 ros::Subscriber<std_msgs::UInt8> cam("cam_command",   &camCallback);
 
 ros::Publisher pose_pub("robot_pose", &robot_pose);
-*/
+
 /*****************************************
   POSITION CONTROL & MOTOR FEEDBACK
 *****************************************/
 
 // Control Values
 #define SAMPLE_PERIOD           10
+#define POSE_PUBLISH_RATE_MS    500
+
 // Velocity Controller
 #define K_P                     19.4
 #define K_I                     270 
@@ -96,7 +113,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 // Angle controller
 #define K_P_ANG                 0.04 //degrees error -> rad/s
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
-#define TURN_ESS_ADJUSTMENT     1 //degrees
+#define TURN_ESS_GAIN     0.011 //degrees
 
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
@@ -119,9 +136,9 @@ void setup() {
   Serial.begin(115200);
 
 
-  /*robot_pose.x = 3.5;
+  robot_pose.x = 3.5;
   robot_pose.y = 3.5;
-  robot_pose.theta = 90;*/
+  robot_pose.theta = 90;
 
   for (int i = 0; i < NUM_MOTORS; i++) {
     pinMode(ENC_PINS[i][A], INPUT_PULLUP);
@@ -144,48 +161,48 @@ void setup() {
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
   attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
 
-  /*nh.getHardware()->setBaud(115200);
+  nh.getHardware()->setBaud(115200);
   nh.initNode();
 
   nh.subscribe(dc);
   nh.subscribe(cc);
+  nh.subscribe(gc);
   nh.subscribe(cam);
   nh.advertise(pose_pub);
   while (!nh.connected()) {
     nh.spinOnce();
-  }*/
+  }
 }
 
 /*
    void loop()
 */
 void loop() {
-    //pose_pub.publish(&robot_pose);
-    //nh.spinOnce();
+    static long lastTime = millis();
+    if (millis() - lastTime > POSE_PUBLISH_RATE_MS) pose_pub.publish(&robot_pose);
+    nh.spinOnce();
 
-    /*switch (moveState) {
+    switch(moveState){
         case CONST_VEL:
             velDrive();
+            updatePosition();
+            break;
         case DRIVE_DIST:
-            distDrive();
+            if (newDriveCmd){
+                distDrive();
+                newDriveCmd = false;  
+            }
+            break;
         case TURN_ANGLE:
-            turn();
-    }*/
-    for (int i = 0; i < 5; i++){
-        distanceSetpoint = 16;
-        distDrive();
-        delay(1000);
-        angleSetpoint = 90;
-        turn();
-        delay(1000);
-    }
-    delay(5000);
-    /*velocitySetpoint[L] = 2;
-    velocitySetpoint[R] = 2;
-    velDrive();*/
-    
-    //updatePosition();
-    
+            if (newDriveCmd){
+                turn();
+                newDriveCmd = false;
+            } 
+            break;
+        default:
+            break;
+        }
+            
 }
 
 /*
@@ -251,21 +268,24 @@ void distDrive(){
         delay(400);
     } while (!isZero(posError, false));
     stopMotors();
+    robot_pose.x += distanceSetpoint*cos(robot_pose.theta);
+    robot_pose.y += distanceSetpoint*sin(robot_pose.theta);
+    
 }
 
 void turn(){
     resetEncoderCounts();
     float angError[NUM_MOTORS] = {0,0};
     float angleSetpoints[NUM_MOTORS] = {0,0};
-    float angleSet = angleSetpoint + (angleSetpoint > 0 ? TURN_ESS_ADJUSTMENT : -TURN_ESS_ADJUSTMENT);
+    //float angleSet = angleSetpoint + (angleSetpoint > 0 ? TURN_ESS_ADJUSTMENT : -TURN_ESS_ADJUSTMENT);
     if (angleSetpoint > 0) {
         //CCW rotation, left is reverse, right is forward
-        angleSetpoints[L] = -angleSet;
-        angleSetpoints[R] = angleSet;
+        angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
+        angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
     } else {
         //CW rotation, right is reverse, left is forward
-        angleSetpoints[L] = angleSet;
-        angleSetpoints[R] = -angleSet;
+        angleSetpoints[L] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
+        angleSetpoints[R] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
     }
     do {
         do {
@@ -283,6 +303,7 @@ void turn(){
         delay(200);
     } while (!isZero(angError, true));
     stopMotors();
+    robot_pose.theta += angleSetpoint;
 }
 
 /*
@@ -318,22 +339,22 @@ void updatePosition(){
     float leftDelta = deltaPosition[L]*INCHES_PER_COUNT, rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
     if(fabs((leftDelta - rightDelta)) <  STRAIGHT_THRESH){
         // Robot is going straight, update x and y, no change to angle
-        /*robot_pose.x += leftDelta*cos(robot_pose.theta);
-        robot_pose.y += rightDelta*sin(robot_pose.theta);*/
+        robot_pose.x += leftDelta*cos(robot_pose.theta);
+        robot_pose.y += rightDelta*sin(robot_pose.theta);
     }
     else {
         float turnRadius = ROBOT_WIDTH*(leftDelta + rightDelta)/(2*(rightDelta - leftDelta));
         float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
-        /*robot_pose.x += (turnRadius*sin(dTheta + robot_pose.theta) - radius*sin(robot_pose.theta);
-        robot_pose.y += (turnRadius*cos(dTheta + robot_pose.theta) - radius*cos(robot_pose.theta);
-        robot_pose.theta = boundAngle(robot_pose.theta + dTheta);*/
+        robot_pose.x += (turnRadius*sin(dTheta + robot_pose.theta)) - turnRadius*sin(robot_pose.theta);
+        robot_pose.y += (turnRadius*cos(dTheta + robot_pose.theta)) - turnRadius*cos(robot_pose.theta);
+        robot_pose.theta = boundAngle(robot_pose.theta + dTheta);
     }
 }
 
 // Keeps the angle within bounds of -360 to +360
 float boundAngle(float angle){
-    while(abs(angle > 360)){
-        angle += angle > 0 ? -360 : 360;
+    while(abs(angle) > 180){
+        angle += angle > 0 ? -180 : 180;
     }
 }
 
