@@ -99,6 +99,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 // Control Values
 #define SAMPLE_PERIOD           10
 #define POSE_PUBLISH_RATE_MS    500
+#define DEG2RAD (PI/180)
 
 // Velocity Controller
 #define K_P                     19.4
@@ -124,7 +125,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define TURN_CIRCUMFERENCE   (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV        ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
 #define STRAIGHT_THRESH      20
-#define INCHES_PER_COUNT    (COUNTS_PER_REV/WHEEL_CIRC)
+#define INCHES_PER_COUNT    (WHEEL_CIRC/COUNTS_PER_REV)
 
 long deltaPosition[NUM_MOTORS];
 float integralControlValue[NUM_MOTORS] = {0, 0};
@@ -136,8 +137,8 @@ void setup() {
   Serial.begin(115200);
 
 
-  robot_pose.x = 3.5;
-  robot_pose.y = 3.5;
+  robot_pose.x = 3.5*12;
+  robot_pose.y = 3.5*12;
   robot_pose.theta = 90;
 
   for (int i = 0; i < NUM_MOTORS; i++) {
@@ -179,7 +180,10 @@ void setup() {
 */
 void loop() {
     static long lastTime = millis();
-    if (millis() - lastTime > POSE_PUBLISH_RATE_MS) pose_pub.publish(&robot_pose);
+    if (millis() - lastTime > POSE_PUBLISH_RATE_MS){
+        pose_pub.publish(&robot_pose);
+        lastTime = millis();
+    }
     nh.spinOnce();
 
     switch(moveState){
@@ -211,7 +215,6 @@ void loop() {
 */
 void velDrive() {
     unsigned long timeRef = millis();
-    if (velocitySetpoint[0] != 0) {
         int motorVal[NUM_MOTORS];
         for (int i = 0; i < NUM_MOTORS; i++) {
             float velSetpoint = velocitySetpoint[i];
@@ -221,8 +224,7 @@ void velDrive() {
         for (int i = 0; i < NUM_MOTORS; i++){
             setMotor(i, motorVal[i]);
         }
-    }
-    else stopMotors();
+        
     if (millis() > timeRef + SAMPLE_PERIOD) Serial.println("Error! Execution time too slow");
     while (millis() < timeRef + SAMPLE_PERIOD) {
         //nh.spinOnce();
@@ -268,8 +270,8 @@ void distDrive(){
         delay(400);
     } while (!isZero(posError, false));
     stopMotors();
-    robot_pose.x += distanceSetpoint*cos(robot_pose.theta);
-    robot_pose.y += distanceSetpoint*sin(robot_pose.theta);
+    robot_pose.x += distanceSetpoint*cos(DEG2RAD*robot_pose.theta);
+    robot_pose.y += distanceSetpoint*sin(DEG2RAD*robot_pose.theta);
     
 }
 
@@ -278,15 +280,10 @@ void turn(){
     float angError[NUM_MOTORS] = {0,0};
     float angleSetpoints[NUM_MOTORS] = {0,0};
     //float angleSet = angleSetpoint + (angleSetpoint > 0 ? TURN_ESS_ADJUSTMENT : -TURN_ESS_ADJUSTMENT);
-    if (angleSetpoint > 0) {
-        //CCW rotation, left is reverse, right is forward
-        angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
-        angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
-    } else {
-        //CW rotation, right is reverse, left is forward
-        angleSetpoints[L] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
-        angleSetpoints[R] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
-    }
+    //CCW rotation, left is reverse, right is forward
+    angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
+    angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
+
     do {
         do {
             for (int i = 0; i < NUM_MOTORS; i++){
@@ -336,17 +333,18 @@ bool isZero(float* errors, bool turning){
 
   
 void updatePosition(){
-    float leftDelta = deltaPosition[L]*INCHES_PER_COUNT, rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
+    float leftDelta = deltaPosition[L]*INCHES_PER_COUNT;
+    float rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
     if(fabs((leftDelta - rightDelta)) <  STRAIGHT_THRESH){
         // Robot is going straight, update x and y, no change to angle
-        robot_pose.x += leftDelta*cos(robot_pose.theta);
-        robot_pose.y += rightDelta*sin(robot_pose.theta);
+        robot_pose.x += leftDelta*cos(DEG2RAD*robot_pose.theta);
+        robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
     }
     else {
         float turnRadius = ROBOT_WIDTH*(leftDelta + rightDelta)/(2*(rightDelta - leftDelta));
         float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
-        robot_pose.x += (turnRadius*sin(dTheta + robot_pose.theta)) - turnRadius*sin(robot_pose.theta);
-        robot_pose.y += (turnRadius*cos(dTheta + robot_pose.theta)) - turnRadius*cos(robot_pose.theta);
+        robot_pose.x += (turnRadius*sin(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*sin(DEG2RAD*robot_pose.theta);
+        robot_pose.y += (turnRadius*cos(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*cos(DEG2RAD*robot_pose.theta);
         robot_pose.theta = boundAngle(robot_pose.theta + dTheta);
     }
 }
