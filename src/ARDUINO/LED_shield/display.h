@@ -72,6 +72,16 @@ void clear_screen(){
     Colorduino.FlipPage();
 }
 
+void displayBlocks(uint8_t* block_pos, uint8_t len){
+    Colorduino.FlipPage();
+    Colorduino.ColorFill(0x50, 0x08, 0x00);
+    for (uint8_t b = 0; b < len; b++){
+        Colorduino.SetPixel(block_pos[b]>>4, block_pos[b]&0x0F, 0x80, 0x80, 0x80);  
+    }
+    Colorduino.FlipPage();
+
+}
+
 void displayLetter(int letter){
     
 uint8_t letter_a[] = {0x01,
