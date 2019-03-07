@@ -42,16 +42,16 @@ void setup()
     unsigned char whiteBalVal[3] = {40,63,50}; 
     Colorduino.SetWhiteBal(whiteBalVal);
 
+    nh.getHardware()->setBaud(115200);
     nh.initNode();
     nh.subscribe(li);
     nh.subscribe(db);
     nh.subscribe(rp_led);
 
-    while(!nh.connected()) {
+    while(!nh.connected()){
         loading_screen();
         nh.spinOnce();
     }
-    delay(200);
     displayBlocks(block_positions, num_blocks_recieved);
 }
 
