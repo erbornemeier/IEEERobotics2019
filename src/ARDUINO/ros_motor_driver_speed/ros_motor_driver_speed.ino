@@ -108,7 +108,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 //#define K_I                     100
 // Distance Controller
 #define K_P_DIST                1.1 //inches error -> rad/s
-#define MAX_SPEED               7 //rad/s
+#define MAX_SPEED               3 //rad/s
 #define MIN_SPEED               0.8 //rad/s
 #define ZERO_ERROR_MARGIN       0.17 //inches until distance is considered achieved
 // Angle controller
@@ -134,45 +134,45 @@ float integralControlValue[NUM_MOTORS] = {0, 0};
 */
 void setup() {
 
-  Serial.begin(115200);
-
-
-  robot_pose.x = 3.5*12;
-  robot_pose.y = 3.5*12;
-  robot_pose.theta = 90;
-
-  for (int i = 0; i < NUM_MOTORS; i++) {
-    pinMode(ENC_PINS[i][A], INPUT_PULLUP);
-    pinMode(ENC_PINS[i][B], INPUT_PULLUP);
-  }
-
-  pinMode(ML, OUTPUT);
-  pinMode(EL, OUTPUT);
-  pinMode(MR, OUTPUT);
-  pinMode(ER, OUTPUT);
-
-  cameraServo.attach(cameraServoPin);
-  cameraServo.write(0);
-
-  claw.Claw_init();
-
-  // attach interrupts to four encoder pins
-  attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
-  attachPCINT(digitalPinToPCINT(ENC_PINS[L][B]), LB_changed,  CHANGE);
-  attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
-  attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
-
-  nh.getHardware()->setBaud(115200);
-  nh.initNode();
-
-  nh.subscribe(dc);
-  nh.subscribe(cc);
-  nh.subscribe(gc);
-  nh.subscribe(cam);
-  nh.advertise(pose_pub);
-  while (!nh.connected()) {
-    nh.spinOnce();
-  }
+    Serial.begin(115200);
+  
+  
+    robot_pose.x = 4.5*12;
+    robot_pose.y = 4.5*12;
+    robot_pose.theta = 90;
+  
+    for (int i = 0; i < NUM_MOTORS; i++) {
+        pinMode(ENC_PINS[i][A], INPUT_PULLUP);
+        pinMode(ENC_PINS[i][B], INPUT_PULLUP);
+    }
+  
+    pinMode(ML, OUTPUT);
+    pinMode(EL, OUTPUT);
+    pinMode(MR, OUTPUT);
+    pinMode(ER, OUTPUT);
+  
+    cameraServo.attach(cameraServoPin);
+    cameraServo.write(0);
+  
+    claw.Claw_init();
+  
+    // attach interrupts to four encoder pins
+    attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
+    attachPCINT(digitalPinToPCINT(ENC_PINS[L][B]), LB_changed,  CHANGE);
+    attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
+    attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
+  
+    nh.getHardware()->setBaud(115200);
+    nh.initNode();
+  
+    nh.subscribe(dc);
+    nh.subscribe(cc);
+    nh.subscribe(gc);
+    nh.subscribe(cam);
+    nh.advertise(pose_pub);
+    while (!nh.connected()) {
+        nh.spinOnce();
+    }
 }
 
 /*
@@ -270,7 +270,7 @@ void distDrive(){
         delay(400);
     } while (!isZero(posError, false));
     stopMotors();
-    robot_pose.x += distanceSetpoint*cos(DEG2RAD*robot_pose.theta);
+    robot_pose.x -= distanceSetpoint*cos(DEG2RAD*robot_pose.theta);
     robot_pose.y += distanceSetpoint*sin(DEG2RAD*robot_pose.theta);
     
 }
@@ -337,13 +337,13 @@ void updatePosition(){
     float rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
     if(fabs((leftDelta - rightDelta)) <  STRAIGHT_THRESH){
         // Robot is going straight, update x and y, no change to angle
-        robot_pose.x += leftDelta*cos(DEG2RAD*robot_pose.theta);
+        robot_pose.x -= leftDelta*cos(DEG2RAD*robot_pose.theta);
         robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
     }
     else {
         float turnRadius = ROBOT_WIDTH*(leftDelta + rightDelta)/(2*(rightDelta - leftDelta));
         float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
-        robot_pose.x += (turnRadius*sin(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*sin(DEG2RAD*robot_pose.theta);
+        robot_pose.x -= (turnRadius*sin(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*sin(DEG2RAD*robot_pose.theta);
         robot_pose.y += (turnRadius*cos(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*cos(DEG2RAD*robot_pose.theta);
         robot_pose.theta = boundAngle(robot_pose.theta + dTheta);
     }
