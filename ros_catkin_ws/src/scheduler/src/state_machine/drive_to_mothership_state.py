@@ -69,20 +69,9 @@ class DriveToMothershipState(State):
 
     def __drive_to_mothership__(self, mothership_pos):
 
-        '''
-        if mothership_pos.x < 0.4:
-            turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
-            commands.send_drive_command(self.drive_pub, 0, 0, turn_speed)
-        elif mothership_pos.x > 0.6:
-            turn_speed = self.turn_gain * (mothership_pos.x - 0.5)
-            commands.send_drive_command(self.drive_pub, 0, 0, -turn_speed)
-        else:
-            forward_speed = self.drive_gain * (47 - self.cameraAngle)
-            commands.send_drive_command(self.drive_pub, forward_speed, 0, 0)
-        '''
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
         forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.2
-        commands.send_drive_command(self.drive_pub, forward_speed, 0, turn_speed)
+        commands.send_drive_vel_command(self.drive_pub, forward_speed, turn_speed)
 
 
     def run(self):
@@ -103,7 +92,7 @@ class DriveToMothershipState(State):
 
         # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
-            commands.send_drive_command(self.drive_pub, 0, 0, 0)
+            commands.send_drive_vel_command(self.drive_pub, 0, 0)
             from place_in_slot_state import *
             return PlaceInSlotState()
         else:

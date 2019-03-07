@@ -30,10 +30,24 @@ def display_letter(display_letter_pub, letter):
     print("Sending: " + str(msg.data))
     display_letter_pub.publish(msg)
 
-def send_drive_command(drive_pub, x, y, theta):
+def send_drive_vel_command(drive_pub, x, theta):
     msg = Pose2D()
     msg.x = x
-    msg.y = y
+    msg.y = 0
+    msg.theta = theta
+    drive_pub.publish(msg)
+
+def send_drive_forward_command(drive_pub, x):
+    msg = Pose2D()
+    msg.x = x
+    msg.y = 1
+    msg.theta = 0
+    drive_pub.publish(msg)
+
+def send_drive_turn_command(drive_pub, theta):
+    msg = Pose2D()
+    msg.x = 0
+    msg.y = 2
     msg.theta = theta
     drive_pub.publish(msg)
 
@@ -52,6 +66,11 @@ def display_block_command(led_pub, x, y):
     msg.data = x & 0xFF
     msg.data <<= 4
     msg.data |= y & 0xF
+    led_pub.publish(msg)
+
+def show_block_display(led_pub):
+    msg = UInt8()
+    msg.data = 0xFE
     led_pub.publish(msg)
 
 def clear_led_display(led_pub):

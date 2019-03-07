@@ -26,7 +26,7 @@ class DetectLetterState(State):
             print(e)
             return self
         commands.display_letter(self.display_letter_pub, detected_letter.letter)
-        rospy.loginfo(detected_letter.letter)
+        #rospy.loginfo(detected_letter.letter)
 
         # from put_down_block_state import * 
         # return PutDownBlockState()
