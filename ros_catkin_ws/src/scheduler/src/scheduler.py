@@ -12,6 +12,7 @@ from state_machine.state_machine import StateMachine
 from state_machine.drive_to_block_state import DriveToBlockState
 from state_machine.pick_up_block_state import PickUpBlockState
 from state_machine.drive_to_mothership_state import DriveToMothershipState
+from state_machine.find_mothership_state import FindMothershipState
 import time as t
 import globals
 import commands
@@ -55,7 +56,7 @@ wait_for_flash_drive()
 display_blocks(led_pub)
 commands.set_display_state(display_state_pub, commands.NORMAL)
 
-state_machine = StateMachine(DriveToBlockState())
+state_machine = StateMachine(FindMothershipState())
 while not rospy.is_shutdown():
     state_machine.run()
 

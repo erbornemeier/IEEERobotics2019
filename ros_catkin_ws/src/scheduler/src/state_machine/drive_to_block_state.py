@@ -53,12 +53,12 @@ class DriveToBlockState(State):
         while (self.robot_x == -1):
             print("waiting for pose")
             rospy.Rate(2).sleep()
+        print("POSE: {}, {}, {}.".format(self.robot_x, self.robot_y, self.robot_theta))
 
-        dx, dy = self.robot_x - self.block_x, self.robot_y - self.block_y
+        dx, dy = self.block_x - self.robot_x, self.block_y - self.robot_y
         forward_dist = (dx**2 + dy**2)**0.5 - self.close_dist 
         forward_dist = max(0, forward_dist)
-        #flip dx since the axis is backwards
-        turn_angle = 180 - ((math.atan2(dy, -dx) * 180.0/3.14159) - self.robot_theta)
+        turn_angle = (math.atan2(dy, dx) * 180.0/3.14159) - self.robot_theta
         if turn_angle > 180:
             turn_angle -= 360
         if turn_angle < -180:
@@ -66,8 +66,9 @@ class DriveToBlockState(State):
         print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
         commands.send_drive_turn_command(self.drive_pub, turn_angle)
         rospy.Rate(0.2).sleep()
-        commands.send_drive_forward_command(self.drive_pub, forward_dist)
-        rospy.Rate(0.15).sleep()
+        if forward_dist > 0:
+            commands.send_drive_forward_command(self.drive_pub, forward_dist)
+            rospy.Rate(0.15).sleep()
 
     def __get_block_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -126,7 +127,7 @@ class DriveToBlockState(State):
 
         self.__drive_to_block__(block_pos)
 
-        rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y) + " Cam Angle: " + str(self.cameraAngle))
+        #rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
         if self.cameraAngle == self.camera_target_angle:
             commands.send_drive_vel_command(self.drive_pub, 0, 0)

@@ -91,7 +91,7 @@ class DriveToMothershipState(State):
 
         self.__drive_to_mothership__(mothership_pos)
 
-        rospy.loginfo("Mothership Pos: " + str(mothership_pos.x) + ", " + str(mothership_pos.y) + " Cam Angle: " + str(self.cameraAngle))
+        #rospy.loginfo("Mothership Pos: " + str(mothership_pos.x) + ", " + str(mothership_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
         # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
