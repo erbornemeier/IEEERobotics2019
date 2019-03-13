@@ -46,6 +46,8 @@ volatile bool newDriveCmd = false;
 ros::NodeHandle nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
+    String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
+    nh.loginfo(logg.c_str());
     switch((uint8_t)moveCmd.y){
         case CONST_VEL:
             velocitySetpoint[L] = -moveCmd.theta;
@@ -81,7 +83,7 @@ void gcCallback(const std_msgs::Bool& gripCmd) {
 void camCallback(const std_msgs::UInt8& camCmd) {
     cameraAngle = camCmd.data;
     cameraServo.write(cameraAngle);
-    nh.loginfo("Got it!");
+    //nh.loginfo("Got it!");
 }
 
 
