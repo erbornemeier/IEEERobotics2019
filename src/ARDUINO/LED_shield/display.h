@@ -49,12 +49,8 @@ void loading_screen(){
     }
 }
 
-void showRobotPos(uint8_t x, uint8_t y){
-  
-        Colorduino.FlipPage();
-        Colorduino.SetPixel(x,y, 0x0, 0x0, 0x60);
-        Colorduino.FlipPage();
-  
+void displayRobotPos(uint8_t x, uint8_t y){
+      Colorduino.SetPixel(x,y, 0x0, 0x0, 0x60);
 }
 
 
@@ -72,12 +68,10 @@ void clear_screen(){
 }
 
 void displayBlocks(uint8_t* block_pos, uint8_t len){
-    Colorduino.FlipPage();
-    Colorduino.ColorFill(0x50, 0x08, 0x00);
+    
     for (uint8_t b = 0; b < len; b++){
-        Colorduino.SetPixel(block_pos[b]&0x0F, 7-(block_pos[b]>>4), 0x80, 0x80, 0x80);  
+        Colorduino.SetPixel(block_pos[b]&0x0F, block_pos[b]>>4, 0x80, 0x80, 0x80);  
     }
-    Colorduino.FlipPage();
 
 }
 
@@ -198,10 +192,6 @@ uint8_t letter_f[] = {0x01,
                      0x33,
                      0xFF};
 
-
-  
-    Colorduino.FlipPage();
-    Colorduino.ColorFill(0,0,0);
   
     switch(letter){
         case A:
@@ -225,8 +215,6 @@ uint8_t letter_f[] = {0x01,
         default:
           break;
     }
-
-    Colorduino.FlipPage();
 }
 
 #endif
