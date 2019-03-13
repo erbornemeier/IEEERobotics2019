@@ -217,29 +217,23 @@ void rosUpdate(){
    Takes in a velocity setpoint and drives forward at that speed.
 */
 void velDrive() {
-    
-  
     unsigned long timeRef = millis();
-    if (velocitySetpoint[0] == 0){
+    /*if (velocitySetpoint[0] == 0){
         stopMotors();
         return;
-    }
+    }*/
     
     int motorVal[NUM_MOTORS];
     for (int i = 0; i < NUM_MOTORS; i++) {
         float velSetpoint = velocitySetpoint[i];
         motorVal[i] = findMotorPWMSetpoint(velSetpoint, i);
-        
     }
     for (int i = 0; i < NUM_MOTORS; i++){
-        
         setMotor(i, motorVal[i]);
     }
         
     //if (millis() > timeRef + SAMPLE_PERIOD) Serial.println("Error! Execution time too slow");
-    while (millis() < timeRef + SAMPLE_PERIOD) {
-        //nh.spinOnce();
-    }
+    while (millis() < timeRef + SAMPLE_PERIOD) {} // wait the sample period 
 }
 
 /*
@@ -248,8 +242,8 @@ void velDrive() {
  * saturates the PWM value (-255 to 255).
  */
 int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
-    if (angVelSetpoint == 0) return 0;
     float error = angVelSetpoint - getVelocity(motor);
+    if (angVelSetpoint == 0) return 0;
     integralControlValue[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
     int PWMSetpoint = (int)(error * K_P + integralControlValue[motor] * K_I);
     
