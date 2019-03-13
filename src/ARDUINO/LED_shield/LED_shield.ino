@@ -27,8 +27,8 @@ void blockCallback(const std_msgs::UInt8& data) {
 }
 
 void positionCallback(const geometry_msgs::Pose2D& data) {
-    robot_x = round(data.x/12.0-0.5);
-    robot_y = round(data.y/12.0-0.5);
+    robot_y = round(data.x/12.0-0.5);
+    robot_x = round(data.y/12.0-0.5);
 }
 
 void changeDisplayState(const std_msgs::UInt8& data){
