@@ -26,14 +26,14 @@ class PlaceInSlotState(State):
             turn_angle = self.side_angle
         #c or f
         elif globals.current_letter % 3 == 2:
-            turn_speed = -self.side_angle
+            turn_angle = -self.side_angle
 
         #drive to slot
         if turn_angle != 0:
-            command.send_drive_turn_command(self.drive_pub, turn_angle )
-            rospy.Rate(0.5)
+            commands.send_drive_turn_command(self.drive_pub, turn_angle )
+            rospy.Rate(0.25)
         commands.send_drive_forward_command(self.drive_pub, self.forward_dist)
-        rospy.Rate(0.5).sleep()
+        rospy.Rate(0.25).sleep()
 
         #drop in slot
         commands.send_grip_command(self.claw_grip_pub, commands.CLAW_OPEN)
@@ -41,10 +41,10 @@ class PlaceInSlotState(State):
 
         #back off slot
         commands.send_drive_forward_command(self.drive_pub, -self.forward_dist)
-        rospy.Rate(0.5).sleep()
+        rospy.Rate(0.25).sleep()
         if turn_angle != 0:
-            command.send_drive_turn_command(self.drive_pub, -turn_angle)
-            rospy.Rate(0.5)
+            commands.send_drive_turn_command(self.drive_pub, -turn_angle)
+            rospy.Rate(0.25)
 
     def run(self):
         #close claw and lift it up

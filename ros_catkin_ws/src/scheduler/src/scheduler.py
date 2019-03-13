@@ -40,21 +40,20 @@ def wait_for_flash_drive():
     print("x coords: {}\ny coords: {}\nsize: {}".format(globals.x_coords, globals.y_coords, globals.num_blocks))
 
 def display_blocks(led_pub):
-    commands.show_block_display(led_pub)
-    t.sleep(0.2)
-    commands.show_block_display(led_pub)
-    t.sleep(0.2)
+
     for x, y in zip(globals.x_coords, globals.y_coords):
         print("Displaying block @ {},{}".format(x, y))
         commands.display_block_command(led_pub, x, y)
         t.sleep(0.2)
 
 rospy.init_node("scheduler")
+led_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
+display_state_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
 _ = raw_input("Press enter to start")
 
 wait_for_flash_drive()
-led_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
 display_blocks(led_pub)
+commands.set_display_state(display_state_pub, commands.NORMAL)
 
 state_machine = StateMachine(DriveToBlockState())
 while not rospy.is_shutdown():

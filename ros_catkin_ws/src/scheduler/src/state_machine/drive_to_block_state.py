@@ -16,7 +16,7 @@ class DriveToBlockState(State):
     def start(self):
         rospy.loginfo("Entering drive to block state")
 
-        self.block_x = (7.5-globals.x_coords[globals.current_block])*12
+        self.block_x = (globals.x_coords[globals.current_block]+0.5)*12
         self.block_y = (globals.y_coords[globals.current_block]+0.5)*12
         self.robot_x = -1
         self.robot_y = -1
@@ -24,6 +24,7 @@ class DriveToBlockState(State):
         self.needs_approach = True
 
         self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
+        self.change_display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
         self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
         self.pose_sub = rospy.Subscriber("robot_pose", Pose2D, self.__set_pose__)
@@ -31,16 +32,16 @@ class DriveToBlockState(State):
         self.block_srv = rospy.ServiceProxy("block_pos", Block)
 
         self.cam_gain = 6 
-        self.drive_gain = 2/27.
+        self.drive_gain = 1.5/27.
         self.turn_gain = 2
         self.cameraAngle = 20
         self.rate = rospy.Rate(5)
 
         self.camera_target_angle = 47
-        self.close_dist = 36 #inches
+        self.close_dist = 24 #inches
 
-        commands.send_cam_command(self.cam_pub, self.cameraAngle)
-        rospy.loginfo("Set camera to starting angle 20")
+        t.sleep(0.5)
+        commands.set_display_state(self.change_display_pub, commands.NORMAL)
 
     def __set_pose__(self, msg):
         self.robot_x = msg.x
@@ -55,6 +56,7 @@ class DriveToBlockState(State):
 
         dx, dy = self.robot_x - self.block_x, self.robot_y - self.block_y
         forward_dist = (dx**2 + dy**2)**0.5 - self.close_dist 
+        forward_dist = max(0, forward_dist)
         #flip dx since the axis is backwards
         turn_angle = 180 - ((math.atan2(dy, -dx) * 180.0/3.14159) - self.robot_theta)
         if turn_angle > 180:
@@ -108,8 +110,9 @@ class DriveToBlockState(State):
 
         self.rate.sleep()
 
-        commands.send_claw_command(self.claw_pub, commands.DROP_ANGLE)
         if self.needs_approach:
+            commands.send_cam_command(self.cam_pub, self.cameraAngle)
+            commands.send_claw_command(self.claw_pub, commands.DROP_ANGLE)
             self.__get_close_to_block__()
             self.needs_approach = False
 
@@ -135,6 +138,8 @@ class DriveToBlockState(State):
     def finish(self):
         self.drive_pub.unregister()
         self.cam_pub.unregister()
+        self.claw_pub.unregister()
+        self.change_display_pub.unregister()
         self.block_srv.close()
         rospy.loginfo("Exiting drive to block state")
 

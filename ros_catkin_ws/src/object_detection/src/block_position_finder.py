@@ -10,7 +10,7 @@ bridge = CvBridge()
 
 orange_lower = np.array([4,100,0])
 orange_upper = np.array([18,255,255])
-white_lower = np.array([0,0,160])
+white_lower = np.array([0,0,200])
 white_upper = np.array([255,255,255])
 kernel = np.ones((5,5),np.uint8)
 kernel2 = np.ones((5,5),np.uint8)

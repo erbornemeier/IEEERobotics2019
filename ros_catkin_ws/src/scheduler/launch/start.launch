@@ -1,7 +1,7 @@
 <launch>
 
-	<node pkg="rosserial_python" type="serial_node.py" name="arduino_1" output="screen" args="/dev/ttyACM0"> <param name="baud" value="115200"/> </node>
-	<node pkg="rosserial_python" type="serial_node.py" name="arduino_2" output="screen" args="/dev/ttyACM1"> <param name="baud" value="115200"/> </node>
+	<node pkg="rosserial_python" type="serial_node.py" name="arduino_1" output="screen" args="/dev/ttyACM1"> <param name="baud" value="115200"/> </node>
+	<node pkg="rosserial_python" type="serial_node.py" name="arduino_2" output="screen" args="/dev/ttyACM0"> <param name="baud" value="115200"/> </node>
 
 	<node pkg="object_detection" type="camera_publisher.py" name="camera" respawn="True" />
 	<node pkg="object_detection" type="classifier.py" name="classifier" output="screen" />
