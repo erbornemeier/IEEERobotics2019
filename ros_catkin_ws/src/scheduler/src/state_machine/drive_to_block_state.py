@@ -6,6 +6,7 @@ from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import commands
 import time as t
+import math
 import rospy
 
 class DriveToBlockState(State):
@@ -15,20 +16,58 @@ class DriveToBlockState(State):
     def start(self):
         rospy.loginfo("Entering drive to block state")
 
+        self.block_x = (globals.x_coords[globals.current_block]+0.5)*12
+        self.block_y = (globals.y_coords[globals.current_block]+0.5)*12
+        self.robot_x = -1
+        self.robot_y = -1
+        self.robot_theta = -1
+        self.needs_approach = True
+
         self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
+        self.change_display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
         self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
+        self.pose_sub = rospy.Subscriber("robot_pose", Pose2D, self.__set_pose__)
         rospy.wait_for_service("block_pos")
         self.block_srv = rospy.ServiceProxy("block_pos", Block)
 
         self.cam_gain = 6 
-        self.drive_gain = 2/27.
+        self.drive_gain = 1.5/27.
         self.turn_gain = 2
         self.cameraAngle = 20
         self.rate = rospy.Rate(5)
 
-        commands.send_cam_command(self.cam_pub, self.cameraAngle)
-        rospy.loginfo("Set camera to starting angle 20")
+        self.camera_target_angle = 47
+        self.close_dist = 24 #inches
+
+        t.sleep(0.5)
+        commands.set_display_state(self.change_display_pub, commands.NORMAL)
+
+    def __set_pose__(self, msg):
+        self.robot_x = msg.x
+        self.robot_y = msg.y
+        self.robot_theta = msg.theta
+
+    def __get_close_to_block__(self):
+        # wait until robot pos recieved
+        while (self.robot_x == -1):
+            print("waiting for pose")
+            rospy.Rate(2).sleep()
+
+        dx, dy = self.robot_x - self.block_x, self.robot_y - self.block_y
+        forward_dist = (dx**2 + dy**2)**0.5 - self.close_dist 
+        forward_dist = max(0, forward_dist)
+        #flip dx since the axis is backwards
+        turn_angle = 180 - ((math.atan2(dy, -dx) * 180.0/3.14159) - self.robot_theta)
+        if turn_angle > 180:
+            turn_angle -= 360
+        if turn_angle < -180:
+            turn_angle += 360
+        print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
+        commands.send_drive_turn_command(self.drive_pub, turn_angle)
+        rospy.Rate(0.2).sleep()
+        commands.send_drive_forward_command(self.drive_pub, forward_dist)
+        rospy.Rate(0.15).sleep()
 
     def __get_block_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -44,7 +83,7 @@ class DriveToBlockState(State):
     def __reset__(self):
         #self.cameraAngle = 20
         commands.send_cam_command(self.cam_pub, int(self.cameraAngle))
-        commands.send_drive_command(self.drive_pub, 0, 0, 0)
+        commands.send_drive_vel_command(self.drive_pub, 0, 0)
 
     def __camera_to_block__(self, block_pos):
 
@@ -55,35 +94,27 @@ class DriveToBlockState(State):
 
         if self.cameraAngle < 20:
             self.cameraAngle = 20
-        elif self.cameraAngle > 47:
-            self.cameraAngle = 47
+        elif self.cameraAngle > self.camera_target_angle:
+            self.cameraAngle = self.camera_target_angle
 
         commands.send_cam_command(self.cam_pub, int(self.cameraAngle))
 
     def __drive_to_block__(self, block_pos):
 
-        '''
-        if block_pos.x < 0.4:
-            turn_speed = self.turn_gain * (0.5 - block_pos.x)
-            commands.send_drive_command(self.drive_pub, 0, 0, turn_speed)
-        elif block_pos.x > 0.6:
-            turn_speed = self.turn_gain * (block_pos.x - 0.5)
-            commands.send_drive_command(self.drive_pub, 0, 0, -turn_speed)
-        else:
-            forward_speed = self.drive_gain * (47 - self.cameraAngle)
-            commands.send_drive_command(self.drive_pub, forward_speed, 0, 0)
-        '''
         turn_speed = self.turn_gain * (0.5 - block_pos.x)
-        forward_speed = self.drive_gain * (47 - self.cameraAngle) + 0.2
-        commands.send_drive_command(self.drive_pub, forward_speed, 0, turn_speed)
+        forward_speed = self.drive_gain * (self.camera_target_angle - self.cameraAngle) + 0.2
+        commands.send_drive_vel_command(self.drive_pub, forward_speed, turn_speed)
 
 
     def run(self):
 
         self.rate.sleep()
 
-        commands.send_claw_command(self.claw_pub, commands.DROP_ANGLE)
-
+        if self.needs_approach:
+            commands.send_cam_command(self.cam_pub, self.cameraAngle)
+            commands.send_claw_command(self.claw_pub, commands.DROP_ANGLE)
+            self.__get_close_to_block__()
+            self.needs_approach = False
 
         #camera to block
         block_pos = self.__get_block_pos__()
@@ -97,8 +128,8 @@ class DriveToBlockState(State):
 
         rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
-        if self.cameraAngle == 47:
-            commands.send_drive_command(self.drive_pub, 0, 0, 0)
+        if self.cameraAngle == self.camera_target_angle:
+            commands.send_drive_vel_command(self.drive_pub, 0, 0)
             from pick_up_block_state import *
             return PickUpBlockState()
         else:
@@ -107,6 +138,8 @@ class DriveToBlockState(State):
     def finish(self):
         self.drive_pub.unregister()
         self.cam_pub.unregister()
+        self.claw_pub.unregister()
+        self.change_display_pub.unregister()
         self.block_srv.close()
         rospy.loginfo("Exiting drive to block state")
 

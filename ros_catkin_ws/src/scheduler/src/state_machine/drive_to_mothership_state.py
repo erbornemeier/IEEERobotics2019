@@ -16,6 +16,7 @@ class DriveToMothershipState(State):
         rospy.loginfo("Entering drive to mothership state")
 
         self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
+        self.change_display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
         self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
 
@@ -30,9 +31,12 @@ class DriveToMothershipState(State):
         self.cameraAngle = 15
         self.rate = rospy.Rate(5)
         self.target_camera_angle = 37
+        
+        t.sleep(0.5)
 
         commands.send_cam_command(self.cam_pub, self.cameraAngle)
         commands.send_claw_command(self.claw_pub, commands.CARRY_ANGLE)
+        commands.set_display_state(self.change_display_pub, commands.NORMAL)
         rospy.loginfo("Set camera to starting angle 20")
 
     def __get_mothership_pos__(self):
@@ -51,9 +55,9 @@ class DriveToMothershipState(State):
     def __reset__(self):
         #self.cameraAngle = 20
         commands.send_cam_command(self.cam_pub, int(self.cameraAngle))
-        commands.send_drive_command(self.drive_pub, 0, 0, 0)
+        commands.send_drive_vel_command(self.drive_pub, 0, 0)
 
-    def __camera_to_mothership(self, mothership_pos):
+    def __camera_to_mothership__(self, mothership_pos):
 
         if mothership_pos.y > 0.53:
             self.cameraAngle += self.cam_gain * (mothership_pos.y - 0.5)
@@ -69,21 +73,9 @@ class DriveToMothershipState(State):
 
     def __drive_to_mothership__(self, mothership_pos):
 
-        '''
-        if mothership_pos.x < 0.4:
-            turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
-            commands.send_drive_command(self.drive_pub, 0, 0, turn_speed)
-        elif mothership_pos.x > 0.6:
-            turn_speed = self.turn_gain * (mothership_pos.x - 0.5)
-            commands.send_drive_command(self.drive_pub, 0, 0, -turn_speed)
-        else:
-            forward_speed = self.drive_gain * (47 - self.cameraAngle)
-            commands.send_drive_command(self.drive_pub, forward_speed, 0, 0)
-        '''
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
         forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.2
-        commands.send_drive_command(self.drive_pub, forward_speed, 0, turn_speed)
-
+        commands.send_drive_vel_command(self.drive_pub, forward_speed, turn_speed)
 
     def run(self):
 
@@ -95,7 +87,7 @@ class DriveToMothershipState(State):
             self.__reset__()
             return self
         else:
-            self.__camera_to_mothership(mothership_pos)
+            self.__camera_to_mothership__(mothership_pos)
 
         self.__drive_to_mothership__(mothership_pos)
 
@@ -103,7 +95,7 @@ class DriveToMothershipState(State):
 
         # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
-            commands.send_drive_command(self.drive_pub, 0, 0, 0)
+            commands.send_drive_vel_command(self.drive_pub, 0, 0)
             from place_in_slot_state import *
             return PlaceInSlotState()
         else:
@@ -112,6 +104,7 @@ class DriveToMothershipState(State):
     def finish(self):
         self.drive_pub.unregister()
         self.cam_pub.unregister()
+        self.change_display_pub.unregister()
         self.block_srv.close()
         rospy.loginfo("Exiting drive to block state")
 

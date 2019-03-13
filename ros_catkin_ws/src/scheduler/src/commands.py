@@ -24,37 +24,44 @@ def send_cam_command(cam_pub, angle):
     msg.data = angle
     cam_pub.publish(msg)
 
-def display_letter(display_letter_pub, letter):
-    msg = UInt8()
-    msg.data = letter
-    print("Sending: " + str(msg.data))
-    display_letter_pub.publish(msg)
-
-def send_drive_command(drive_pub, x, y, theta):
+def send_drive_vel_command(drive_pub, x, theta):
     msg = Pose2D()
     msg.x = x
-    msg.y = y
+    msg.y = 0
     msg.theta = theta
     drive_pub.publish(msg)
 
+def send_drive_forward_command(drive_pub, x):
+    msg = Pose2D()
+    msg.x = x
+    msg.y = 1
+    msg.theta = 0
+    drive_pub.publish(msg)
+
+def send_drive_turn_command(drive_pub, theta):
+    msg = Pose2D()
+    msg.x = 0
+    msg.y = 2
+    msg.theta = theta
+    drive_pub.publish(msg)
+
+def display_letter(display_letter_pub, letter):
+    msg = UInt8()
+    msg.data = letter
+    display_letter_pub.publish(msg)
+
 def display_block_command(led_pub, x, y):
-    '''
-    if x < 0 or x > 8:
-        rospy.loginfo("Display block, invalid x coordinate: {}".format(x))
-        return
-
-    if y < 0 or y > 8:
-        rospy.loginfo("Display block, invalid y coordinate: {}".format(y))
-        return
-    '''
-
     msg = UInt8()
     msg.data = x & 0xFF
     msg.data <<= 4
     msg.data |= y & 0xF
     led_pub.publish(msg)
 
-def clear_led_display(led_pub):
+NORMAL = 0
+LETTER = 1
+WAITING = 2
+def set_display_state(display_pub, state):
     msg = UInt8()
-    msg.data = 0xFF
-    led_pub.publish(msg)
+    msg.data = state
+    display_pub.publish(msg)
+
