@@ -352,8 +352,9 @@ void updatePosition(){
 // Keeps the angle within bounds of -360 to +360
 float boundAngle(float angle){
     while(abs(angle) > 180){
-        angle += angle > 0 ? -180 : 180;
+        angle += angle > 0 ? -360 : 360;
     }
+    return angle;
 }
 
 
