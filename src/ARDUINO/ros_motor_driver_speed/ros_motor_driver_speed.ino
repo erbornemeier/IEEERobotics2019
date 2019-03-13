@@ -112,6 +112,8 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define MAX_SPEED               3 //rad/s
 #define MIN_SPEED               0.8 //rad/s
 #define ZERO_ERROR_MARGIN       0.17 //inches until distance is considered achieved
+#define K_DIFF                  1.5
+#define MAX_CORRECTION          2
 // Angle controller
 #define K_P_ANG                 0.04 //degrees error -> rad/s
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
@@ -266,7 +268,7 @@ void distDrive(){
                 //find error in inches
                 posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
                 //changes velocity setpoint
-                velocitySetpoint[i] = posErrorToAngVel(posError[i]);
+                velocitySetpoint[i] = posErrorToAngVel(posError, i);
             }
         //changes motor output
         
@@ -390,12 +392,21 @@ void printErrors(long* errors) {
   //nh.loginfo("--------");
 }
 
-float posErrorToAngVel(float error){
+float posErrorToAngVel(float* errors, int motor){
     float angVel = (error*K_P_DIST);
-    if (abs(angVel) > MAX_SPEED) {
-        return angVel > 0 ? MAX_SPEED : -MAX_SPEED;
-    }
-    else return angVel;
+    //saturate vel values
+    if (abs(angVel) > MAX_SPEED) angVel =  angVel > 0 ? MAX_SPEED : -MAX_SPEED;
+    else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
+    
+    // Do error correction to keep wheels consistent with eachother
+    int otherMotor = (motor == L) ? R : L;
+    float motorDiff = errors[motor] - errors[otherMotor];
+    float motorDiffCorrection = K_DIFF * motorDiff;
+    if (motorDiffCorrection > MAX_CORRECTION) motorDiffCorrection = MAX_CORRECTION;
+    if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
+
+    angVel += motorDiffCorrection;
+    return angVel;
 }
 
 /*
