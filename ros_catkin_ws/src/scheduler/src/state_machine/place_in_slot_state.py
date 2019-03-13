@@ -8,7 +8,7 @@ from geometry_msgs.msg import Pose2D
 
 class PlaceInSlotState(State):
     def __init__(self):
-        super(PlaceInSlotState, self).__init__("Throw Block")
+        super(PlaceInSlotState, self).__init__("Place in Slot")
 
     def start(self):
         self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
@@ -17,20 +17,17 @@ class PlaceInSlotState(State):
         rospy.loginfo("Place in slot state start")
 
         self.forward_dist = 3 #inches
-        self.side_angle = 30
+        self.side_angle = 0
+        if globals.current_letter % 3 == 0:
+            self.side_angle = 20
+        elif globals.current_letter % 3 == 2:
+            self.side_angle = -20
 
     def __drop_off_at_letter__(self):
-        #a or d
-        turn_angle = 0
-        if globals.current_letter % 3 == 0:
-            turn_angle = self.side_angle
-        #c or f
-        elif globals.current_letter % 3 == 2:
-            turn_angle = -self.side_angle
-
         #drive to slot
-        if turn_angle != 0:
-            commands.send_drive_turn_command(self.drive_pub, turn_angle )
+        if self.side_angle != 0:
+            print('SENDING TURN: {}'.format(self.side_angle))
+            commands.send_drive_turn_command(self.drive_pub, self.side_angle )
             rospy.Rate(0.25)
         commands.send_drive_forward_command(self.drive_pub, self.forward_dist)
         rospy.Rate(0.25).sleep()
@@ -42,9 +39,12 @@ class PlaceInSlotState(State):
         #back off slot
         commands.send_drive_forward_command(self.drive_pub, -self.forward_dist)
         rospy.Rate(0.25).sleep()
-        if turn_angle != 0:
-            commands.send_drive_turn_command(self.drive_pub, -turn_angle)
+        if self.side_angle != 0:
+            print('SENDING TURN: {}'.format(-self.side_angle))
+            commands.send_drive_turn_command(self.drive_pub, -self.side_angle)
             rospy.Rate(0.25)
+
+        globals.current_block += 1
 
     def run(self):
         #close claw and lift it up

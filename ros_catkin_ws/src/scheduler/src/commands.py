@@ -37,12 +37,14 @@ def send_drive_forward_command(drive_pub, x):
     msg.y = 1
     msg.theta = 0
     drive_pub.publish(msg)
+    drive_pub.publish(msg)
 
 def send_drive_turn_command(drive_pub, theta):
     msg = Pose2D()
     msg.x = 0
     msg.y = 2
     msg.theta = theta
+    drive_pub.publish(msg)
     drive_pub.publish(msg)
 
 def display_letter(display_letter_pub, letter):
@@ -63,5 +65,6 @@ WAITING = 2
 def set_display_state(display_pub, state):
     msg = UInt8()
     msg.data = state
+    display_pub.publish(msg)
     display_pub.publish(msg)
 
