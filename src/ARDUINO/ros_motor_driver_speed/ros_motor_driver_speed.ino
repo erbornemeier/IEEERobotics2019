@@ -43,7 +43,7 @@ volatile bool newDriveCmd = false;
   ROS
 *****************************************/
 
-ros::NodeHandle_<ArduinoHardware, 5, 5, 1024, 512> nh;
+ros::NodeHandle nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
     switch((uint8_t)moveCmd.y){
@@ -98,7 +98,8 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 
 // Control Values
 #define SAMPLE_PERIOD           10
-#define POSE_PUBLISH_RATE_MS    500
+#define POSE_PUBLISH_RATE_MS    1000
+#define ROS_UPDATE_RATE         1
 #define DEG2RAD (PI/180)
 
 // Velocity Controller
@@ -111,6 +112,8 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define MAX_SPEED               3 //rad/s
 #define MIN_SPEED               0.8 //rad/s
 #define ZERO_ERROR_MARGIN       0.17 //inches until distance is considered achieved
+#define K_DIFF                  1.5
+#define MAX_CORRECTION          2
 // Angle controller
 #define K_P_ANG                 0.04 //degrees error -> rad/s
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
@@ -133,9 +136,6 @@ float integralControlValue[NUM_MOTORS] = {0, 0};
    void setup()
 */
 void setup() {
-
-    Serial.begin(115200);
-  
   
     robot_pose.x = 4.5*12;
     robot_pose.y = 4.5*12;
@@ -179,12 +179,6 @@ void setup() {
    void loop()
 */
 void loop() {
-    static long lastTime = millis();
-    if (millis() - lastTime > POSE_PUBLISH_RATE_MS){
-        pose_pub.publish(&robot_pose);
-        lastTime = millis();
-    }
-    nh.spinOnce();
 
     switch(moveState){
         case CONST_VEL:
@@ -206,7 +200,18 @@ void loop() {
         default:
             break;
         }
-            
+  rosUpdate();
+}
+
+void rosUpdate(){
+    
+    static long lastTime = millis();
+    if (millis() - lastTime > POSE_PUBLISH_RATE_MS){
+        pose_pub.publish(&robot_pose);
+        lastTime = millis();
+    }
+        nh.spinOnce();
+    
 }
 
 /*
@@ -215,20 +220,22 @@ void loop() {
 */
 void velDrive() {
     unsigned long timeRef = millis();
-        int motorVal[NUM_MOTORS];
-        for (int i = 0; i < NUM_MOTORS; i++) {
-            float velSetpoint = velocitySetpoint[i];
-            motorVal[i] = findMotorPWMSetpoint(velSetpoint, i);
-            //setMotor(i, motorVal);
-        }
-        for (int i = 0; i < NUM_MOTORS; i++){
-            setMotor(i, motorVal[i]);
-        }
-        
-    if (millis() > timeRef + SAMPLE_PERIOD) Serial.println("Error! Execution time too slow");
-    while (millis() < timeRef + SAMPLE_PERIOD) {
-        //nh.spinOnce();
+    /*if (velocitySetpoint[0] == 0){
+        stopMotors();
+        return;
+    }*/
+    
+    int motorVal[NUM_MOTORS];
+    for (int i = 0; i < NUM_MOTORS; i++) {
+        float velSetpoint = velocitySetpoint[i];
+        motorVal[i] = findMotorPWMSetpoint(velSetpoint, i);
     }
+    for (int i = 0; i < NUM_MOTORS; i++){
+        setMotor(i, motorVal[i]);
+    }
+        
+    //if (millis() > timeRef + SAMPLE_PERIOD) Serial.println("Error! Execution time too slow");
+    while (millis() < timeRef + SAMPLE_PERIOD) {} // wait the sample period 
 }
 
 /*
@@ -238,9 +245,10 @@ void velDrive() {
  */
 int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
     float error = angVelSetpoint - getVelocity(motor);
+    if (angVelSetpoint == 0) return 0;
     integralControlValue[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
     int PWMSetpoint = (int)(error * K_P + integralControlValue[motor] * K_I);
-  
+    
     //saturate PWM value
     if (abs(PWMSetpoint) > 255) {
       return PWMSetpoint > 0 ? 255 : -255;
@@ -260,17 +268,19 @@ void distDrive(){
                 //find error in inches
                 posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
                 //changes velocity setpoint
-                velocitySetpoint[i] = posErrorToAngVel(posError[i]);
+                velocitySetpoint[i] = posErrorToAngVel(posError, i);
             }
         //changes motor output
+        
         velDrive();
+        rosUpdate();
         } while (!isZero(posError, false));
         stopMotors();
         // Delay for motor overshoot calculation
         delay(400);
     } while (!isZero(posError, false));
     stopMotors();
-    robot_pose.x -= distanceSetpoint*cos(DEG2RAD*robot_pose.theta);
+    robot_pose.x += distanceSetpoint*cos(DEG2RAD*robot_pose.theta);
     robot_pose.y += distanceSetpoint*sin(DEG2RAD*robot_pose.theta);
     
 }
@@ -294,6 +304,7 @@ void turn(){
             }
             //changes motor output
             velDrive(); //enforces set sample period
+            rosUpdate();
         } while (!isZero(angError, true));
         stopMotors();
         // Delay for motor overshoot calculation
@@ -337,23 +348,24 @@ void updatePosition(){
     float rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
     if(fabs((leftDelta - rightDelta)) <  STRAIGHT_THRESH){
         // Robot is going straight, update x and y, no change to angle
-        robot_pose.x -= leftDelta*cos(DEG2RAD*robot_pose.theta);
+        robot_pose.x += leftDelta*cos(DEG2RAD*robot_pose.theta);
         robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
     }
     else {
         float turnRadius = ROBOT_WIDTH*(leftDelta + rightDelta)/(2*(rightDelta - leftDelta));
         float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
-        robot_pose.x -= (turnRadius*sin(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*sin(DEG2RAD*robot_pose.theta);
+        robot_pose.x += (turnRadius*sin(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*sin(DEG2RAD*robot_pose.theta);
         robot_pose.y += (turnRadius*cos(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*cos(DEG2RAD*robot_pose.theta);
         robot_pose.theta = boundAngle(robot_pose.theta + dTheta);
     }
 }
 
-// Keeps the angle within bounds of -360 to +360
+// Keeps the angle within bounds of -180 to 180
 float boundAngle(float angle){
     while(abs(angle) > 180){
-        angle += angle > 0 ? -180 : 180;
+        angle += angle > 0 ? -360 : 360;
     }
+    return angle;
 }
 
 
@@ -380,12 +392,21 @@ void printErrors(long* errors) {
   //nh.loginfo("--------");
 }
 
-float posErrorToAngVel(float error){
+float posErrorToAngVel(float* errors, int motor){
     float angVel = (error*K_P_DIST);
-    if (abs(angVel) > MAX_SPEED) {
-        return angVel > 0 ? MAX_SPEED : -MAX_SPEED;
-    }
-    else return angVel;
+    //saturate vel values
+    if (abs(angVel) > MAX_SPEED) angVel =  angVel > 0 ? MAX_SPEED : -MAX_SPEED;
+    else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
+    
+    // Do error correction to keep wheels consistent with eachother
+    int otherMotor = (motor == L) ? R : L;
+    float motorDiff = errors[motor] - errors[otherMotor];
+    float motorDiffCorrection = K_DIFF * motorDiff;
+    if (motorDiffCorrection > MAX_CORRECTION) motorDiffCorrection = MAX_CORRECTION;
+    if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
+
+    angVel += motorDiffCorrection;
+    return angVel;
 }
 
 /*
@@ -393,7 +414,7 @@ float posErrorToAngVel(float error){
    set the identified motor to the desired PWM value (uint_8)
 */
 void setMotor(int m, int pwm) {
-    Serial.println("Motor: " + String(m) + ": " + String(pwm));
+    //Serial.println("Motor: " + String(m) + ": " + String(pwm));
   
     //negative on left motor is forwards
     pwm = (m == L) ? -pwm : pwm;
