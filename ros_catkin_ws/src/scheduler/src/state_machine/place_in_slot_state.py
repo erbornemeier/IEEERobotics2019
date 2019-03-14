@@ -11,12 +11,10 @@ class PlaceInSlotState(State):
         super(PlaceInSlotState, self).__init__("Place in Slot")
 
     def start(self):
-        rospy.loginfo("Place in slot state start")
-
+        self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
         self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
         self.claw_grip_pub = rospy.Publisher("grip_command", Bool, queue_size=1)
-        rospy.wait_for_service("drive_service")
-        self.drive_srv = rospy.ServiceProxy("drive_service", Drive)
+        rospy.loginfo("Place in slot state start")
 
         self.forward_dist = 3 #inches
         self.side_angle = 0
@@ -29,9 +27,9 @@ class PlaceInSlotState(State):
         #drive to slot
         if self.side_angle != 0:
             print('SENDING TURN: {}'.format(self.side_angle))
-            commands.send_drive_turn_command(self.drive_srv, self.side_angle )
+            commands.send_drive_turn_command(self.drive_pub, self.side_angle )
             rospy.Rate(0.25)
-        commands.send_drive_forward_command(self.drive_srv, self.forward_dist)
+        commands.send_drive_forward_command(self.drive_pub, self.forward_dist)
         rospy.Rate(0.25).sleep()
 
         #drop in slot
@@ -39,11 +37,11 @@ class PlaceInSlotState(State):
         rospy.Rate(1).sleep()
 
         #back off slot
-        commands.send_drive_forward_command(self.drive_srv, -self.forward_dist)
+        commands.send_drive_forward_command(self.drive_pub, -self.forward_dist)
         rospy.Rate(0.25).sleep()
         if self.side_angle != 0:
             print('SENDING TURN: {}'.format(-self.side_angle))
-            commands.send_drive_turn_command(self.drive_srv, -self.side_angle)
+            commands.send_drive_turn_command(self.drive_pub, -self.side_angle)
             rospy.Rate(0.25)
 
         globals.current_block += 1
@@ -68,5 +66,4 @@ class PlaceInSlotState(State):
         self.cam_pub.unregister()
         self.claw_grip_pub.unregister()
         self.display_letter_pub.unregister()
-        self.drive_srv.close()
         rospy.loginfo("Finished pick up block state")
