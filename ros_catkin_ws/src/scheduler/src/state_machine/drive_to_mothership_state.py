@@ -37,7 +37,7 @@ class DriveToMothershipState(State):
         # Coordinate system [0,1] top left corner is (0,0)
         # TODO: Change to motherboard service
         try:
-            return commands.block_srv()
+            return commands.mothership_srv()
         except Exception as e:
             print(e)
             mothership_pos = MothershipResponse()
