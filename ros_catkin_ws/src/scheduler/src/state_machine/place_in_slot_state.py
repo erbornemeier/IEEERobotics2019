@@ -11,9 +11,6 @@ class PlaceInSlotState(State):
         super(PlaceInSlotState, self).__init__("Place in Slot")
 
     def start(self):
-        self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
-        self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
-        self.claw_grip_pub = rospy.Publisher("grip_command", Bool, queue_size=1)
         rospy.loginfo("Place in slot state start")
 
         self.forward_dist = 3 #inches
@@ -27,21 +24,21 @@ class PlaceInSlotState(State):
         #drive to slot
         if self.side_angle != 0:
             print('SENDING TURN: {}'.format(self.side_angle))
-            commands.send_drive_turn_command(self.drive_pub, self.side_angle )
+            commands.send_drive_turn_command(self.side_angle)
             rospy.Rate(0.25)
-        commands.send_drive_forward_command(self.drive_pub, self.forward_dist)
+        commands.send_drive_forward_command(self.forward_dist)
         rospy.Rate(0.25).sleep()
 
         #drop in slot
-        commands.send_grip_command(self.claw_grip_pub, commands.CLAW_OPEN)
+        commands.send_grip_command(commands.CLAW_OPEN)
         rospy.Rate(1).sleep()
 
         #back off slot
-        commands.send_drive_forward_command(self.drive_pub, -self.forward_dist)
+        commands.send_drive_forward_command(-self.forward_dist)
         rospy.Rate(0.25).sleep()
         if self.side_angle != 0:
             print('SENDING TURN: {}'.format(-self.side_angle))
-            commands.send_drive_turn_command(self.drive_pub, -self.side_angle)
+            commands.send_drive_turn_command(-self.side_angle)
             rospy.Rate(0.25)
 
         globals.current_block += 1
@@ -49,9 +46,9 @@ class PlaceInSlotState(State):
     def run(self):
         #close claw and lift it up
         rospy.Rate(2).sleep()
-        commands.send_grip_command(self.claw_grip_pub, commands.CLAW_CLOSED)
+        commands.send_grip_command(commands.CLAW_CLOSED)
         rospy.Rate(2).sleep()
-        commands.send_claw_command(self.claw_pub, commands.PICKUP_ANGLE)
+        commands.send_claw_command(commands.PICKUP_ANGLE)
         rospy.Rate(2).sleep()
 
         #drop it off
@@ -62,8 +59,4 @@ class PlaceInSlotState(State):
         return DriveToBlockState()
 
     def finish(self):
-        self.claw_pub.unregister()
-        self.cam_pub.unregister()
-        self.claw_grip_pub.unregister()
-        self.display_letter_pub.unregister()
         rospy.loginfo("Finished pick up block state")

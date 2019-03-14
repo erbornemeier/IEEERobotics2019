@@ -10,27 +10,19 @@ class PickUpBlockState(State):
         super(PickUpBlockState, self).__init__("Pick Up Block")
 
     def start(self):
-        self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
-        self.claw_grip_pub = rospy.Publisher("grip_command", Bool, queue_size=1)
-        self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
-        self.display_letter_pub = rospy.Publisher("display_letter", UInt8, queue_size = 1)
         rospy.loginfo("Pick up block state start")
         self.cam_pickup_angle = 40
 
     def run(self):
-        commands.send_cam_command(self.cam_pub, self.cam_pickup_angle) 
+        commands.send_cam_command(self.cam_pickup_angle) 
         rospy.Rate(2).sleep()
-        commands.send_grip_command(self.claw_grip_pub, commands.CLAW_CLOSED)
+        commands.send_grip_command(commands.CLAW_CLOSED)
         rospy.Rate(2).sleep()
-        commands.send_claw_command(self.claw_pub, commands.PICKUP_ANGLE)
+        commands.send_claw_command(commands.PICKUP_ANGLE)
         rospy.loginfo("Picked up block")
         rospy.Rate(2).sleep()
         from detect_letter_state import * 
         return DetectLetterState()
 
     def finish(self):
-        self.claw_pub.unregister()
-        self.cam_pub.unregister()
-        self.claw_grip_pub.unregister()
-        self.display_letter_pub.unregister()
         rospy.loginfo("Finished pick up block state")

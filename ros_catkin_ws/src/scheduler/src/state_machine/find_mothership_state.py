@@ -15,29 +15,19 @@ class FindMothershipState(State):
     def start(self):
         rospy.loginfo("Entering find mothership state")
 
-        self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
-        self.change_display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
-        self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
-        self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
-
-
-        # TODO: Change to mothership service
-        rospy.wait_for_service("mothership")
-        self.block_srv = rospy.ServiceProxy("mothership", Mothership)
-
         t.sleep(0.5)
 
-        commands.send_drive_vel_command(self.drive_pub, 0, 1.0)
-        commands.send_cam_command(self.cam_pub, 15)
-        commands.send_claw_command(self.claw_pub, commands.CARRY_ANGLE)
-        commands.set_display_state(self.change_display_pub, commands.NORMAL)
+        commands.send_drive_vel_command(0, 1.0)
+        commands.send_cam_command(15)
+        commands.send_claw_command(commands.CARRY_ANGLE)
+        commands.set_display_state(commands.NORMAL)
 
         self.rate = rospy.Rate(5)
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
         try:
-            return self.block_srv()
+            return commands.block_srv()
         except Exception as e:
             print(e)
             mothership_pos = MothershipResponse()
@@ -54,7 +44,7 @@ class FindMothershipState(State):
 
         if mothership_pos.y >= 0:
             self.mothership_found = True
-            commands.send_drive_vel_command(self.drive_pub, 0, 0)
+            commands.send_drive_vel_command(0, 0)
 
             from drive_to_mothership_state import *
             return DriveToMothershipState()
@@ -62,9 +52,5 @@ class FindMothershipState(State):
             return self
         
     def finish(self):
-        self.drive_pub.unregister()
-        self.cam_pub.unregister()
-        self.change_display_pub.unregister()
-        self.block_srv.close()
         rospy.loginfo("Exiting find mothership state")
 

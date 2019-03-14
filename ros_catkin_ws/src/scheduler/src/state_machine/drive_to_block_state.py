@@ -23,14 +23,6 @@ class DriveToBlockState(State):
         self.robot_theta = -1
         self.needs_approach = True
 
-        self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
-        self.change_display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
-        self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
-        self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
-        self.pose_sub = rospy.Subscriber("robot_pose", Pose2D, self.__set_pose__)
-        rospy.wait_for_service("block_pos")
-        self.block_srv = rospy.ServiceProxy("block_pos", Block)
-
         self.cam_gain = 6 
         self.drive_gain = 1.5/27.
         self.turn_gain = 2
@@ -41,7 +33,7 @@ class DriveToBlockState(State):
         self.close_dist = 24 #inches
 
         t.sleep(0.5)
-        commands.set_display_state(self.change_display_pub, commands.NORMAL)
+        commands.set_display_state(commands.NORMAL)
 
     def __set_pose__(self, msg):
         self.robot_x = msg.x
@@ -64,16 +56,16 @@ class DriveToBlockState(State):
         if turn_angle < -180:
             turn_angle += 360
         print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
-        commands.send_drive_turn_command(self.drive_pub, turn_angle)
+        commands.send_drive_turn_command(turn_angle)
         rospy.Rate(0.2).sleep()
         if forward_dist > 0:
-            commands.send_drive_forward_command(self.drive_pub, forward_dist)
+            commands.send_drive_forward_command(forward_dist)
             rospy.Rate(0.15).sleep()
 
     def __get_block_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
         try:
-            return self.block_srv()
+            return commands.block_srv()
         except Exception as e:
             print(e)
             block_pos = BlockResponse()
@@ -83,8 +75,8 @@ class DriveToBlockState(State):
 
     def __reset__(self):
         #self.cameraAngle = 20
-        commands.send_cam_command(self.cam_pub, int(self.cameraAngle))
-        commands.send_drive_vel_command(self.drive_pub, 0, 0)
+        commands.send_cam_command(int(self.cameraAngle))
+        commands.send_drive_vel_command(0, 0)
 
     def __camera_to_block__(self, block_pos):
 
@@ -98,13 +90,13 @@ class DriveToBlockState(State):
         elif self.cameraAngle > self.camera_target_angle:
             self.cameraAngle = self.camera_target_angle
 
-        commands.send_cam_command(self.cam_pub, int(self.cameraAngle))
+        commands.send_cam_command(int(self.cameraAngle))
 
     def __drive_to_block__(self, block_pos):
 
         turn_speed = self.turn_gain * (0.5 - block_pos.x)
         forward_speed = self.drive_gain * (self.camera_target_angle - self.cameraAngle) + 0.2
-        commands.send_drive_vel_command(self.drive_pub, forward_speed, turn_speed)
+        commands.send_drive_vel_command(forward_speed, turn_speed)
 
 
     def run(self):
@@ -112,8 +104,8 @@ class DriveToBlockState(State):
         self.rate.sleep()
 
         if self.needs_approach:
-            commands.send_cam_command(self.cam_pub, self.cameraAngle)
-            commands.send_claw_command(self.claw_pub, commands.DROP_ANGLE)
+            commands.send_cam_command(self.cameraAngle)
+            commands.send_claw_command(commands.DROP_ANGLE)
             self.__get_close_to_block__()
             self.needs_approach = False
 
@@ -130,17 +122,12 @@ class DriveToBlockState(State):
         #rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
         if self.cameraAngle == self.camera_target_angle:
-            commands.send_drive_vel_command(self.drive_pub, 0, 0)
+            commands.send_drive_vel_command(0, 0)
             from pick_up_block_state import *
             return PickUpBlockState()
         else:
             return self
         
     def finish(self):
-        self.drive_pub.unregister()
-        self.cam_pub.unregister()
-        self.claw_pub.unregister()
-        self.change_display_pub.unregister()
-        self.block_srv.close()
         rospy.loginfo("Exiting drive to block state")
 
