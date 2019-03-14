@@ -1,6 +1,5 @@
 from std_msgs.msg import UInt8, Bool
 from geometry_msgs.msg import Pose2D
-from scheduler.srv import *
 import rospy
 
 PICKUP_ANGLE = 40
@@ -25,41 +24,28 @@ def send_cam_command(cam_pub, angle):
     msg.data = angle
     cam_pub.publish(msg)
 
-def send_drive_vel_command(drive_srv, x, theta):
-    req = DriveRequest() 
-    req.type = 0
-    req.forward = x
-    req.theta = theta
-    while True:
-        response = drive_srv(req)
-        if response is not None:
-            break
-        else:
-            t.sleep(1)
+def send_drive_vel_command(drive_pub, x, theta):
+    msg = Pose2D()
+    msg.x = x
+    msg.y = 0
+    msg.theta = theta
+    drive_pub.publish(msg)
 
-def send_drive_forward_command(drive_srv, x):
-    req = DriveRequest() 
-    req.type = 1
-    req.forward = x
-    req.theta = 0 
-    while True:
-        response = drive_srv(req)
-        if response is not None:
-            break
-        else:
-            t.sleep(1)
+def send_drive_forward_command(drive_pub, x):
+    msg = Pose2D()
+    msg.x = x
+    msg.y = 1
+    msg.theta = 0
+    drive_pub.publish(msg)
+    drive_pub.publish(msg)
 
-def send_drive_turn_command(drive_srv, theta):
-    req = DriveRequest() 
-    req.type = 1
-    req.forward = 0
-    req.theta = theta
-    while True:
-        response = drive_srv(req)
-        if response is not None:
-            break
-        else:
-            t.sleep(1)
+def send_drive_turn_command(drive_pub, theta):
+    msg = Pose2D()
+    msg.x = 0
+    msg.y = 2
+    msg.theta = theta
+    drive_pub.publish(msg)
+    drive_pub.publish(msg)
 
 def display_letter(display_letter_pub, letter):
     msg = UInt8()
@@ -79,5 +65,6 @@ WAITING = 2
 def set_display_state(display_pub, state):
     msg = UInt8()
     msg.data = state
+    display_pub.publish(msg)
     display_pub.publish(msg)
 

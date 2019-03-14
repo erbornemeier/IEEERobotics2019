@@ -15,19 +15,19 @@ class FindMothershipState(State):
     def start(self):
         rospy.loginfo("Entering find mothership state")
 
+        self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
         self.change_display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
         self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
 
-        rospy.wait_for_service("drive_service")
-        self.drive_srv = rospy.ServiceProxy("drive_service", Drive)
 
+        # TODO: Change to mothership service
         rospy.wait_for_service("mothership")
         self.block_srv = rospy.ServiceProxy("mothership", Mothership)
 
         t.sleep(0.5)
 
-        commands.send_drive_vel_command(self.drive_srv, 0, 1.0)
+        commands.send_drive_vel_command(self.drive_pub, 0, 1.0)
         commands.send_cam_command(self.cam_pub, 15)
         commands.send_claw_command(self.claw_pub, commands.CARRY_ANGLE)
         commands.set_display_state(self.change_display_pub, commands.NORMAL)
@@ -54,7 +54,7 @@ class FindMothershipState(State):
 
         if mothership_pos.y >= 0:
             self.mothership_found = True
-            commands.send_drive_vel_command(self.drive_srv, 0, 0)
+            commands.send_drive_vel_command(self.drive_pub, 0, 0)
 
             from drive_to_mothership_state import *
             return DriveToMothershipState()
@@ -62,9 +62,9 @@ class FindMothershipState(State):
             return self
         
     def finish(self):
+        self.drive_pub.unregister()
         self.cam_pub.unregister()
         self.change_display_pub.unregister()
         self.block_srv.close()
-        self.drive_srv.close()
         rospy.loginfo("Exiting find mothership state")
 

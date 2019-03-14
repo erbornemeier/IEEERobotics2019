@@ -6,7 +6,6 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/UInt8.h>
 #include <geometry_msgs/Pose2D.h>
-#include "scheduler/Drive.h"
 
 /*****************************************
   HARDWARE DEFINITIONS
@@ -37,6 +36,8 @@ volatile double velocitySetpoint[NUM_MOTORS] = {0, 0};
 volatile long lastCounts[NUM_MOTORS] = {0, 0};
 volatile float distanceSetpoint = 0;
 volatile float angleSetpoint = 0;
+volatile int moveState = CONST_VEL;
+volatile bool newDriveCmd = false;
 
 /*****************************************
   ROS
@@ -44,31 +45,28 @@ volatile float angleSetpoint = 0;
 
 ros::NodeHandle nh;
 
-void dcCallback(const scheduler::DriveRequest& moveCmd, scheduler::DriveResponse& ack) {
-    String logg = String(moveCmd.forward) + String(", ") + String(moveCmd.theta) + String(", ") + String(moveCmd.type);
+void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
+    String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
     nh.loginfo(logg.c_str());
-    switch((uint8_t)moveCmd.type){
+    switch((uint8_t)moveCmd.y){
         case CONST_VEL:
             velocitySetpoint[L] = -moveCmd.theta;
             velocitySetpoint[R] = moveCmd.theta;
-            velocitySetpoint[L] += moveCmd.forward;
-            velocitySetpoint[R] += moveCmd.forward;
+            velocitySetpoint[L] += moveCmd.x;
+            velocitySetpoint[R] += moveCmd.x;
             break;
         case DRIVE_DIST:
-            velocitySetpoint[L] = 0;
-            velocitySetpoint[R] = 0;
-            distanceSetpoint = moveCmd.forward;
-            distDrive();
+            newDriveCmd = true;
+            distanceSetpoint = moveCmd.x;
             break;
         case TURN_ANGLE:
-            velocitySetpoint[L] = 0;
-            velocitySetpoint[R] = 0;
+            newDriveCmd = true;
             angleSetpoint = moveCmd.theta;
-            turn();
             break;
         default:
             break;
         }
+     moveState = moveCmd.y;
 }
 
 void ccCallback(const std_msgs::UInt8& clawCmd) {
@@ -89,9 +87,7 @@ void camCallback(const std_msgs::UInt8& camCmd) {
 }
 
 
-ros::ServiceServer<scheduler::DriveRequest,
-                   scheduler::DriveResponse> drive_srv ("drive_service", &dcCallback);
-
+ros::Subscriber<geometry_msgs::Pose2D> dc ("drive_command", &dcCallback);
 ros::Subscriber<std_msgs::UInt8>   cc ("claw_command",  &ccCallback);
 ros::Subscriber<std_msgs::Bool> gc ("grip_command", &gcCallback);
 ros::Subscriber<std_msgs::UInt8> cam("cam_command",   &camCallback);
@@ -171,8 +167,7 @@ void setup() {
     nh.getHardware()->setBaud(115200);
     nh.initNode();
   
-    nh.advertiseService<scheduler::DriveRequest,
-                        scheduler::DriveResponse>(drive_srv);
+    nh.subscribe(dc);
     nh.subscribe(cc);
     nh.subscribe(gc);
     nh.subscribe(cam);
@@ -187,10 +182,27 @@ void setup() {
 */
 void loop() {
 
-  velDrive();
-  updatePosition();
+    switch(moveState){
+        case CONST_VEL:
+            velDrive();
+            updatePosition();
+            break;
+        case DRIVE_DIST:
+            if (newDriveCmd){
+                distDrive();
+                newDriveCmd = false;  
+            }
+            break;
+        case TURN_ANGLE:
+            if (newDriveCmd){
+                turn();
+                newDriveCmd = false;
+            } 
+            break;
+        default:
+            break;
+        }
   rosUpdate();
-  delay(1);
 }
 
 void rosUpdate(){
@@ -383,7 +395,7 @@ void printErrors(long* errors) {
 }
 
 float posErrorToAngVel(float* errors, int motor){
-    float angVel = (errors[motor]*K_P_DIST);
+    float angVel = (error*K_P_DIST);
     //saturate vel values
     if (abs(angVel) > MAX_SPEED) angVel =  angVel > 0 ? MAX_SPEED : -MAX_SPEED;
     else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
