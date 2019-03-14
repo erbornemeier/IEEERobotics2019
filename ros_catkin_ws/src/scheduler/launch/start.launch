@@ -8,6 +8,6 @@
 	<node pkg="object_detection" type="block_position_finder.py" name="block_position_finder" output="screen" respawn="True" />
 	<node pkg="object_detection" type="mothership_tracker.py" name="mothership_finder" output="screen" respawn="True"/>
 
-	<node pkg="scheduler" type="scheduler.py" name="scheduler" output="screen" />
+	<node pkg="scheduler" type="start_scheduler.py" name="scheduler" output="screen" />
 
 </launch>
