@@ -20,8 +20,6 @@ class FindMothershipState(State):
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
         self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
 
-
-        # TODO: Change to mothership service
         rospy.wait_for_service("mothership")
         self.block_srv = rospy.ServiceProxy("mothership", Mothership)
 

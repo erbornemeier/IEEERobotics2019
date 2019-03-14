@@ -32,8 +32,8 @@ class DetectLetterState(State):
 
         # from put_down_block_state import * 
         # return PutDownBlockState()
-        from drive_to_mothership_state import *
-        return DriveToMothershipState()
+        from find_mothership_state import *
+        return FindMothershipState()
 
     def finish(self):
         self.display_letter_pub.unregister()
