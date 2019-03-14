@@ -15,13 +15,13 @@ class DriveToMothershipState(State):
     def start(self):
         rospy.loginfo("Entering drive to mothership state")
 
-        self.drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
         self.change_display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
         self.cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
         self.claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
 
+        rospy.wait_for_service("drive_service")
+        self.drive_srv = rospy.ServiceProxy("drive_service", Drive)
 
-        # TODO: Change to mothership service
         rospy.wait_for_service("mothership")
         self.block_srv = rospy.ServiceProxy("mothership", Mothership)
 
@@ -55,7 +55,7 @@ class DriveToMothershipState(State):
     def __reset__(self):
         #self.cameraAngle = 20
         commands.send_cam_command(self.cam_pub, int(self.cameraAngle))
-        commands.send_drive_vel_command(self.drive_pub, 0, 0)
+        commands.send_drive_vel_command(self.drive_srv, 0, 0)
 
     def __camera_to_mothership__(self, mothership_pos):
 
@@ -75,7 +75,7 @@ class DriveToMothershipState(State):
 
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
         forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.2
-        commands.send_drive_vel_command(self.drive_pub, forward_speed, turn_speed)
+        commands.send_drive_vel_command(self.drive_srv, forward_speed, turn_speed)
 
     def run(self):
 
@@ -93,16 +93,15 @@ class DriveToMothershipState(State):
 
         #rospy.loginfo("Mothership Pos: " + str(mothership_pos.x) + ", " + str(mothership_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
-        # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
-            commands.send_drive_vel_command(self.drive_pub, 0, 0)
+            commands.send_drive_vel_command(self.drive_srv, 0, 0)
             from place_in_slot_state import *
             return PlaceInSlotState()
         else:
             return self
         
     def finish(self):
-        self.drive_pub.unregister()
+        self.drive_srv.close()
         self.cam_pub.unregister()
         self.change_display_pub.unregister()
         self.block_srv.close()
