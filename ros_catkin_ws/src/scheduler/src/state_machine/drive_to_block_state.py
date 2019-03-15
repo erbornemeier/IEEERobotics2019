@@ -16,6 +16,8 @@ class DriveToBlockState(State):
     def start(self):
         rospy.loginfo("Entering drive to block state")
 
+        self.pose_sub = rospy.Subscriber('robot_pose', Pose2D, self.__set_pose__)
+
         self.block_x = (globals.x_coords[globals.current_block]+0.5)*12
         self.block_y = (globals.y_coords[globals.current_block]+0.5)*12
         self.robot_x = -1
@@ -30,7 +32,7 @@ class DriveToBlockState(State):
         self.rate = rospy.Rate(5)
 
         self.camera_target_angle = 47
-        self.close_dist = 24 #inches
+        self.close_dist = 18 #inches
 
         t.sleep(0.5)
         commands.set_display_state(commands.NORMAL)

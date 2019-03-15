@@ -27,7 +27,7 @@ class FindMothershipState(State):
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
         try:
-            return commands.block_srv()
+            return commands.mothership_srv()
         except Exception as e:
             print(e)
             mothership_pos = MothershipResponse()

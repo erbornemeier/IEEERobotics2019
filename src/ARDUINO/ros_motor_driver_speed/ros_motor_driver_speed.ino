@@ -129,7 +129,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define ROBOT_WIDTH          7.63 //inches
 #define TURN_CIRCUMFERENCE   (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV        ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
-#define STRAIGHT_THRESH      20
+#define STRAIGHT_THRESH      2
 #define INCHES_PER_COUNT    (WHEEL_CIRC/COUNTS_PER_REV)
 
 long deltaPosition[NUM_MOTORS];
@@ -189,14 +189,15 @@ void loop() {
             break;
         case DRIVE_DIST:
             if (newDriveCmd){
-                distDrive();
-                newDriveCmd = false;  
+                newDriveCmd = false;
+                distDrive();  
             }
             break;
         case TURN_ANGLE:
             if (newDriveCmd){
-                turn();
                 newDriveCmd = false;
+                turn();
+                
             } 
             break;
         default:
@@ -348,12 +349,21 @@ bool isZero(float* errors, bool turning){
 void updatePosition(){
     float leftDelta = deltaPosition[L]*INCHES_PER_COUNT;
     float rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
-    if(fabs((leftDelta - rightDelta)) <  STRAIGHT_THRESH){
+    if(abs((deltaPosition[L] - deltaPosition[R])) <  STRAIGHT_THRESH){
+      nh.loginfo("1");
+      String s = String(deltaPosition[L] - deltaPosition[R]);
+      nh.loginfo(s.c_str());
         // Robot is going straight, update x and y, no change to angle
         robot_pose.x += leftDelta*cos(DEG2RAD*robot_pose.theta);
         robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
     }
+    else if (fabs(velocitySetpoint[L] + velocitySetpoint[R]) < 0.1){
+      nh.loginfo("2");
+      float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
+      robot_pose.theta = boundAngle(robot_pose.theta + dTheta);
+    }
     else {
+      nh.loginfo("3");
         float turnRadius = ROBOT_WIDTH*(leftDelta + rightDelta)/(2*(rightDelta - leftDelta));
         float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
         robot_pose.x += (turnRadius*sin(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*sin(DEG2RAD*robot_pose.theta);
@@ -395,7 +405,7 @@ void printErrors(long* errors) {
 }
 
 float posErrorToAngVel(float* errors, int motor){
-    float angVel = (error*K_P_DIST);
+    float angVel = (errors[motor]*K_P_DIST);
     //saturate vel values
     if (abs(angVel) > MAX_SPEED) angVel =  angVel > 0 ? MAX_SPEED : -MAX_SPEED;
     else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
