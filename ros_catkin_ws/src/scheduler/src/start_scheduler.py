@@ -6,20 +6,16 @@ import subprocess
 import json
 import re
 
-print('1')
 from std_msgs.msg import UInt8
 from geometry_msgs.msg import Pose2D
 from state_machine.state_machine import StateMachine
-print('2')
 from state_machine.drive_to_block_state import DriveToBlockState
-print('3')
 from state_machine.pick_up_block_state import PickUpBlockState
 from state_machine.drive_to_mothership_state import DriveToMothershipState
 from state_machine.find_mothership_state import FindMothershipState
 import time as t
 import globals
 import commands
-print('4')
 
 def wait_for_flash_drive():
     rospack = rospkg.RosPack()
@@ -58,7 +54,7 @@ wait_for_flash_drive()
 display_blocks()
 commands.set_display_state(commands.NORMAL)
 
-state_machine = StateMachine(FindMothershipState())
+state_machine = StateMachine(DriveToBlockState())
 while not rospy.is_shutdown():
     state_machine.run()
 
