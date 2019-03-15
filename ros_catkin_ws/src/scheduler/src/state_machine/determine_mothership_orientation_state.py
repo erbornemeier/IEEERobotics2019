@@ -40,9 +40,9 @@ class DetermineMothershipOrientationState(State):
                 for i in range(10):
                     rospy.loginfo("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
 
-            t.sleep(1)
-
             commands.send_drive_forward_command(-10)
+
+            rospy.Rate(0.2).sleep()
 
             from find_mothership_state import *
             return FindMothershipState(True)
