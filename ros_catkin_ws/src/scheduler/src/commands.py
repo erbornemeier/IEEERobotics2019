@@ -15,7 +15,7 @@ CLAW_CLOSED = True
 # Publishers
 print('publish start')
 claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
-display_letter_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
+display_letter_pub = rospy.Publisher("display_letter", UInt8, queue_size=1)
 grip_pub = rospy.Publisher("grip_command", Bool, queue_size=1)
 display_block_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
 display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
@@ -76,7 +76,7 @@ def display_letter(letter):
 
 def display_block_command(x, y):
     msg = UInt8()
-    msg.data = ((x&0xFF) << 4) | (y&0xFF)
+    msg.data = ((x&0xFF) << 4) | (y&0xF)
     display_block_pub.publish(msg)
 
 NORMAL = 0
