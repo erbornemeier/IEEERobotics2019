@@ -6,16 +6,20 @@ import subprocess
 import json
 import re
 
+print('1')
 from std_msgs.msg import UInt8
 from geometry_msgs.msg import Pose2D
 from state_machine.state_machine import StateMachine
+print('2')
 from state_machine.drive_to_block_state import DriveToBlockState
+print('3')
 from state_machine.pick_up_block_state import PickUpBlockState
 from state_machine.drive_to_mothership_state import DriveToMothershipState
 from state_machine.find_mothership_state import FindMothershipState
 import time as t
 import globals
 import commands
+print('4')
 
 def wait_for_flash_drive():
     rospack = rospkg.RosPack()
@@ -40,23 +44,21 @@ def wait_for_flash_drive():
     globals.y_coords = data['y coords']
     print("x coords: {}\ny coords: {}\nsize: {}".format(globals.x_coords, globals.y_coords, globals.num_blocks))
 
-def display_blocks(led_pub):
+def display_blocks():
 
     for x, y in zip(globals.x_coords, globals.y_coords):
         print("Displaying block @ {},{}".format(x, y))
-        commands.display_block_command(led_pub, x, y)
+        commands.display_block_command(x, y)
         t.sleep(0.2)
 
 rospy.init_node("scheduler")
-led_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
-display_state_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
 _ = raw_input("Press enter to start")
 
 wait_for_flash_drive()
-display_blocks(led_pub)
-commands.set_display_state(display_state_pub, commands.NORMAL)
+display_blocks()
+commands.set_display_state(commands.NORMAL)
 
-state_machine = StateMachine(DriveToBlockState())
+state_machine = StateMachine(FindMothershipState())
 while not rospy.is_shutdown():
     state_machine.run()
 

@@ -1,5 +1,7 @@
+#!/usr/bin/python
 from std_msgs.msg import UInt8, Bool
 from geometry_msgs.msg import Pose2D
+from object_detection.srv import *
 import rospy
 
 PICKUP_ANGLE = 40
@@ -9,22 +11,27 @@ CARRY_ANGLE = 13
 CLAW_OPEN = False
 CLAW_CLOSED = True
 
-rospy.init_node("commands")
 
 # Publishers
+print('publish start')
 claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
 display_letter_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
 grip_pub = rospy.Publisher("grip_command", Bool, queue_size=1)
-change_display_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
+display_block_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
 display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
 drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
 cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
+print('publish end')
 
 #Services
-wait_for_service("block_pos")
+print("service")
+rospy.wait_for_service("block_pos")
 block_srv = rospy.ServiceProxy("block_pos", Block)
 rospy.wait_for_service("mothership")
 mothership_srv = rospy.ServiceProxy("mothership", Mothership)
+rospy.wait_for_service("letter_identifier")
+letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
+print('service end')
 
 def send_claw_command(cmd):
     msg = UInt8()
@@ -79,4 +86,3 @@ def set_display_state(state):
     msg = UInt8()
     msg.data = state
     display_pub.publish(msg)
-
