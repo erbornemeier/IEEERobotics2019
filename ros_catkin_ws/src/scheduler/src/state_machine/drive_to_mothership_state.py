@@ -9,8 +9,10 @@ import time as t
 import rospy
 
 class DriveToMothershipState(State):
-    def __init__(self):
+    def __init__(self, isFirstInstance):
         super(DriveToMothershipState, self).__init__("Drive to Mothership State")
+
+        self.isFirstInstance = isFirstInstance
 
     def start(self):
         rospy.loginfo("Entering drive to mothership state")
@@ -90,8 +92,16 @@ class DriveToMothershipState(State):
         # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
             commands.send_drive_vel_command(0, 0)
-            from place_in_slot_state import *
-            return PlaceInSlotState()
+
+            if self.isFirstInstance:
+                # Transition to determine_mothership_orientation
+                from determine_mothership_orientation_state import *
+                return DetermineMothershipOrientationState()
+                pass
+            else:
+                from place_in_slot_state import *
+                return PlaceInSlotState()
+            
         else:
             return self
         

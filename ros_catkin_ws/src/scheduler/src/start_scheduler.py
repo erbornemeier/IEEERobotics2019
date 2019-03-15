@@ -58,7 +58,7 @@ wait_for_flash_drive()
 display_blocks()
 commands.set_display_state(commands.NORMAL)
 
-state_machine = StateMachine(FindMothershipState())
+state_machine = StateMachine(FindMothershipState(True))
 while not rospy.is_shutdown():
     state_machine.run()
 

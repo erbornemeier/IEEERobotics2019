@@ -9,8 +9,9 @@ import time as t
 import rospy
 
 class FindMothershipState(State):
-    def __init__(self):
+    def __init__(self, isFirstInstance):
         super(FindMothershipState, self).__init__("Find Mothership State")
+        self.isFirstInstance = isFirstInstance
 
     def start(self):
         rospy.loginfo("Entering find mothership state")
@@ -47,7 +48,7 @@ class FindMothershipState(State):
             commands.send_drive_vel_command(0, 0)
 
             from drive_to_mothership_state import *
-            return DriveToMothershipState()
+            return DriveToMothershipState(self.isFirstInstance)
         else:
             return self
         

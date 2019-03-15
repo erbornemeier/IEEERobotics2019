@@ -28,7 +28,7 @@ class DetectLetterState(State):
         # from put_down_block_state import * 
         # return PutDownBlockState()
         from find_mothership_state import *
-        return FindMothershipState()
+        return FindMothershipState(False)
 
     def finish(self):
         rospy.loginfo("Exiting detect letter state")
