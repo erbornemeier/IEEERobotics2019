@@ -33,7 +33,7 @@ volatile long encCounts[2];
 unsigned int ENC_PINS[NUM_MOTORS][2] = { { 50,  51},   // Left
                                          { 52,  53} }; // Right
 
-//geometry_msgs::Pose2D robot_pose;
+geometry_msgs::Pose2D robot_pose;
 
 // Global variables
 volatile double velocitySetpoint[NUM_MOTORS] = {0, 0};
