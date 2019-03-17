@@ -354,20 +354,21 @@ void updatePosition(){
     float rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
     double theta = getHeading();
     volatile static double previousTheta = getHeading();
-    double dTheta = theta - previousTheta;
+    double dTheta = boundAngle(theta - previousTheta);
     if(fabs(dTheta) <  STRAIGHT_THRESH){
-        // Robot is going straight, update x and y, no change to angle
+        // Robot is going straight, update x and y based on the current heading
         robot_pose.x += leftDelta*cos(DEG2RAD*theta);
         robot_pose.y += rightDelta*sin(DEG2RAD*theta);
     }
     else if (fabs(velocitySetpoint[L] + velocitySetpoint[R]) < 0.1){
+        // Robot is strictly turning, little change to robot position
         robot_pose.theta = dTheta;
     }
     else {
-        float turnRadius = ROBOT_WIDTH*(leftDelta + rightDelta)/(2*(rightDelta - leftDelta));
-        float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
-        robot_pose.x += (turnRadius*sin(DEG2RAD*theta)) - turnRadius*sin(DEG2RAD*previousTheta);
-        robot_pose.y += (turnRadius*cos(DEG2RAD*theta)) - turnRadius*cos(DEG2RAD*previousTheta);
+        // Robot is driving at an arc, approximate position as initial turn then straight path
+        float arcLength = (leftDelta + rightDelta)/2;
+        robot_pose.x += (turnRadius*cos(DEG2RAD*theta));
+        robot_pose.y += (turnRadius*sin(DEG2RAD*theta)));
         robot_pose.theta = theta;
     }
 }
