@@ -27,7 +27,7 @@ class DriveToBlockState(State):
 
         self.cam_gain = 6 
         self.drive_gain = 1.5/27.
-        self.turn_gain = 2
+        self.turn_gain = 4
         self.cameraAngle = 20
         self.rate = rospy.Rate(5)
 
@@ -58,8 +58,9 @@ class DriveToBlockState(State):
         if turn_angle < -180:
             turn_angle += 360
         print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
-        commands.send_drive_turn_command(turn_angle)
-        rospy.Rate(0.2).sleep()
+        if abs(turn_angle) > 0.1:
+            commands.send_drive_turn_command(turn_angle)
+            rospy.Rate(0.2).sleep()
         if forward_dist > 0:
             commands.send_drive_forward_command(forward_dist)
             rospy.Rate(0.15).sleep()

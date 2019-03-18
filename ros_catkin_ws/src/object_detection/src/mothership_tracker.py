@@ -2,6 +2,7 @@
 import cv2
 import numpy as np
 import math
+from itertools import permutations
 import rospy
 from sensor_msgs.msg import Image
 from object_detection.srv import *
@@ -10,8 +11,8 @@ bridge = CvBridge()
 
 class mothership_tracker:
     
-    LED_MASK = np.array([[ 35, 100, 150],
-                          [80, 255, 255]])
+    LED_MASK = np.array([[ 20,   0,   250],
+                          [100, 255, 255]])
     MAX_ERROR = 0.25
      
     def get_LED_locations(self, frame, show=False):
@@ -43,7 +44,7 @@ class mothership_tracker:
         mask_green = cv2.inRange(hsv, self.LED_MASK[0], self.LED_MASK[1])
         mask = cv2.bitwise_and(mask, mask_green)
         #dilate image to expand contours
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7)) 
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11,11)) 
         mask = cv2.dilate(mask, kernel)
         #find contours
         _, contours, _= cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -77,6 +78,8 @@ class mothership_tracker:
 
         for quad in permutations(centers, 4):
             l, lm, rm, r = quad
+            if l[0] > r[0]:
+                continue
             line_dist = self.__dist__(l,r)
             l_lm_dist = self.__dist__(l, lm)
             lm_rm_dist = self.__dist__(lm, rm)
@@ -116,11 +119,14 @@ tracker = mothership_tracker()
 def get_line_params(_):
     msg = MothershipResponse()
     try:
-        left, mid_l, mid_r, right = tracker.get_LED_locations(img)
+        leds = tracker.get_LED_locations(img)
+        if not leds:
+            raise Exception("Mothership not found.")
+        left, mid_l, mid_r, right = leds 
         midpt = tracker.__avg__(mid_l, mid_r)
         msg.x, msg.y = midpt[0]/float(width), midpt[1] / float(height)
         dx, dy = right[0] - left[0], right[1] - left[1]
-        msg.theta = math.atan2(dy, dx)
+        msg.theta = math.atan2(dy, dx) * 180.0/math.pi
         return msg 
     except Exception as e:
         print(e)
