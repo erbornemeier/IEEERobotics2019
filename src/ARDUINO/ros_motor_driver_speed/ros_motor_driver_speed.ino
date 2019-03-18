@@ -1,11 +1,15 @@
 #include <PinChangeInterrupt.h>
 #include <Servo.h>
-#include "claw.h"
-
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
 #include <ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/UInt8.h>
 #include <geometry_msgs/Pose2D.h>
+#include "claw.h"
+
 
 /*****************************************
   HARDWARE DEFINITIONS
@@ -107,8 +111,6 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 // Velocity Controller
 #define K_P                     19.4
 #define K_I                     270 
-//#define K_P                     4
-//#define K_I                     100
 // Distance Controller
 #define K_P_DIST                1.1 //inches error -> rad/s
 #define MAX_SPEED               3 //rad/s
@@ -129,11 +131,13 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define ROBOT_WIDTH          7.63 //inches
 #define TURN_CIRCUMFERENCE   (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV        ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
-#define STRAIGHT_THRESH      2
+#define STRAIGHT_THRESH      0.5 //degrees
 #define INCHES_PER_COUNT    (WHEEL_CIRC/COUNTS_PER_REV)
 
 long deltaPosition[NUM_MOTORS];
 float integralControlValue[NUM_MOTORS] = {0, 0};
+
+Adafruit_BNO055 bno = Adafruit_BNO055(55);
 /*
    void setup()
 */
@@ -142,6 +146,12 @@ void setup() {
     robot_pose.x = 4.5*12;
     robot_pose.y = 4.5*12;
     robot_pose.theta = 90;
+
+    /* Initialise the IMU */
+    if (!bno.begin()){
+        /* There was a problem detecting the BNO055 ... check your connections */
+        while (1);
+    }
   
     for (int i = 0; i < NUM_MOTORS; i++) {
         pinMode(ENC_PINS[i][A], INPUT_PULLUP);
@@ -181,7 +191,6 @@ void setup() {
    void loop()
 */
 void loop() {
-
     switch(moveState){
         case CONST_VEL:
             velDrive();
@@ -223,10 +232,6 @@ void rosUpdate(){
 */
 void velDrive() {
     unsigned long timeRef = millis();
-    /*if (velocitySetpoint[0] == 0){
-        stopMotors();
-        return;
-    }*/
     
     int motorVal[NUM_MOTORS];
     for (int i = 0; i < NUM_MOTORS; i++) {
@@ -276,15 +281,15 @@ void distDrive(){
         //changes motor output
         
         velDrive();
-        rosUpdate();
+        //rosUpdate();
         } while (!isZero(posError, false));
         stopMotors();
         // Delay for motor overshoot calculation
         delay(400);
     } while (!isZero(posError, false));
     stopMotors();
-    robot_pose.x += distanceSetpoint*cos(DEG2RAD*robot_pose.theta);
-    robot_pose.y += distanceSetpoint*sin(DEG2RAD*robot_pose.theta);
+    robot_pose.x += distanceSetpoint*cos(DEG2RAD*getHeading());
+    robot_pose.y += distanceSetpoint*sin(DEG2RAD*getHeading());
     
 }
 
@@ -292,11 +297,9 @@ void turn(){
     resetEncoderCounts();
     float angError[NUM_MOTORS] = {0,0};
     float angleSetpoints[NUM_MOTORS] = {0,0};
-    //float angleSet = angleSetpoint + (angleSetpoint > 0 ? TURN_ESS_ADJUSTMENT : -TURN_ESS_ADJUSTMENT);
     //CCW rotation, left is reverse, right is forward
     angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
     angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
-
     do {
         do {
             for (int i = 0; i < NUM_MOTORS; i++){
@@ -307,14 +310,14 @@ void turn(){
             }
             //changes motor output
             velDrive(); //enforces set sample period
-            rosUpdate();
+            //rosUpdate();
         } while (!isZero(angError, true));
         stopMotors();
         // Delay for motor overshoot calculation
         delay(200);
     } while (!isZero(angError, true));
     stopMotors();
-    robot_pose.theta += angleSetpoint;
+    robot_pose.theta += getHeading();
 }
 
 /*
@@ -349,26 +352,24 @@ bool isZero(float* errors, bool turning){
 void updatePosition(){
     float leftDelta = deltaPosition[L]*INCHES_PER_COUNT;
     float rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
-    if(abs((deltaPosition[L] - deltaPosition[R])) <  STRAIGHT_THRESH){
-      nh.loginfo("1");
-      String s = String(deltaPosition[L] - deltaPosition[R]);
-      nh.loginfo(s.c_str());
-        // Robot is going straight, update x and y, no change to angle
-        robot_pose.x += leftDelta*cos(DEG2RAD*robot_pose.theta);
-        robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
+    double theta = getHeading();
+    volatile static double previousTheta = getHeading();
+    double dTheta = boundAngle(theta - previousTheta);
+    if(fabs(dTheta) <  STRAIGHT_THRESH){
+        // Robot is going straight, update x and y based on the current heading
+        robot_pose.x += leftDelta*cos(DEG2RAD*theta);
+        robot_pose.y += rightDelta*sin(DEG2RAD*theta);
     }
     else if (fabs(velocitySetpoint[L] + velocitySetpoint[R]) < 0.1){
-      nh.loginfo("2");
-      float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
-      robot_pose.theta = boundAngle(robot_pose.theta + dTheta);
+        // Robot is strictly turning, little change to robot position
+        robot_pose.theta = dTheta;
     }
     else {
-      nh.loginfo("3");
-        float turnRadius = ROBOT_WIDTH*(leftDelta + rightDelta)/(2*(rightDelta - leftDelta));
-        float dTheta = (rightDelta - leftDelta)/ROBOT_WIDTH;
-        robot_pose.x += (turnRadius*sin(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*sin(DEG2RAD*robot_pose.theta);
-        robot_pose.y += (turnRadius*cos(dTheta + DEG2RAD*robot_pose.theta)) - turnRadius*cos(DEG2RAD*robot_pose.theta);
-        robot_pose.theta = boundAngle(robot_pose.theta + dTheta);
+        // Robot is driving at an arc, approximate position as initial turn then straight path
+        float arcLength = (leftDelta + rightDelta)/2;
+        robot_pose.x += (turnRadius*cos(DEG2RAD*theta));
+        robot_pose.y += (turnRadius*sin(DEG2RAD*theta)));
+        robot_pose.theta = theta;
     }
 }
 
@@ -458,6 +459,14 @@ void resetEncoderCounts() {
       encCounts[i] = 0;
       lastCounts[i] = 0;
     }
+}
+
+double getHeading(){
+    sensors_event_t orientationData;
+    bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+    double angle = (360 - orientationData.orientation.x) + 90;
+    angle = boundAngle(angle);
+    return angle;
 }
 
 /*
