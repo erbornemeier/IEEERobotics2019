@@ -1,10 +1,10 @@
+#include <ros.h>
 #include <PinChangeInterrupt.h>
 #include <Servo.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
-#include <ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/UInt8.h>
 #include <geometry_msgs/Pose2D.h>
@@ -19,6 +19,7 @@ Servo cameraServo;
 uint8_t cameraAngle = 0;
 
 Claw claw;
+uint8_t clawAngle = 10;
 
 //helper enums
 enum MOTOR_IDS {L, R, NUM_MOTORS};
@@ -47,7 +48,8 @@ volatile bool newDriveCmd = false;
   ROS
 *****************************************/
 
-ros::NodeHandle nh;
+ros::NodeHandle_<ArduinoHardware, 25, 25, 1024, 256> nh;
+//ros::NodeHandle nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
     String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
@@ -74,8 +76,8 @@ void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
 }
 
 void ccCallback(const std_msgs::UInt8& clawCmd) {
-    uint8_t angle = clawCmd.data;
-    claw.Servo_SetAngle(angle);
+    clawAngle = clawCmd.data;
+    claw.Servo_SetAngle(clawAngle);
 }
 
 
@@ -142,15 +144,34 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
    void setup()
 */
 void setup() {
+
+    cameraServo.attach(cameraServoPin);
+    cameraServo.write(0);
   
+    claw.Claw_init();
+  
+    nh.getHardware()->setBaud(115200);
+    nh.initNode();
+    nh.subscribe(dc);
+    nh.subscribe(cc);
+    nh.subscribe(gc);
+    nh.subscribe(cam);
+    nh.advertise(pose_pub);
+    while (!nh.connected()) {
+        nh.spinOnce();
+    }
+
+
     robot_pose.x = 4.5*12;
     robot_pose.y = 4.5*12;
     robot_pose.theta = 90;
 
     /* Initialise the IMU */
-    if (!bno.begin()){
+    while (!bno.begin()){
         /* There was a problem detecting the BNO055 ... check your connections */
-        while (1);
+        nh.spinOnce();
+        nh.loginfo("Imu not connected.");
+        bno = Adafruit_BNO055(55);
     }
   
     for (int i = 0; i < NUM_MOTORS; i++) {
@@ -163,10 +184,7 @@ void setup() {
     pinMode(MR, OUTPUT);
     pinMode(ER, OUTPUT);
   
-    cameraServo.attach(cameraServoPin);
-    cameraServo.write(0);
-  
-    claw.Claw_init();
+
   
     // attach interrupts to four encoder pins
     attachPCINT(digitalPinToPCINT(ENC_PINS[L][A]), LA_changed,  CHANGE);
@@ -174,17 +192,9 @@ void setup() {
     attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
     attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
   
-    nh.getHardware()->setBaud(115200);
-    nh.initNode();
+
   
-    nh.subscribe(dc);
-    nh.subscribe(cc);
-    nh.subscribe(gc);
-    nh.subscribe(cam);
-    nh.advertise(pose_pub);
-    while (!nh.connected()) {
-        nh.spinOnce();
-    }
+
 }
 
 /*
@@ -213,16 +223,19 @@ void loop() {
             break;
         }
   rosUpdate();
+  cameraServo.write(cameraAngle);
+  claw.Servo_SetAngle(clawAngle);
 }
 
 void rosUpdate(){
     
     static long lastTime = millis();
+    robot_pose.theta = getHeading();
     if (millis() - lastTime > POSE_PUBLISH_RATE_MS){
         pose_pub.publish(&robot_pose);
         lastTime = millis();
     }
-        nh.spinOnce();
+    nh.spinOnce();
     
 }
 
@@ -232,6 +245,11 @@ void rosUpdate(){
 */
 void velDrive() {
     unsigned long timeRef = millis();
+
+    if (velocitySetpoint[L] == 0 && velocitySetpoint[R] == 0){
+      stopMotors();
+      return;
+    }
     
     int motorVal[NUM_MOTORS];
     for (int i = 0; i < NUM_MOTORS; i++) {
@@ -243,7 +261,7 @@ void velDrive() {
     }
         
     //if (millis() > timeRef + SAMPLE_PERIOD) Serial.println("Error! Execution time too slow");
-    while (millis() < timeRef + SAMPLE_PERIOD) {} // wait the sample period 
+    while (millis() < timeRef + SAMPLE_PERIOD); // wait the sample period 
 }
 
 /*
@@ -281,7 +299,7 @@ void distDrive(){
         //changes motor output
         
         velDrive();
-        //rosUpdate();
+        rosUpdate();
         } while (!isZero(posError, false));
         stopMotors();
         // Delay for motor overshoot calculation
@@ -310,7 +328,7 @@ void turn(){
             }
             //changes motor output
             velDrive(); //enforces set sample period
-            //rosUpdate();
+            rosUpdate();
         } while (!isZero(angError, true));
         stopMotors();
         // Delay for motor overshoot calculation
@@ -350,27 +368,30 @@ bool isZero(float* errors, bool turning){
 
   
 void updatePosition(){
+    volatile static double previousTheta = getHeading();
+    robot_pose.theta = getHeading();
+    
     float leftDelta = deltaPosition[L]*INCHES_PER_COUNT;
     float rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
-    double theta = getHeading();
-    volatile static double previousTheta = getHeading();
-    double dTheta = boundAngle(theta - previousTheta);
+    double dTheta = boundAngle(robot_pose.theta - previousTheta);
+    
     if(fabs(dTheta) <  STRAIGHT_THRESH){
         // Robot is going straight, update x and y based on the current heading
-        robot_pose.x += leftDelta*cos(DEG2RAD*theta);
-        robot_pose.y += rightDelta*sin(DEG2RAD*theta);
+        robot_pose.x += leftDelta*cos(DEG2RAD*robot_pose.theta);
+        robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
     }
     else if (fabs(velocitySetpoint[L] + velocitySetpoint[R]) < 0.1){
         // Robot is strictly turning, little change to robot position
-        robot_pose.theta = dTheta;
+        //robot_pose.theta = theta;
     }
     else {
         // Robot is driving at an arc, approximate position as initial turn then straight path
         float arcLength = (leftDelta + rightDelta)/2;
-        robot_pose.x += (turnRadius*cos(DEG2RAD*theta));
-        robot_pose.y += (turnRadius*sin(DEG2RAD*theta)));
-        robot_pose.theta = theta;
+        robot_pose.x += (arcLength*cos(DEG2RAD*robot_pose.theta));
+        robot_pose.y += (arcLength*sin(DEG2RAD*robot_pose.theta));
     }
+    previousTheta = robot_pose.theta;
+    
 }
 
 // Keeps the angle within bounds of -180 to 180
@@ -448,6 +469,8 @@ void setMotor(int m, int pwm) {
   void stopMotors() {
     setMotor(L, 0);
     setMotor(R, 0);
+    integralControlValue[L] = 0;
+    integralControlValue[R] = 0;
 }
 
 /*
