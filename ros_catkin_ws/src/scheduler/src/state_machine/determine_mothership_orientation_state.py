@@ -18,7 +18,7 @@ class DetermineMothershipOrientationState(State):
         t.sleep(1)
         commands.send_claw_command(commands.CLAW_DETERMINE_MOTHERSHIP_ANGLE)
         t.sleep(1)
-        commands.send_drive_forward_command(6)
+        commands.send_drive_forward_command(5)
         t.sleep(2)
 
     def __set_pose__(self, msg):
