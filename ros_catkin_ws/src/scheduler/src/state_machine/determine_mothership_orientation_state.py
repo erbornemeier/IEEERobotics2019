@@ -29,13 +29,14 @@ class DetermineMothershipOrientationState(State):
     def run(self):
         t.sleep(5)
         try:
-            detected_letter = commands.letter_srv()
-            globals.current_letter = detected_letter.letter
-            commands.display_letter(detected_letter.letter)
+            detected_slot = commands.slot_srv()
+            globals.current_letter = detected_slot.data
+            commands.display_letter(1 if detected_slot.data == 0 else 5)
             commands.set_display_state(commands.LETTER)
 
             if detected_letter > 0:
-                globals.mothership_theta = detected_letter == 1 if self.robot_theta else 180 - self.robot_theta
+                # TODO: What if robot is turned?
+                globals.mothership_theta = self.robot_theta if detected_slot == 0 else 180 - self.robot_theta
                 globals.mothership_x = self.robot_x
                 globals.mothership_y = self.robot_y
                 rospy.loginfo("MOTHERSHIP ORIENTATION: ", globals.mothership_theta, "POSITION:", self.mothership_x, " ", self.mothership_y)
