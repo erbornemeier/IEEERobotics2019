@@ -35,6 +35,8 @@ rospy.wait_for_service("mothership")
 mothership_srv = rospy.ServiceProxy("mothership", Mothership)
 rospy.wait_for_service("letter_identifier")
 letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
+rospy.wait_for_service("slot_identifier")
+slot_srv = rospy.ServiceProxy("slot_identifier", UInt8) #TODO: Check here
 print('service end')
 
 def send_claw_command(cmd):
