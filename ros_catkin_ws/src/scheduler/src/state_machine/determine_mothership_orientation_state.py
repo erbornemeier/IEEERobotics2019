@@ -14,9 +14,12 @@ class DetermineMothershipOrientationState(State):
     def start(self):
         rospy.loginfo("Entering determine mothership orientation state")
         self.pose_sub = rospy.Subscriber('robot_pose', Pose2D, self.__set_pose__)
-        commands.send_cam_command(44)
-        commands.send_claw_command(commands.PICKUP_ANGLE)
+        commands.send_cam_command(commands.CAMERA_DETERMINE_MOTHERSHIP_ANGLE)
+        t.sleep(1)
+        commands.send_claw_command(commands.CLAW_DETERMINE_MOTHERSHIP_ANGLE)
+        t.sleep(1)
         commands.send_drive_forward_command(6)
+        t.sleep(2)
 
     def __set_pose__(self, msg):
         self.robot_x = msg.x

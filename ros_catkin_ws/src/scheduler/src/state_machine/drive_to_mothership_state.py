@@ -113,7 +113,6 @@ class DriveToMothershipState(State):
                 # Transition to determine_mothership_orientation
                 from determine_mothership_orientation_state import *
                 return DetermineMothershipOrientationState()
-                pass
             else:
                 from place_in_slot_state import *
                 return PlaceInSlotState()
