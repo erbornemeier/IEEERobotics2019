@@ -57,11 +57,13 @@ class Claw {
       }
   
       void Servo_SetAngle(uint8_t angle){
-          while (servo_pos != angle){
-              if      (servo_pos < angle) servo_pos++;
-              else if (servo_pos > angle) servo_pos--;
-              delayWithWrite();
-          }
+        clawServo.write(angle);
+        return;
+//          while (servo_pos != angle){
+//              if      (servo_pos < angle) servo_pos++;
+//              else if (servo_pos > angle) servo_pos--;
+//              delayWithWrite();
+//          }
         
       }
 

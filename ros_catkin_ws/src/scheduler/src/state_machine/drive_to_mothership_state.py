@@ -6,6 +6,7 @@ from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import commands
 import time as t
+import math
 import rospy
 
 class DriveToMothershipState(State):
@@ -17,14 +18,13 @@ class DriveToMothershipState(State):
     def start(self):
         rospy.loginfo("Entering drive to mothership state")
         
-        # TODO: Change to mothership service
         rospy.wait_for_service("mothership")
         self.block_srv = rospy.ServiceProxy("mothership", Mothership)
 
         self.cam_gain = 6 
-        self.drive_gain = 2/27.
-        self.turn_gain = 2
-        self.cameraAngle = 15
+        self.drive_gain = 4/27.
+        self.turn_gain = 4
+        self.cameraAngle = 10
         self.rate = rospy.Rate(5)
         self.target_camera_angle = 37
         
@@ -33,11 +33,11 @@ class DriveToMothershipState(State):
         commands.send_cam_command(self.cameraAngle)
         commands.send_claw_command(commands.CARRY_ANGLE)
         commands.set_display_state(commands.NORMAL)
-        rospy.loginfo("Set camera to starting angle 20")
+
+        self.approached = True 
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
-        # TODO: Change to motherboard service
         try:
             return commands.mothership_srv()
         except Exception as e:
@@ -60,30 +60,46 @@ class DriveToMothershipState(State):
         elif mothership_pos.y < 0.47:
             self.cameraAngle -= self.cam_gain * (0.5 - mothership_pos.y) 
 
-        if self.cameraAngle < 15:
-            self.cameraAngle = 15
+        if self.cameraAngle < 10:
+            self.cameraAngle = 10
         elif self.cameraAngle > self.target_camera_angle:
             self.cameraAngle = self.target_camera_angle
 
         commands.send_cam_command(int(self.cameraAngle))
 
+    def __approach_mothership__(self, mothership_pos):
+        self.approach_turn_gain = 2
+        self.cameraHeight = 9
+        commands.send_drive_turn_command(mothership_pos.theta*self.approach_turn_gain)
+        t.sleep(3)
+        approx_dist = math.tan(math.pi/2 - self.cameraAngle*math.pi/180.0)*self.cameraHeight
+        commands.send_drive_forward_command(approx_dist)
+        t.sleep(5)
+        commands.send_drive_turn_command(-mothership_pos.theta*self.approach_turn_gain*2.5)
+        t.sleep(3)
+
     def __drive_to_mothership__(self, mothership_pos):
 
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
-        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.2
+        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.3
         commands.send_drive_vel_command(forward_speed, turn_speed)
+        print("Mothership angle: {}".format(mothership_pos.theta))
 
     def run(self):
 
         self.rate.sleep()
-
-        #camera to motherboard
+        #camera to mothership
         mothership_pos = self.__get_mothership_pos__()
+
         if mothership_pos.y < 0:
             self.__reset__()
             return self
         else:
             self.__camera_to_mothership__(mothership_pos)
+
+        if not self.approached and mothership_pos.y > 0:
+            self.__approach_mothership__(mothership_pos)
+            self.approached = True
 
         self.__drive_to_mothership__(mothership_pos)
 
