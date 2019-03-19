@@ -34,7 +34,7 @@ class DetermineMothershipOrientationState(State):
             commands.display_letter(detected_letter.letter)
             commands.set_display_state(commands.LETTER)
 
-            if detected_letter == 1 or detected_letter == 5:
+            if detected_letter > 0:
                 globals.mothership_theta = detected_letter == 1 if self.robot_theta else 180 - self.robot_theta
                 globals.mothership_x = self.robot_x
                 globals.mothership_y = self.robot_y
