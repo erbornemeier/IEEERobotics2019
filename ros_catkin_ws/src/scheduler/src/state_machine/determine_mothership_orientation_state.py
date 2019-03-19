@@ -38,7 +38,7 @@ class DetermineMothershipOrientationState(State):
                 globals.mothership_theta = self.robot_theta if detected_slot.letter == 0 else 180 - self.robot_theta
                 globals.mothership_x = self.robot_x
                 globals.mothership_y = self.robot_y
-                rospy.loginfo("MOTHERSHIP ORIENTATION: ", globals.mothership_theta, "POSITION:", self.mothership_x, " ", self.mothership_y)
+                rospy.loginfo("Detected:", "ABC" if detected_slot.letter == 0 else "DEF", "  MOTHERSHIP ORIENTATION: ", globals.mothership_theta, "POSITION:", self.mothership_x, " ", self.mothership_y)
 
                 commands.send_drive_forward_command(-10)
                 rospy.Rate(0.2).sleep()
