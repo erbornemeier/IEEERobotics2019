@@ -1,6 +1,7 @@
+#include <Servo_Hardware_PWM.h>
 #include <ros.h>
 #include <PinChangeInterrupt.h>
-#include <Servo.h>
+//#include <Servo.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
@@ -14,7 +15,8 @@
 /*****************************************
   HARDWARE DEFINITIONS
 *****************************************/
-#define cameraServoPin 11
+#define Angle
+#define cameraServoPin 44
 Servo cameraServo;
 uint8_t cameraAngle = 0;
 
@@ -88,7 +90,7 @@ void gcCallback(const std_msgs::Bool& gripCmd) {
 
 void camCallback(const std_msgs::UInt8& camCmd) {
     cameraAngle = camCmd.data;
-    cameraServo.write(cameraAngle);
+    cameraServo.writeMicroseconds(DEG_TO_US(cameraAngle));
     //nh.loginfo("Got it!");
 }
 
@@ -115,7 +117,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define K_I                     270 
 // Distance Controller
 #define K_P_DIST                1.1 //inches error -> rad/s
-#define MAX_SPEED               3 //rad/s
+#define MAX_SPEED               5 //rad/s
 #define MIN_SPEED               0.8 //rad/s
 #define ZERO_ERROR_MARGIN       0.17 //inches until distance is considered achieved
 #define K_DIFF                  1.5
@@ -146,7 +148,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
 void setup() {
 
     cameraServo.attach(cameraServoPin);
-    cameraServo.write(0);
+    cameraServo.writeMicroseconds(DEG_TO_US(0));
   
     claw.Claw_init();
   
@@ -223,8 +225,6 @@ void loop() {
             break;
         }
   rosUpdate();
-  cameraServo.write(cameraAngle);
-  claw.Servo_SetAngle(clawAngle);
 }
 
 void rosUpdate(){
@@ -246,10 +246,10 @@ void rosUpdate(){
 void velDrive() {
     unsigned long timeRef = millis();
 
-    if (velocitySetpoint[L] == 0 && velocitySetpoint[R] == 0){
-      stopMotors();
-      return;
-    }
+//    if (velocitySetpoint[L] == 0 && velocitySetpoint[R] == 0){
+//      stopMotors();
+//      return;
+//    }
     
     int motorVal[NUM_MOTORS];
     for (int i = 0; i < NUM_MOTORS; i++) {
@@ -270,8 +270,17 @@ void velDrive() {
  * saturates the PWM value (-255 to 255).
  */
 int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
+//    if (angVelSetpoint == 0) return 0;
+    
+    if (abs(angVelSetpoint) > MAX_SPEED) {
+        angVelSetpoint = angVelSetpoint > 0 ? MAX_SPEED : -MAX_SPEED;
+    }
+    else if (angVelSetpoint != 0 && abs(angVelSetpoint) < MIN_SPEED) {
+        angVelSetpoint = angVelSetpoint > 0 ? MIN_SPEED : -MIN_SPEED;
+    }
+  
     float error = angVelSetpoint - getVelocity(motor);
-    if (angVelSetpoint == 0) return 0;
+    
     integralControlValue[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
     int PWMSetpoint = (int)(error * K_P + integralControlValue[motor] * K_I);
     
@@ -279,6 +288,7 @@ int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
     if (abs(PWMSetpoint) > 255) {
       return PWMSetpoint > 0 ? 255 : -255;
     }
+    else if (angVelSetpoint == 0) return 0;
     else return PWMSetpoint;
 }
 
@@ -343,14 +353,14 @@ void turn(){
  * The proportional control gain is set by K_P_ANG.
  */
 float angErrorToAngVel(float error){
-    float angVel = (error*K_P_ANG);
-    if (abs(angVel) > MAX_SPEED) {
-        return angVel > 0 ? MAX_SPEED : -MAX_SPEED;
-    }
-    else if (abs(angVel) < MIN_SPEED) {
-        return angVel > 0 ? MIN_SPEED : -MIN_SPEED;
-    }
-    else return angVel;
+    return (error*K_P_ANG);
+//    if (abs(angVel) > MAX_SPEED) {
+//        return angVel > 0 ? MAX_SPEED : -MAX_SPEED;
+//    }
+//    else if (abs(angVel) < MIN_SPEED) {
+//        return angVel > 0 ? MIN_SPEED : -MIN_SPEED;
+//    }
+//    else return angVel;
 }
 
 /*
@@ -429,8 +439,8 @@ void printErrors(long* errors) {
 float posErrorToAngVel(float* errors, int motor){
     float angVel = (errors[motor]*K_P_DIST);
     //saturate vel values
-    if (abs(angVel) > MAX_SPEED) angVel =  angVel > 0 ? MAX_SPEED : -MAX_SPEED;
-    else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
+//    if (abs(angVel) > MAX_SPEED) angVel =  angVel > 0 ? MAX_SPEED : -MAX_SPEED;
+//    else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
     
     // Do error correction to keep wheels consistent with eachother
     int otherMotor = (motor == L) ? R : L;

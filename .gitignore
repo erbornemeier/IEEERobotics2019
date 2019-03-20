@@ -159,3 +159,6 @@ CATKIN_IGNORE
 
 *.png
 *.jpg
+
+*.h5
+*.pickle
