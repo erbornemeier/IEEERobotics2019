@@ -36,12 +36,8 @@ class PlaceInSlotState(State):
         t.sleep(1)
 
         #back off slot
-        commands.send_drive_forward_command(-self.forward_dist)
+        commands.send_drive_forward_command(-2*self.forward_dist)
         t.sleep(5)
-        if self.side_angle != 0:
-            print('SENDING TURN: {}'.format(-self.side_angle))
-            commands.send_drive_turn_command(-self.side_angle)
-            t.sleep(5)
 
         globals.current_block += 1
 

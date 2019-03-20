@@ -105,6 +105,7 @@ class DriveToMothershipState(State):
 
         # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
+            t.sleep(0.25)
             commands.send_drive_vel_command(0, 0)
             from place_in_slot_state import *
             return PlaceInSlotState()
