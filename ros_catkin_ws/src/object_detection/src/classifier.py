@@ -45,8 +45,8 @@ def load_h5_model():
 def load_h5_slot_model():
     global slot_model
     path = rospack.get_path('object_detection') + '/src/slot_recognizer.h5'
-    letter_model = load_model(path)
-    letter_model._make_predict_function()
+    #slot_model = load_model(path)
+    #slot_model._make_predict_function()
 
 load_h5_model()
 load_h5_slot_model()
