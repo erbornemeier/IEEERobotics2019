@@ -10,7 +10,7 @@ class PickUpBlockState(State):
         super(PickUpBlockState, self).__init__("Pick Up Block")
 
     def start(self):
-        rospy.loginfo("Pick up block state start")
+        super(PickUpBlockState, self).start()
         self.cam_pickup_angle = 40
 
     def run(self):
@@ -23,6 +23,3 @@ class PickUpBlockState(State):
         rospy.Rate(2).sleep()
         from detect_letter_state import * 
         return DetectLetterState()
-
-    def finish(self):
-        rospy.loginfo("Finished pick up block state")

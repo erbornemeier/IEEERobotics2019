@@ -5,6 +5,7 @@ from object_detection.srv import *
 import commands
 import rospy
 import time as t
+from math import *
 from geometry_msgs.msg import Pose2D
 
 class DetermineMothershipOrientationState(State):
@@ -12,7 +13,7 @@ class DetermineMothershipOrientationState(State):
         super(DetermineMothershipOrientationState, self).__init__("Determine Mothership Orientation")
 
     def start(self):
-        rospy.loginfo("Entering determine mothership orientation state")
+        super(DetermineMothershipOrientationState, self).start()
         self.pose_sub = rospy.Subscriber('robot_pose', Pose2D, self.__set_pose__)
         commands.send_cam_command(commands.CAMERA_DETERMINE_MOTHERSHIP_ANGLE)
         t.sleep(1)
@@ -37,11 +38,24 @@ class DetermineMothershipOrientationState(State):
             commands.set_display_state(commands.LETTER)
 
             if detected_slot != 0xFF:
+                isABC = detected_slot.letter == 0
+
                 # TODO: What if robot is turned? How to determine orientation?
-                globals.mothership_theta = self.robot_theta if detected_slot.letter == 0 else 180 - self.robot_theta
-                globals.mothership_x = self.robot_x
-                globals.mothership_y = self.robot_y
+                globals.mothership_theta = self.robot_theta if isABC else 180 - self.robot_theta #TODO Check math for DEF
+                globals.mothership_x = self.robot_x + 11.75 * sin(radians(self.robot_theta))
+                globals.mothership_y = self.robot_y + 11.75 * cos(radians(self.robot_theta))
+
+                # If side is ABC diamond point is behind the robot
+                # Otherwise it is in front
+                mult = -1 if isABC else 1
+                globals.abc_x = globals.mothership_x + mult * 6 * sin(radians(self.robot_theta))
+                globals.abc_y = globals.mothership_y + mult * 6 * cos(radians(self.robot_theta))
+                globals.def_x = globals.mothership_x + mult * 6 * sin(radians(self.robot_theta))
+                globals.def_y = globals.mothership_y + mult * 6 * cos(radians(self.robot_theta))
+
                 rospy.loginfo("Mothership: {} Position: {},{} Orientation: {}".format("ABC" if detected_slot.letter == 0 else "DEF", globals.mothership_x, globals.mothership_y, globals.mothership_theta))
+                rospy.loginfo("ABC Waypoint: {} {}", globals.abc_x, globals.abc_y)
+                rospy.loginfo("DEF Waypoint: {} {}", globals.def_x, globals.def_y)
 
                 commands.send_drive_forward_command(-10)
                 rospy.Rate(0.2).sleep()
@@ -60,6 +74,3 @@ class DetermineMothershipOrientationState(State):
         # return PutDownBlockState()
         # from find_mothership_state import *
         # return FindMothershipState(False)
-
-    def finish(self):
-        rospy.loginfo("Exiting mothership orientation state")

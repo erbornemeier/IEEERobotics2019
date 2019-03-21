@@ -38,10 +38,10 @@ def wait_for_flash_drive():
     globals.num_blocks = data['size']
     globals.x_coords = data['x coords']
     globals.y_coords = data['y coords']
-    print("x coords: {}\ny coords: {}\nsize: {}".format(globals.x_coords, globals.y_coords, globals.num_blocks))
+    print("Read JSON file:")
+    print("\tx coords: {}\ny coords: {}\nsize: {}".format(globals.x_coords, globals.y_coords, globals.num_blocks))
 
 def display_blocks():
-
     for x, y in zip(globals.x_coords, globals.y_coords):
         print("Displaying block @ {},{}".format(x, y))
         commands.display_block_command(x, y)
@@ -57,4 +57,3 @@ commands.set_display_state(commands.NORMAL)
 state_machine = StateMachine(FindMothershipState(True))
 while not rospy.is_shutdown():
     state_machine.run()
-
