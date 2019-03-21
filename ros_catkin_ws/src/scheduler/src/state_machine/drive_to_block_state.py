@@ -27,7 +27,7 @@ class DriveToBlockState(State):
 
         self.cam_gain = 6 
         self.drive_gain = 1.5/27.
-        self.turn_gain = 4
+        self.turn_gain = 3
         self.cameraAngle = 20
         self.rate = rospy.Rate(5)
 
@@ -125,6 +125,7 @@ class DriveToBlockState(State):
         #rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
         if self.cameraAngle == self.camera_target_angle:
+            t.sleep(0.25)
             commands.send_drive_vel_command(0, 0)
             from pick_up_block_state import *
             return PickUpBlockState()

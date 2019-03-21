@@ -1,6 +1,7 @@
-#include <Servo.h>
-
-#define clawServoPin 12
+//#include <Servo.h>
+#include <Servo_Hardware_PWM.h>
+#define clawServoPin 45
+#define DEG_TO_US(X) (X*(2000/180.0) + 500)
 
 #define servoMin 10
 #define servoLevel 40
@@ -57,7 +58,7 @@ class Claw {
       }
   
       void Servo_SetAngle(uint8_t angle){
-        clawServo.write(angle);
+        clawServo.writeMicroseconds(DEG_TO_US(angle));
         return;
 //          while (servo_pos != angle){
 //              if      (servo_pos < angle) servo_pos++;
@@ -77,7 +78,7 @@ class Claw {
 
       void delayWithWrite(){
           long s = millis();
-          while (millis()-s < MS_PER_DEG) clawServo.write(servo_pos);
+          while (millis()-s < MS_PER_DEG) clawServo.writeMicroseconds(servo_pos);
       }
   
   
