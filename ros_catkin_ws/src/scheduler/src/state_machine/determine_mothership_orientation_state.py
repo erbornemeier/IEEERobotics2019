@@ -29,12 +29,14 @@ class DetermineMothershipOrientationState(State):
     def run(self):
         t.sleep(5)
         try:
-            detected_slot = commands.slot_srv()
+            # detected_slot = commands.slot_srv()
+            detected_slot = 0
+
             commands.display_letter(1 if detected_slot.letter == 0 else 5)
             commands.set_display_state(commands.LETTER)
 
-            if detected_letter != 0xFF:
-                # TODO: What if robot is turned?
+            if detected_slot != 0xFF:
+                # TODO: What if robot is turned? How to determine orientation?
                 globals.mothership_theta = self.robot_theta if detected_slot.letter == 0 else 180 - self.robot_theta
                 globals.mothership_x = self.robot_x
                 globals.mothership_y = self.robot_y
