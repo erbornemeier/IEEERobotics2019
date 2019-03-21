@@ -14,7 +14,7 @@ class FindMothershipState(State):
         self.isFirstInstance = isFirstInstance
 
     def start(self):
-        rospy.loginfo("Entering find mothership state")
+        super(FindMothershipState, self).start()
 
         t.sleep(0.5)
 
@@ -51,7 +51,3 @@ class FindMothershipState(State):
             return DriveToMothershipState(self.isFirstInstance)
         else:
             return self
-        
-    def finish(self):
-        rospy.loginfo("Exiting find mothership state")
-

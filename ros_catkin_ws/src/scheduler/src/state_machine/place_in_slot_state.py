@@ -11,7 +11,7 @@ class PlaceInSlotState(State):
         super(PlaceInSlotState, self).__init__("Place in Slot")
 
     def start(self):
-        rospy.loginfo("Place in slot state start")
+        super(PlaceInSlotState, self).start()
 
         self.forward_dist = 3 #inches
         self.side_angle = 0
@@ -55,6 +55,3 @@ class PlaceInSlotState(State):
 
         from drive_to_block_state import * 
         return DriveToBlockState()
-
-    def finish(self):
-        rospy.loginfo("Finished pick up block state")

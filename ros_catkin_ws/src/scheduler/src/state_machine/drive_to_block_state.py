@@ -14,7 +14,7 @@ class DriveToBlockState(State):
         super(DriveToBlockState, self).__init__("Drive to Block State")
 
     def start(self):
-        rospy.loginfo("Entering drive to block state")
+        super(DriveToBlockState, self).start()
 
         self.pose_sub = rospy.Subscriber('robot_pose', Pose2D, self.__set_pose__)
 
@@ -131,7 +131,3 @@ class DriveToBlockState(State):
             return PickUpBlockState()
         else:
             return self
-        
-    def finish(self):
-        rospy.loginfo("Exiting drive to block state")
-

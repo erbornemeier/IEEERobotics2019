@@ -16,7 +16,7 @@ class DriveToMothershipState(State):
         self.isFirstInstance = isFirstInstance
 
     def start(self):
-        rospy.loginfo("Entering drive to mothership state")
+        super(DriveToMothershipState, self).start()
         
         rospy.wait_for_service("mothership")
         self.block_srv = rospy.ServiceProxy("mothership", Mothership)
@@ -120,7 +120,3 @@ class DriveToMothershipState(State):
             
         else:
             return self
-        
-    def finish(self):
-        rospy.loginfo("Exiting drive to block state")
-
