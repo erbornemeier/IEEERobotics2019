@@ -30,7 +30,8 @@ class DetermineMothershipOrientationState(State):
         t.sleep(5)
         try:
             # detected_slot = commands.slot_srv()
-            detected_slot = 0
+            detected_slot = Letter()
+            detected_slot.letter = 0
 
             commands.display_letter(1 if detected_slot.letter == 0 else 5)
             commands.set_display_state(commands.LETTER)
