@@ -1,6 +1,6 @@
 #include <ros.h>
 #include <PinChangeInterrupt.h>
-#include <Servo.h>
+//#include <Servo.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
@@ -58,7 +58,7 @@ ros::NodeHandle_<ArduinoHardware, 25, 25, 1024, 256> nh;
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
     String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
     nh.loginfo(logg.c_str());
-    switch((uint8_t)mov1eCmd.y){
+    switch((uint8_t)moveCmd.y){
         case CONST_VEL:
             velocitySetpoints[L] = -moveCmd.theta;
             velocitySetpoints[R] = moveCmd.theta;
@@ -92,7 +92,7 @@ void gcCallback(const std_msgs::Bool& gripCmd) {
 
 void camCallback(const std_msgs::UInt8& camCmd) {
     cameraAngle = camCmd.data;
-    cameraServo.write(cameraAngle);
+    cameraServo.writeMicroseconds(DEG_TO_US(cameraAngle));
     //nh.loginfo("Got it!");
 }
 
@@ -146,7 +146,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
 void setup() {
 
     cameraServo.attach(cameraServoPin);
-    cameraServo.write(0);
+    cameraServo.writeMicroseconds(DEG_TO_US(0));
   
     claw.Claw_init();
   
@@ -218,8 +218,7 @@ void loop() {
             break;
         }
   rosUpdate();
-  cameraServo.write(cameraAngle);
-  claw.Servo_SetAngle(clawAngle);
+
 }
 
 void rosUpdate(){
@@ -373,7 +372,7 @@ void updatePosition(){
         robot_pose.x += leftDelta*cos(DEG2RAD*robot_pose.theta);
         robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
     }
-    else if (fabs(velocities[L] + velocities[R]) < 0.1){
+    else if (fabs(velocities[L] + velocities[R]) < 0.25){
         // Robot is strictly turning, little change to robot position
     }
     else {
