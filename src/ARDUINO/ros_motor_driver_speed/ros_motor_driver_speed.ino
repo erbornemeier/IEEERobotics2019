@@ -144,6 +144,8 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
    void setup()
 */
 void setup() {
+    noInterrupts();
+    
 
     cameraServo.attach(cameraServoPin);
     cameraServo.writeMicroseconds(DEG_TO_US(0));
