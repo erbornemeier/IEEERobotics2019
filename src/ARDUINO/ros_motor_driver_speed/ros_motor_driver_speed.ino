@@ -14,7 +14,7 @@
 /*****************************************
  *       HARDWARE DEFINITIONS            * 
  *****************************************/
-#define cameraServoPin 11
+#define cameraServoPin 44
 Servo cameraServo;
 uint8_t cameraAngle = 0;
 
