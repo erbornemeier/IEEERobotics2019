@@ -144,9 +144,6 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
    void setup()
 */
 void setup() {
-    noInterrupts();
-    
-
     cameraServo.attach(cameraServoPin);
     cameraServo.writeMicroseconds(DEG_TO_US(0));
   
@@ -240,10 +237,6 @@ void rosUpdate(){
 void velDrive() {
     unsigned long timeRef = millis();
 
-    if (velocitySetpoints[L] == 0 && velocitySetpoints[R] == 0){
-      stopMotors();
-      return;
-    }
     int motorVal[NUM_MOTORS];
     for (int i = 0; i < NUM_MOTORS; i++) {
         float velSetpoint = velocitySetpoints[i];
@@ -265,11 +258,12 @@ void velDrive() {
 int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
     updateVelocity(motor);
     float error = angVelSetpoint - velocities[motor];
-    if (angVelSetpoint == 0) return 0;
+
     integralControlValue[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
     int PWMSetpoint = (int)(error * K_P + integralControlValue[motor] * K_I);
     
     //saturate PWM value
+    if (angVelSetpoint == 0) return 0;
     if (abs(PWMSetpoint) > 255) {
       return PWMSetpoint > 0 ? 255 : -255;
     }
