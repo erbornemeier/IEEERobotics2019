@@ -56,8 +56,8 @@ ros::NodeHandle_<ArduinoHardware, 25, 25, 1024, 256> nh;
 //ros::NodeHandle nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
-    String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
-    nh.loginfo(logg.c_str());
+    //String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
+    //nh.loginfo(logg.c_str());
     switch((uint8_t)moveCmd.y){
         case CONST_VEL:
             velocitySetpoints[L] = -moveCmd.theta;
@@ -148,8 +148,7 @@ void setup() {
     TCCR3A = 0;
     TCCR3B = 0;
     TCCR3C = 0;
-    timerCounter = 64911;
-    TCNT3 = velocityCounterDelay;
+    velocityCounterDelay = 64911; //set the timer to achieve 10Hz
     TCNT3 = velocityCounterDelay;   // preload timer
     TCCR3B |= (1 << CS12);    // 256 prescaler 
     TIMSK3 |= (1 << TOIE1);   // enable timer overflow interrupt
@@ -246,12 +245,8 @@ void rosUpdate(){
    Takes in a velocity setpoint and drives forward at that speed.
 */
 void velDrive() {
-    unsigned long timeRef = millis();
+    //unsigned long timeRef = millis();
 
-    if (velocitySetpoints[L] == 0 && velocitySetpoints[R] == 0){
-      stopMotors();
-      return;
-    }
     int motorVal[NUM_MOTORS];
     for (int i = 0; i < NUM_MOTORS; i++) {
         float velSetpoint = velocitySetpoints[i];
@@ -262,7 +257,7 @@ void velDrive() {
     }
         
     //if (millis() > timeRef + SAMPLE_PERIOD) Serial.println("Error! Execution time too slow");
-    while (millis() < timeRef + SAMPLE_PERIOD); // wait the sample period 
+    //while (millis() < timeRef + SAMPLE_PERIOD); // wait the sample period 
 }
 
 /*
@@ -271,11 +266,12 @@ void velDrive() {
  * saturates the PWM value (-255 to 255).
  */
 int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
-    updateVelocity(motor);
+    //updateVelocity(motor);
     float error = angVelSetpoint - velocities[motor];
-    if (angVelSetpoint == 0) return 0;
     integralControlValue[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
     int PWMSetpoint = (int)(error * K_P + integralControlValue[motor] * K_I);
+
+    if (angVelSetpoint == 0) return 0;
     
     //saturate PWM value
     if (abs(PWMSetpoint) > 255) {
