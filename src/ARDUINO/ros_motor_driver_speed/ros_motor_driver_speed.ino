@@ -139,13 +139,21 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define INCHES_PER_COUNT    (WHEEL_CIRC/COUNTS_PER_REV)
 //IMU creation
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
-
+int velocityCounterDelay;
 /*
    void setup()
 */
 void setup() {
     noInterrupts();
-    
+    TCCR3A = 0;
+    TCCR3B = 0;
+    TCCR3C = 0;
+    timerCounter = 64911;
+    TCNT3 = velocityCounterDelay;
+    TCNT3 = velocityCounterDelay;   // preload timer
+    TCCR3B |= (1 << CS12);    // 256 prescaler 
+    TIMSK3 |= (1 << TOIE1);   // enable timer overflow interrupt
+    interrupts();             // enable all interrupts
 
     cameraServo.attach(cameraServoPin);
     cameraServo.writeMicroseconds(DEG_TO_US(0));
@@ -401,6 +409,13 @@ void updateVelocity(int motor) {
     deltaPosition[motor] = newEncCounts - lastCounts[motor];
     lastCounts[motor] = newEncCounts;
     velocities[motor] = (deltaPosition[motor] * 2 * PI) / (SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * COUNTS_PER_REV);
+}
+
+//Timer 3 ISR
+ISR(TIMER3_OVF_vect) {
+    for(int i = 0; i < NUM_MOTORS; i++){
+        updateVelocity(i);
+    }
 }
 
 void printErrors(long* errors) {
