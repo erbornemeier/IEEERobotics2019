@@ -362,15 +362,16 @@ void updatePosition(){
     float leftDelta = deltaPosition[L]*INCHES_PER_COUNT;
     float rightDelta = deltaPosition[R]*INCHES_PER_COUNT;
     double dTheta = boundAngle(robot_pose.theta - previousTheta);
-    
-    if(fabs(dTheta) <  STRAIGHT_THRESH){
+    if (fabs(velocitySetpoints[L] + velocitySetpoints[R]) < 0.1){}
+    else if(fabs(dTheta) <  STRAIGHT_THRESH){
         // Robot is going straight, update x and y based on the current heading
         robot_pose.x += leftDelta*cos(DEG2RAD*robot_pose.theta);
         robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
+        
     }
-    else if (fabs(velocities[L] + velocities[R]) < 0.25){
+    //else if (fabs(velocities[L] + velocities[R]) < 0.75){
         // Robot is strictly turning, little change to robot position
-    }
+    //}
     else {
         // Robot is driving at an arc, approximate position as initial turn then straight path
         float arcLength = (leftDelta + rightDelta)/2;
