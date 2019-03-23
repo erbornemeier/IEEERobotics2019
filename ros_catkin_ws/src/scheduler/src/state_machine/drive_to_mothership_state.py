@@ -56,6 +56,11 @@ class DriveToMothershipState(State):
             drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), (globals.abc_x, globals.abc_y))
         else:   
             drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), (globals.def_x, globals.def_y))
+       
+        self.robot_x = -1
+        while (self.robot_x == -1):
+            print("waiting for pose")
+            t.sleep(0.5)
 
         
         dx, dy = self.robot_x-globals.mothership_x, self.robot_y-globals.mothership_y

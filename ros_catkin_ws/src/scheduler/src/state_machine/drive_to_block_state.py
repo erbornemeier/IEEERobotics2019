@@ -53,6 +53,7 @@ class DriveToBlockState(State):
         if int_point is not None:
             drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), int_point)
             self.robot_x = -1
+        
         while (self.robot_x == -1):
             print("waiting for pose")
             rospy.Rate(2).sleep()

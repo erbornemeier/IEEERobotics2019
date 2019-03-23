@@ -40,10 +40,10 @@ addr = (server_ip, int(server_port))
 
 client_socket.sendto("init-robot", addr)
 
-def sendPose(self, msg):
-    client_socket.sendto("update-robot-pose x:{} y:{} theta:{}", msg.x, msg.y, msg.theta)
+def sendPose(msg):
+    client_socket.sendto("update-robot-pose x:{} y:{} theta:{}".format(msg.x, msg.y, msg.theta), addr)
 
-pose_sub = rospy.Subscriber('robot_pose', Pose2D, self.sendPose)
+pose_sub = rospy.Subscriber('robot_pose', Pose2D, sendPose)
 
 while not rospy.is_shutdown():
     pass
