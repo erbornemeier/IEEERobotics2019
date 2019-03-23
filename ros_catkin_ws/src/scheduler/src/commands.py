@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from std_msgs.msg import UInt8, Bool
+from std_msgs.msg import UInt8, Bool, String
 from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import rospy
@@ -24,6 +24,7 @@ display_block_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
 display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
 drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
 cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
+vis_cmd_pub = rospy.Publisher("vis_command", String, queue_size=1)
 print("Publishers Initialized")
 
 #Services
@@ -82,6 +83,11 @@ def display_block_command(x, y):
     msg = UInt8()
     msg.data = ((x&0xFF) << 4) | (y&0xF)
     display_block_pub.publish(msg)
+
+def send_vis_command(data):
+    msg = String()
+    msg.data = data
+    vis_cmd_pub.publish(msg)
 
 NORMAL = 0
 LETTER = 1

@@ -1,4 +1,8 @@
 <launch>
+	<node pkg="visualizer" type="visualizer.py" name="visualizer" output="screen">
+        <param name="server_ip" value="138.67.204.77"/> 
+        <param name="server_port" value="4445"/> 
+    </node>
 
 	<node pkg="rosserial_python" type="serial_node.py" name="arduino_1" output="screen" args="/dev/ttyACM1"> <param name="baud" value="115200"/> </node>
 	<node pkg="rosserial_python" type="serial_node.py" name="arduino_2" output="screen" args="/dev/ttyACM0"> <param name="baud" value="115200"/> </node>
@@ -9,9 +13,4 @@
 	<node pkg="object_detection" type="mothership_tracker.py" name="mothership_finder" output="screen" respawn="True" />
 
 	<node pkg="scheduler" type="start_scheduler.py" name="scheduler" output="screen" />
-
-	 <node pkg="visualizer" type="visualizer.py" name="visualizer" output="screen">
-        <param name="server_ip" value="138.67.204.77"/> 
-        <param name="server_port" value="4445"/> 
-    </node>
 </launch>

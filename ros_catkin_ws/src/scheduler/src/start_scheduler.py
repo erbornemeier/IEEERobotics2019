@@ -42,9 +42,12 @@ def wait_for_flash_drive():
     print("\tx coords: {}\ny coords: {}\nsize: {}".format(globals.x_coords, globals.y_coords, globals.num_blocks))
 
 def display_blocks():
+    id = 0
     for x, y in zip(globals.x_coords, globals.y_coords):
         print("\tDisplaying block @ {},{}".format(x, y))
         commands.display_block_command(x, y)
+        commands.send_vis_command("init-block id:{} x:{} y:{}".format(id, x, y))
+        id += 1
         t.sleep(0.2)
 
 rospy.init_node("scheduler")
