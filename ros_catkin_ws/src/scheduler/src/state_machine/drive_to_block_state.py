@@ -47,7 +47,7 @@ class DriveToBlockState(State):
         # wait until robot pos recieved
         while (self.robot_x == -1):
             rospy.Rate(2).sleep()
-        print("[Drive to Block] POSE: {}, {}, {}.".format(self.robot_x, self.robot_y, self.robot_theta))
+        #print("[Drive to Block] POSE: {}, {}, {}.".format(self.robot_x, self.robot_y, self.robot_theta))
         int_point = drive_utils.drive_safely((self.robot_x, self.robot_y, self.robot_theta), (self.block_x, self.block_y), self.approach_dist) 
         print("INTERMEDIATE POINT: {}".format(int_point))
         if int_point is not None:
