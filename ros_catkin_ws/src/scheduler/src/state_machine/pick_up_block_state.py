@@ -19,7 +19,6 @@ class PickUpBlockState(State):
         commands.send_grip_command(commands.CLAW_CLOSED)
         rospy.Rate(2).sleep()
         commands.send_claw_command(commands.PICKUP_ANGLE)
-        rospy.loginfo("Picked up block")
         rospy.Rate(2).sleep()
         from detect_letter_state import * 
         return DetectLetterState()

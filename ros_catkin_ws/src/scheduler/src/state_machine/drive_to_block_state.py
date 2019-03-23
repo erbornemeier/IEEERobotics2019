@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import commands
+import drive_utils
 import time as t
 import math
 import rospy
@@ -32,7 +33,7 @@ class DriveToBlockState(State):
         self.rate = rospy.Rate(5)
 
         self.camera_target_angle = 47
-        self.close_dist = 18 #inches
+        self.approach_dist = 18 #inches
 
         t.sleep(0.5)
         commands.set_display_state(commands.NORMAL)
@@ -45,11 +46,22 @@ class DriveToBlockState(State):
     def __get_close_to_block__(self):
         # wait until robot pos recieved
         while (self.robot_x == -1):
+            rospy.Rate(2).sleep()
+        print("[Drive to Block] POSE: {}, {}, {}.".format(self.robot_x, self.robot_y, self.robot_theta))
+        int_point = drive_utils.drive_safely((self.robot_x, self.robot_y, self.robot_theta), (self.block_x, self.block_y), self.approach_dist) 
+        print("INTERMEDIATE POINT: {}".format(int_point))
+        if int_point is not None:
+            drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), int_point)
+            self.robot_x = -1
+        while (self.robot_x == -1):
             print("waiting for pose")
             rospy.Rate(2).sleep()
-        print("POSE: {}, {}, {}.".format(self.robot_x, self.robot_y, self.robot_theta))
+        print("TARGET POINT: {}".format((self.block_x, self.block_y)))
+        drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), (self.block_x, self.block_y), self.approach_dist)
 
-        dx, dy = self.block_x - self.robot_x, self.block_y - self.robot_y
+
+
+        '''dx, dy = self.block_x - self.robot_x, self.block_y - self.robot_y
         forward_dist = (dx**2 + dy**2)**0.5 - self.close_dist 
         forward_dist = max(0, forward_dist)
         turn_angle = (math.atan2(dy, dx) * 180.0/3.14159) - self.robot_theta
@@ -64,6 +76,7 @@ class DriveToBlockState(State):
         if forward_dist > 0:
             commands.send_drive_forward_command(forward_dist)
             rospy.Rate(0.15).sleep()
+        '''
 
     def __get_block_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)

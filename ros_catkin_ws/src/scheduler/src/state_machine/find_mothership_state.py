@@ -47,7 +47,7 @@ class FindMothershipState(State):
             self.mothership_found = True
             commands.send_drive_vel_command(0, 0)
 
-            from drive_to_mothership_state import *
-            return DriveToMothershipState(self.isFirstInstance)
+            from approach_mothership_state import ApproachMothershipState
+            return ApproachMothershipState(self.isFirstInstance)
         else:
             return self

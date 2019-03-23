@@ -7,7 +7,7 @@ import rospy
 PICKUP_ANGLE = 40
 DROP_ANGLE = 10
 CARRY_ANGLE = 13
-CLAW_DETERMINE_MOTHERSHIP_ANGLE = 70
+CLAW_DETERMINE_MOTHERSHIP_ANGLE = 65
 
 CAMERA_DETERMINE_MOTHERSHIP_ANGLE = 45
 
@@ -17,7 +17,6 @@ CLAW_CLOSED = True
 
 
 # Publishers
-print('publish start')
 claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
 display_letter_pub = rospy.Publisher("display_letter", UInt8, queue_size=1)
 grip_pub = rospy.Publisher("grip_command", Bool, queue_size=1)
@@ -25,10 +24,9 @@ display_block_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
 display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
 drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
 cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
-print('publish end')
+print("Publishers Initialized")
 
 #Services
-print("service")
 rospy.wait_for_service("block_pos")
 block_srv = rospy.ServiceProxy("block_pos", Block)
 rospy.wait_for_service("mothership")
@@ -37,7 +35,7 @@ rospy.wait_for_service("letter_identifier")
 letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
 rospy.wait_for_service("slot_identifier")
 slot_srv = rospy.ServiceProxy("slot_identifier", Letter) #TODO: Check here
-print('service end')
+print("Services Initialized")
 
 def send_claw_command(cmd):
     msg = UInt8()

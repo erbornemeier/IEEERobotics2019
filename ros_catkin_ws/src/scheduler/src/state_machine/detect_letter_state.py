@@ -28,5 +28,5 @@ class DetectLetterState(State):
 
         # from put_down_block_state import * 
         # return PutDownBlockState()
-        from find_mothership_state import *
-        return FindMothershipState(False)
+        from drive_to_mothership_state import *
+        return DriveToMothershipState()
