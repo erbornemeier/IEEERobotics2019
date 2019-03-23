@@ -43,7 +43,7 @@ def wait_for_flash_drive():
 
 def display_blocks():
     for x, y in zip(globals.x_coords, globals.y_coords):
-        print("Displaying block @ {},{}".format(x, y))
+        print("\tDisplaying block @ {},{}".format(x, y))
         commands.display_block_command(x, y)
         t.sleep(0.2)
 
