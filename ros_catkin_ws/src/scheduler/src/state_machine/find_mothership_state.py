@@ -16,8 +16,6 @@ class FindMothershipState(State):
     def start(self):
         super(FindMothershipState, self).start()
 
-        t.sleep(0.5)
-
         commands.send_drive_vel_command(0, 1.0)
         commands.send_cam_command(15)
         commands.send_claw_command(commands.CARRY_ANGLE)
@@ -38,9 +36,7 @@ class FindMothershipState(State):
             return mothership_pos
 
     def run(self):
-
         self.rate.sleep()
-
         mothership_pos = self.__get_mothership_pos__()
 
         if mothership_pos.y >= 0:

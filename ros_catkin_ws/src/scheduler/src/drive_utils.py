@@ -80,6 +80,7 @@ def drive_safely(target_pos, approach_dist=0):
     robot_x = -1
     while (robot_x == -1):
         print('waiting for pose')
+        t.sleep(0.5)
         pass
     current_pos_xy = (robot_x, robot_y) 
     current_pos = (robot_x, robot_y, robot_theta)
@@ -100,7 +101,6 @@ def drive_safely(target_pos, approach_dist=0):
     print(mothership_box)
 
     #if a collision of mothership is predicted
-    #TODO too close to mothership to make a 2 segment move
     if (__collides__(current_to_target, mothership_box)):
         print("FINDING PATH TO TARGET")
         #find path to target
@@ -108,6 +108,16 @@ def drive_safely(target_pos, approach_dist=0):
             if not (__collides__( (current_pos_xy, b), mothership_box) or 
                     __collides__( (b, target_pos)    , mothership_box)):
                 return b
-                #go_to_point(cb[0], cb[1])
-                #go_to_point(bt[0], bt[1], approach_dist)
+        #no path found, target is in mothership bounds
+        print ("Target in mothership bounds")
+        dx, dy = target_pos[0]-globals.mothership_x, target_pos[1]-globals.mothership_y
+        to_target_angle = math.atan2(dy, dx)  
+        int_point = (globals.mothership_x + 28*math.cos(to_target_angle),\
+                     globals.mothership_y + 28*math.sin(to_target_angle))
+        #go around to proper point
+        approach_point = drive_safely(int_point)
+        go_to_point(approach_point)
+        go_to_point(int_point)
+        print("Done pathfinding, going to target")
+
     return None

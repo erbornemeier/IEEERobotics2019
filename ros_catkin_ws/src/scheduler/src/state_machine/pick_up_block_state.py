@@ -15,10 +15,10 @@ class PickUpBlockState(State):
 
     def run(self):
         commands.send_cam_command(self.cam_pickup_angle) 
-        rospy.Rate(2).sleep()
+        t.sleep(0.5)
         commands.send_grip_command(commands.CLAW_CLOSED)
-        rospy.Rate(2).sleep()
+        t.sleep(0.5)
         commands.send_claw_command(commands.PICKUP_ANGLE)
-        rospy.Rate(2).sleep()
+        t.sleep(0.5)
         from detect_letter_state import * 
         return DetectLetterState()

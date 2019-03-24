@@ -34,7 +34,6 @@ class DriveToMothershipState(State):
         self.robot_theta = msg.theta
 
     def __get_close_to_block__(self):
-        # wait until robot pos recieved
         t.sleep(1)
         
         if globals.current_letter <= 2:
@@ -55,7 +54,6 @@ class DriveToMothershipState(State):
         while (self.robot_x == -1):
             print("waiting for pose")
             t.sleep(0.5)
-
         
         dx, dy = globals.mothership_x - self.robot_x, globals.mothership_y-self.robot_y
         turn_angle = (math.atan2(dy, dx) * 180.0/3.14159) - self.robot_theta
@@ -69,8 +67,7 @@ class DriveToMothershipState(State):
             t.sleep(5)
 
     def run(self):
-        t.sleep(2)
-
+        #t.sleep(2)
         self.__get_close_to_block__()
 
         from approach_mothership_state import ApproachMothershipState

@@ -31,7 +31,7 @@ def wait_for_flash_drive():
             break
         t.sleep(1)
 
-    path = mount_path + 'mar1.json'
+    path = mount_path + 'mars1.json'
     with open(path, 'r') as f:
         data = f.read()
     data = json.loads(data)

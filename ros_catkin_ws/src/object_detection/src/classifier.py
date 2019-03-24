@@ -36,7 +36,7 @@ def find_rect_pts(pts):
 
 def load_h5_model():
     global letter_model
-    path = rospack.get_path('object_detection') + '/src/letter_recognizer.h5'
+    path = rospack.get_path('object_detection') + '/src/letter_recognizer_new.h5'
     letter_model = load_model(path)
     letter_model._make_predict_function()
     global graph

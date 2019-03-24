@@ -58,25 +58,26 @@ class DetermineMothershipOrientationState(State):
                 # Otherwise it is in front
                 mult = 1 if isABC else -1
                 diag_width = 40
+                diag_width_ramp = 48
                 globals.abc_x = globals.mothership_x - (mult * diag_width/2 * cos(radians(self.robot_theta)))
                 globals.abc_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(self.robot_theta)))
                 globals.def_x = globals.mothership_x + (mult * diag_width/2 * cos(radians(self.robot_theta)))
                 globals.def_y = globals.mothership_y + (mult * diag_width/2 * sin(radians(self.robot_theta)))
                 
-                globals.cd_x = globals.mothership_x - (mult * diag_width/2 * cos(radians(self.robot_theta + 90)))
-                globals.cd_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(self.robot_theta + 90)))
-                globals.af_x = globals.mothership_x - (mult * diag_width/2 * cos(radians(self.robot_theta - 90)))
-                globals.af_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(self.robot_theta - 90)))
+                globals.cd_x = globals.mothership_x - (mult * diag_width_ramp/2 * cos(radians(self.robot_theta + 90)))
+                globals.cd_y = globals.mothership_y - (mult * diag_width_ramp/2 * sin(radians(self.robot_theta + 90)))
+                globals.af_x = globals.mothership_x - (mult * diag_width_ramp/2 * cos(radians(self.robot_theta - 90)))
+                globals.af_y = globals.mothership_y - (mult * diag_width_ramp/2 * sin(radians(self.robot_theta - 90)))
 
                 globals.abc_bb_x = globals.mothership_x - (mult * (diag_width/2 - 1) * cos(radians(self.robot_theta)))
                 globals.abc_bb_y = globals.mothership_y - (mult * (diag_width/2 - 1) * sin(radians(self.robot_theta)))
                 globals.def_bb_x = globals.mothership_x + (mult * (diag_width/2 - 1) * cos(radians(self.robot_theta)))
                 globals.def_bb_y = globals.mothership_y + (mult * (diag_width/2 - 1) * sin(radians(self.robot_theta)))
                 
-                globals.cd_bb_x = globals.mothership_x - (mult * (diag_width/2 - 1) * cos(radians(self.robot_theta + 90)))
-                globals.cd_bb_y = globals.mothership_y - (mult * (diag_width/2 - 1) * sin(radians(self.robot_theta + 90)))
-                globals.af_bb_x = globals.mothership_x - (mult * (diag_width/2 - 1) * cos(radians(self.robot_theta - 90)))
-                globals.af_bb_y = globals.mothership_y - (mult * (diag_width/2 - 1) * sin(radians(self.robot_theta - 90)))
+                globals.cd_bb_x = globals.mothership_x - (mult * (diag_width_ramp/2 - 1) * cos(radians(self.robot_theta + 90)))
+                globals.cd_bb_y = globals.mothership_y - (mult * (diag_width_ramp/2 - 1) * sin(radians(self.robot_theta + 90)))
+                globals.af_bb_x = globals.mothership_x - (mult * (diag_width_ramp/2 - 1) * cos(radians(self.robot_theta - 90)))
+                globals.af_bb_y = globals.mothership_y - (mult * (diag_width_ramp/2 - 1) * sin(radians(self.robot_theta - 90)))
 
             
                 rospy.loginfo("Determine Mothership Orientation State:")    
@@ -95,16 +96,8 @@ class DetermineMothershipOrientationState(State):
                     globals.cd_x, globals.cd_y
                 ))
 
-                commands.send_drive_forward_command(-16)
+                commands.send_drive_forward_command(-13.5)
                 t.sleep(3)
-                #self.robot_x = -1
-
-                #while self.robot_x == -1:
-                #    pass
-
-                #point = (globals.abc_x, globals.abc_y) if isABC else (globals.def_x, globals.def_y)
-                #drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), point)
-          
 
                 from drive_to_block_state import DriveToBlockState
                 return DriveToBlockState()

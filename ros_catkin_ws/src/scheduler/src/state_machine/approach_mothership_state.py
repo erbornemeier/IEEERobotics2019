@@ -18,24 +18,20 @@ class ApproachMothershipState(State):
     def start(self):
         super(ApproachMothershipState, self).start();
 
-        rospy.wait_for_service("mothership")
-        self.block_srv = rospy.ServiceProxy("mothership", Mothership)
-
         self.cam_gain = 6 
         self.drive_gain = 4/27.
         self.turn_gain = 4
-        self.cameraAngle = 20 
+        self.cameraAngle = 27 
         self.rate = rospy.Rate(5)
         self.target_camera_angle = 37
         
-        t.sleep(0.5)
-
         commands.send_cam_command(self.cameraAngle)
         commands.send_claw_command(commands.CARRY_ANGLE)
         commands.set_display_state(commands.NORMAL)
 
-        self.approached = True 
-        t.sleep(2)
+        self.found_time = t.clock()
+	self.MOTHERSHIP_TIMEOUT = 0.5
+	self.adjusted = False
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -50,7 +46,6 @@ class ApproachMothershipState(State):
             return mothership_pos
 
     def __reset__(self):
-        #self.cameraAngle = 20
         commands.send_cam_command(int(self.cameraAngle))
         commands.send_drive_vel_command(0, 0)
 
@@ -68,17 +63,6 @@ class ApproachMothershipState(State):
 
         commands.send_cam_command(int(self.cameraAngle))
 
-    def __approach_mothership__(self, mothership_pos):
-        self.approach_turn_gain = 2
-        self.cameraHeight = 9
-        commands.send_drive_turn_command(mothership_pos.theta*self.approach_turn_gain)
-        t.sleep(3)
-        approx_dist = math.tan(math.pi/2 - self.cameraAngle*math.pi/180.0)*self.cameraHeight
-        commands.send_drive_forward_command(approx_dist)
-        t.sleep(5)
-        commands.send_drive_turn_command(-mothership_pos.theta*self.approach_turn_gain*2.5)
-        t.sleep(3)
-
     def __drive_to_mothership__(self, mothership_pos):
 
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
@@ -92,15 +76,17 @@ class ApproachMothershipState(State):
         #camera to mothership
         mothership_pos = self.__get_mothership_pos__()
 
-        if mothership_pos.y < 0:
-            self.__reset__()
+        if not self.adjusted and mothership_pos.y < 0 and t.clock() - self.found_time > self.MOTHERSHIP_TIMEOUT:
+            commands.send_drive_turn_command(-10)
+	    self.adjusted = True
+            t.sleep(2)
             return self
+	elif mothership_pos.y < 0:
+	    self.__reset__()
+	    return self
         else:
+            self.found_time = t.clock()
             self.__camera_to_mothership__(mothership_pos)
-
-        if not self.approached and mothership_pos.y > 0:
-            self.__approach_mothership__(mothership_pos)
-            self.approached = True
 
         self.__drive_to_mothership__(mothership_pos)
 
@@ -121,3 +107,4 @@ class ApproachMothershipState(State):
             
         else:
             return self
+

@@ -13,31 +13,52 @@ class PlaceInSlotState(State):
     def start(self):
         super(PlaceInSlotState, self).start()
 
-        self.forward_dist = 3 #inches
+        self.pose_sub = rospy.Subscriber('robot_pose', Pose2D, self.__set_pose__)
+
+        self.robot_x = -1
+        self.robot_y = -1
+        self.robot_theta = -1
+
+        self.forward_dist = 5 #inches
         self.side_angle = 0
         if globals.current_letter % 3 == 0:
-            self.side_angle =15 
+            self.side_angle = 15 
         elif globals.current_letter % 3 == 2:
             self.side_angle = -15
 
+    def __set_pose__(self, msg):
+        self.robot_x = msg.x
+        self.robot_y = msg.y
+        self.robot_theta = msg.theta
+
     def __drop_off_at_letter__(self):
         #drive to slot
-        t.sleep(0.5)
+        t.sleep(1)
+        self.robot_x = -1
+        while (self.robot_x == -1):
+            pass
         if self.side_angle != 0:
+            prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
             print('SENDING TURN: {}'.format(self.side_angle))
             commands.send_drive_turn_command(self.side_angle)
-            t.sleep(5)
+            while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
+                pass
+        
         self.extra_dist = 0.5 if self.side_angle != 0 else 0
+        prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
         commands.send_drive_forward_command(self.forward_dist + self.extra_dist)
-        t.sleep(5)
+        while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
+            pass
 
         #drop in slot
         commands.send_grip_command(commands.CLAW_OPEN)
         t.sleep(1)
 
         #back off slot
-        commands.send_drive_forward_command(-2*self.forward_dist)
-        t.sleep(5)
+        prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
+        commands.send_drive_forward_command(-16)
+        while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
+            pass
 
         globals.current_block += 1
 
@@ -51,7 +72,10 @@ class PlaceInSlotState(State):
 
         #drop it off
         self.__drop_off_at_letter__()
-        t.sleep(0.5)
 
-        from drive_to_block_state import * 
-        return DriveToBlockState()
+        if globals.current_block == globals.num_blocks:
+            from return_to_home_state import ReturnToHomeState
+            return ReturnToHomeState()
+        else:
+            from drive_to_block_state import DriveToBlockState 
+            return DriveToBlockState()
