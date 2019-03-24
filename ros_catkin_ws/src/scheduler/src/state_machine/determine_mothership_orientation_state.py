@@ -67,6 +67,17 @@ class DetermineMothershipOrientationState(State):
                 globals.cd_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(self.robot_theta + 90)))
                 globals.af_x = globals.mothership_x - (mult * diag_width/2 * cos(radians(self.robot_theta - 90)))
                 globals.af_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(self.robot_theta - 90)))
+
+                globals.abc_bb_x = globals.mothership_x - (mult * (diag_width/2 - 1) * cos(radians(self.robot_theta)))
+                globals.abc_bb_y = globals.mothership_y - (mult * (diag_width/2 - 1) * sin(radians(self.robot_theta)))
+                globals.def_bb_x = globals.mothership_x + (mult * (diag_width/2 - 1) * cos(radians(self.robot_theta)))
+                globals.def_bb_y = globals.mothership_y + (mult * (diag_width/2 - 1) * sin(radians(self.robot_theta)))
+                
+                globals.cd_bb_x = globals.mothership_x - (mult * (diag_width/2 - 1) * cos(radians(self.robot_theta + 90)))
+                globals.cd_bb_y = globals.mothership_y - (mult * (diag_width/2 - 1) * sin(radians(self.robot_theta + 90)))
+                globals.af_bb_x = globals.mothership_x - (mult * (diag_width/2 - 1) * cos(radians(self.robot_theta - 90)))
+                globals.af_bb_y = globals.mothership_y - (mult * (diag_width/2 - 1) * sin(radians(self.robot_theta - 90)))
+
             
                 rospy.loginfo("Determine Mothership Orientation State:")    
                 rospy.loginfo("\tMothership: {} Position: ({},{}) Orientation: {}".format("ABC" if detected_slot.letter == 0 else "DEF", globals.mothership_x, globals.mothership_y, globals.mothership_theta))
@@ -76,17 +87,13 @@ class DetermineMothershipOrientationState(State):
                 rospy.loginfo("\tAF Waypoint: ({},{})".format(globals.af_x, globals.af_y))
                 rospy.loginfo("\tCD Waypoint: ({},{})".format(globals.cd_x, globals.cd_y))
 
-                commands.send_vis_command("display-mothership x:{} y:{} theta:{} \
-                    abc_x:{} abc_y:{} \
-                    af_x:{} af_y:{} \
-                    def_x:{} def_y:{} \
-                    cd_x:{} cd_y:{}".format(
-                        globals.mothership_x, globals.mothership_y, globals.mothership_theta,
-                        globals.abc_x, globals.abc_y,
-                        globals.af_x, globals.af_y,
-                        globals.def_x, globals.def_y,
-                        globals.cd_x, globals.cd_y
-                    ))
+                commands.send_vis_command("display-mothership x:{} y:{} theta:{} abc_x:{} abc_y:{} af_x:{} af_y:{} def_x:{} def_y:{} cd_x:{} cd_y:{}".format(
+                    globals.mothership_x, globals.mothership_y, globals.mothership_theta,
+                    globals.abc_x, globals.abc_y,
+                    globals.af_x, globals.af_y,
+                    globals.def_x, globals.def_y,
+                    globals.cd_x, globals.cd_y
+                ))
 
                 commands.send_drive_forward_command(-16)
                 t.sleep(3)

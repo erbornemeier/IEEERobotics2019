@@ -9,8 +9,8 @@ import time
 
 from socket import *
 
-from std_msgs.msg import UInt8
-from geometry_msgs.msg import Pose2D, String
+from std_msgs.msg import UInt8, String
+from geometry_msgs.msg import Pose2D
 
 rospy.init_node("visualizer")
 server_ip = rospy.get_param("/visualizer/server_ip")
@@ -44,7 +44,7 @@ def sendCommand(msg):
     client_socket.sendto(msg.data, addr)
 
 def sendPose(msg):
-    sendCommand("update-robot-pose x:{} y:{} theta:{}".format(msg.x, msg.y, msg.theta))
+    client_socket.sendto("update-robot-pose x:{} y:{} theta:{}".format(msg.x, msg.y, msg.theta), addr)
 
 pose_sub = rospy.Subscriber('robot_pose', Pose2D, sendPose)
 command_sub = rospy.Subscriber('vis_command', String, sendCommand)

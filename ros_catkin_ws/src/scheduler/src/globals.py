@@ -15,12 +15,18 @@ mothership_theta = -1
 
 abc_x = -1
 abc_y = -1
-
 def_x = -1
 def_y = -1
-
 af_x = -1
 af_y = -1
-
 cd_x = -1
 cd_y = -1
+
+abc_bb_x = -1
+abc_bb_y = -1
+def_bb_x = -1
+def_bb_y = -1
+af_bb_x = -1
+af_bb_y = -1
+cd_bb_x = -1
+cd_bb_y = -1

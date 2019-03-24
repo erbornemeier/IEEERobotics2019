@@ -35,35 +35,29 @@ class DriveToMothershipState(State):
 
     def __get_close_to_block__(self):
         # wait until robot pos recieved
-        while (self.robot_x == -1):
-            print("waiting for pose")
-            t.sleep(0.5)        
-        print("POSE: {}, {}, {}.".format(self.robot_x, self.robot_y, self.robot_theta))
+        t.sleep(1)
         
         if globals.current_letter <= 2:
-            int_point = drive_utils.drive_safely((self.robot_x, self.robot_y, self.robot_theta), (globals.abc_x, globals.abc_y))
+            int_point = drive_utils.drive_safely((globals.abc_x, globals.abc_y))
         else:   
-            int_point = drive_utils.drive_safely((self.robot_x, self.robot_y, self.robot_theta), (globals.def_x, globals.def_y))
-        
+            int_point = drive_utils.drive_safely((globals.def_x, globals.def_y))
         print("INT POINT: {}".format(int_point))
         if int_point is not None:
-            drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), int_point)
-            self.robot_x = -1
-        while(self.robot_x == -1):
-            rospy.Rate(2).sleep()
+            drive_utils.go_to_point(int_point)
 
         if globals.current_letter <= 2:
-            drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), (globals.abc_x, globals.abc_y))
+            drive_utils.go_to_point((globals.abc_x, globals.abc_y))
         else:   
-            drive_utils.go_to_point((self.robot_x, self.robot_y, self.robot_theta), (globals.def_x, globals.def_y))
+            drive_utils.go_to_point((globals.def_x, globals.def_y))
        
+        t.sleep(1)
         self.robot_x = -1
         while (self.robot_x == -1):
             print("waiting for pose")
             t.sleep(0.5)
 
         
-        dx, dy = self.robot_x-globals.mothership_x, self.robot_y-globals.mothership_y
+        dx, dy = globals.mothership_x - self.robot_x, globals.mothership_y-self.robot_y
         turn_angle = (math.atan2(dy, dx) * 180.0/3.14159) - self.robot_theta
         if turn_angle > 180:
             turn_angle -= 360
