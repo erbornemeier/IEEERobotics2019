@@ -1,3 +1,5 @@
+import rospy
+
 class State(object):
     def __init__(self, name):
         self.name = name
@@ -6,10 +8,10 @@ class State(object):
         return self.name
 
     def start(self):
-        assert 0, str(self) + " start not implemented"
+        rospy.loginfo("[{!s}] Entering State".format(self))
 
     def run(self):
         assert 0, str(self) + " run not implemented"
 
     def finish(self):
-        assert 0, str(self) + " finish not implemented"
+        rospy.loginfo("[{!s}] Exiting State".format(self))

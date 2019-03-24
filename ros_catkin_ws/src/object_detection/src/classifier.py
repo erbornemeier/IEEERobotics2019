@@ -35,15 +35,22 @@ def find_rect_pts(pts):
     return new_pts
 
 def load_h5_model():
-    global model
+    global letter_model
     path = rospack.get_path('object_detection') + '/src/letter_recognizer.h5'
-    model = load_model(path)
-    model._make_predict_function()
+    letter_model = load_model(path)
+    letter_model._make_predict_function()
     global graph
     graph = tf.get_default_graph()
 
+def load_h5_slot_model():
+    global slot_model
+    path = rospack.get_path('object_detection') + '/src/slot_recognizer.h5'
+    #slot_model = load_model(path)
+    #slot_model._make_predict_function()
+
 load_h5_model()
-rospy.loginfo("loaded model!")
+load_h5_slot_model()
+rospy.loginfo("loaded models!")
 
 def image_recieved(data):
     global img
@@ -88,7 +95,7 @@ def classify_block(_):
         input_img = input_img.reshape(1,784)
 
         with graph.as_default():
-            guess = model.predict(input_img).tolist()[0] 
+            guess = letter_model.predict(input_img).tolist()[0] 
             if max(guess) > 0.95:
                 guess = guess.index(max(guess))
                 print("Guess: " + str( guess))
@@ -100,13 +107,30 @@ def classify_block(_):
         print(e)
         return LetterResponse(0xFF)
 
-    #cv2.imshow("img", img)
-    
-    #key = cv2.waitKey(1)
+
+def classify_slot(_):
+    try:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.resize(gray, (100, 100))
+        #input_img = gray.flatten()                                             
+        input_img = gray                                                        
+        input_img = input_img.astype('float32')                                 
+        input_img /= 255.                                                       
+        input_img = input_img.reshape(-1,100,100,1)                             
+
+        with graph.as_default():
+            guess = slot_model.predict(input_img).tolist()[0]                            
+            guess = guess.index(max(guess))
+            print("Guess: " + str( guess))
+            return LetterResponse(guess)
+    except Exception as e:
+        print(e)
+        return LetterResponse(0xFF)
 
 
 rospy.init_node("letter_classify", anonymous=True)
 rospy.Subscriber("camera_image", Image, image_recieved)
 letter_srv = rospy.Service("letter_identifier", Letter, classify_block )
+slot_srv = rospy.Service("slot_identifier", Letter, classify_slot)
 rospy.spin()
 

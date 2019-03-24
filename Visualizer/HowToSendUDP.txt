@@ -1,0 +1,1 @@
+echo -n "init-robot" > /dev/udp/localhost/4445

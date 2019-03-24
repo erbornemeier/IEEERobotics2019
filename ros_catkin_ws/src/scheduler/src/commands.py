@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from std_msgs.msg import UInt8, Bool
+from std_msgs.msg import UInt8, Bool, String
 from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import rospy
@@ -7,13 +7,16 @@ import rospy
 PICKUP_ANGLE = 40
 DROP_ANGLE = 10
 CARRY_ANGLE = 13
+CLAW_DETERMINE_MOTHERSHIP_ANGLE = 65
+
+CAMERA_DETERMINE_MOTHERSHIP_ANGLE = 45
+
 
 CLAW_OPEN = False
 CLAW_CLOSED = True
 
 
 # Publishers
-print('publish start')
 claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
 display_letter_pub = rospy.Publisher("display_letter", UInt8, queue_size=1)
 grip_pub = rospy.Publisher("grip_command", Bool, queue_size=1)
@@ -21,17 +24,19 @@ display_block_pub = rospy.Publisher("display_block", UInt8, queue_size=1)
 display_pub = rospy.Publisher("change_display_state", UInt8, queue_size=1)
 drive_pub = rospy.Publisher("drive_command", Pose2D, queue_size=1)
 cam_pub = rospy.Publisher("cam_command", UInt8, queue_size=1)
-print('publish end')
+vis_cmd_pub = rospy.Publisher("vis_command", String, queue_size=1)
+print("Publishers Initialized")
 
 #Services
-print("service")
 rospy.wait_for_service("block_pos")
 block_srv = rospy.ServiceProxy("block_pos", Block)
 rospy.wait_for_service("mothership")
 mothership_srv = rospy.ServiceProxy("mothership", Mothership)
 rospy.wait_for_service("letter_identifier")
 letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
-print('service end')
+rospy.wait_for_service("slot_identifier")
+slot_srv = rospy.ServiceProxy("slot_identifier", Letter) #TODO: Check here
+print("Services Initialized")
 
 def send_claw_command(cmd):
     msg = UInt8()
@@ -78,6 +83,11 @@ def display_block_command(x, y):
     msg = UInt8()
     msg.data = ((x&0xFF) << 4) | (y&0xF)
     display_block_pub.publish(msg)
+
+def send_vis_command(data):
+    msg = String()
+    msg.data = data
+    vis_cmd_pub.publish(msg)
 
 NORMAL = 0
 LETTER = 1
