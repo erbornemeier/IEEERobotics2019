@@ -2,19 +2,20 @@ import globals
 import commands
 import time as t
 import math
+import rospy
+from geometry_msgs.msg import Pose2D
 
 x, y = 0, 1
+robot_x = -1
+robot_y = -1
+robot_theta = -1
+def __set_pose__(msg):
+    global robot_x, robot_y, robot_theta
+    robot_x = msg.x
+    robot_y = msg.y
+    robot_theta = msg.theta
 
-def __on_line__(l, p3):
-    p1, p2 = l
-    return p3[x] <= max(p1[x], p2[x]) and p3[x] <= min(p1[x], p2[x]) and\
-       p3[y] <= max(p1[y], p2[y]) and p3[y] <= min(p1[y], p2[y])
-
-def __direction__(a, b, c):
-    v = (b[y]-a[y])*(c[x]-b[x]) - (b[x]-a[x])*(c[y]-b[y])
-    if v == 0:
-        return 0
-    return 2 if v < 0 else 1
+pose_sub = rospy.Subscriber('robot_pose', Pose2D, __set_pose__)
 
 def __ccw__(a, b, c):
     return (c[y]-a[y])*(b[x]-a[x]) > (b[y]-a[y])*(c[x]-a[x])
@@ -23,23 +24,6 @@ def __intersection__(l1, l2):
     a, b = l1
     c, d = l2
     return __ccw__(a,c,d) != __ccw__(b,c,d) and __ccw__(a,b,c) != __ccw__(a,b,d)
-    '''d1 = __direction__(a, b, c)
-    d2 = __direction__(a, b, d)
-    d3 = __direction__(c, d, a)
-    d4 = __direction__(c, d, b)
-    if d1!=d2 and d3!=d4:
-        print("TRUE INTERSECTION")
-        return True
-    if d1==0 and __on_line__(l1, c):
-        return True
-    if d2==0 and __on_line__(l1, d):
-        return True
-    if d3==0 and __on_line__(l2, a):
-        return True
-    if d4==0 and __on_line__(l2, b):
-        return True
-    return False
-    '''
 
 def __collides__(segment, box):
 
@@ -50,34 +34,55 @@ def __collides__(segment, box):
 
     #check if line segment collides with any box segments
     for box_line in box_lines:
+        print("Trying {} -> {}".format(segment[0], segment[1]))
         if __intersection__(segment, box_line):
-            print("Collided with : {}".format(box_line))
+            print("Collided with {}".format(box_line))
             return True
     return False
 
 def __dist__(p1, p2):
     return sum((z[1] - z[0])**2 for z in zip(p1, p2))**0.5
 
-def go_to_point(current_pos, target_pos, approach_dist=0):
-    dx, dy = target_pos[0]-current_pos[0], target_pos[1]-current_pos[1]
+def go_to_point(target_pos, approach_dist=0):
+    global robot_x, robot_y, robot_theta 
+    robot_x = -1
+    while (robot_x == -1):
+        print('waiting for pose')
+        t.sleep(0.5)
+        pass
+    dx, dy = target_pos[0]-robot_x, target_pos[1]-robot_y
     forward_dist = (dx**2 + dy**2)**0.5 - approach_dist 
     forward_dist = max(0, forward_dist)
-    turn_angle = (math.atan2(dy, dx) * 180.0/3.14159) - current_pos[2] 
+    turn_angle = (math.atan2(dy, dx) * 180.0/3.14159) - robot_theta
     if turn_angle > 180:
         turn_angle -= 360
     if turn_angle < -180:
         turn_angle += 360
-    #print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
+    print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
+    pose_before = (robot_x, robot_y, robot_theta)
     if abs(turn_angle) > 0.1:
         commands.send_drive_turn_command(turn_angle)
-        t.sleep(5)
+        while (robot_x, robot_y, robot_theta) == pose_before:
+            print('waiting for change')
+            t.sleep(0.5)
+            pass
+    pose_before = (robot_x, robot_y, robot_theta)
     if forward_dist > 0.1:
         commands.send_drive_forward_command(forward_dist)
-        t.sleep(6)
+        while (robot_x, robot_y, robot_theta) == pose_before:
+            print('waiting for change')
+            t.sleep(0.5)
+            pass
 
 
-def drive_safely(current_pos, target_pos, approach_dist=0):
-    current_pos_xy = current_pos[:2]
+def drive_safely(target_pos, approach_dist=0):
+    global robot_x, robot_y, robot_theta 
+    robot_x = -1
+    while (robot_x == -1):
+        print('waiting for pose')
+        pass
+    current_pos_xy = (robot_x, robot_y) 
+    current_pos = (robot_x, robot_y, robot_theta)
 
     #get line segment to target
     current_to_target = (current_pos_xy, target_pos)
@@ -91,6 +96,8 @@ def drive_safely(current_pos, target_pos, approach_dist=0):
                       (globals.af_x, globals.af_y),
                       (globals.def_x, globals.def_y),
                       (globals.cd_x, globals.cd_y)]
+
+    print(mothership_box)
 
     #if a collision of mothership is predicted
     #TODO too close to mothership to make a 2 segment move

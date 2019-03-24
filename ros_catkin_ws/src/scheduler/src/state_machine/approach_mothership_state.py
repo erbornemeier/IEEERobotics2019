@@ -24,7 +24,7 @@ class ApproachMothershipState(State):
         self.cam_gain = 6 
         self.drive_gain = 4/27.
         self.turn_gain = 4
-        self.cameraAngle = 10
+        self.cameraAngle = 20 
         self.rate = rospy.Rate(5)
         self.target_camera_angle = 37
         
@@ -35,6 +35,7 @@ class ApproachMothershipState(State):
         commands.set_display_state(commands.NORMAL)
 
         self.approached = True 
+        t.sleep(2)
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)

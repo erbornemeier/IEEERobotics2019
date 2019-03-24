@@ -87,17 +87,13 @@ class DetermineMothershipOrientationState(State):
                 rospy.loginfo("\tAF Waypoint: ({},{})".format(globals.af_x, globals.af_y))
                 rospy.loginfo("\tCD Waypoint: ({},{})".format(globals.cd_x, globals.cd_y))
 
-                commands.send_vis_command("display-mothership x:{} y:{} theta:{} \
-                    abc_x:{} abc_y:{} \
-                    af_x:{} af_y:{} \
-                    def_x:{} def_y:{} \
-                    cd_x:{} cd_y:{}".format(
-                        globals.mothership_x, globals.mothership_y, globals.mothership_theta,
-                        globals.abc_x, globals.abc_y,
-                        globals.af_x, globals.af_y,
-                        globals.def_x, globals.def_y,
-                        globals.cd_x, globals.cd_y
-                    ))
+                commands.send_vis_command("display-mothership x:{} y:{} theta:{} abc_x:{} abc_y:{} af_x:{} af_y:{} def_x:{} def_y:{} cd_x:{} cd_y:{}".format(
+                    globals.mothership_x, globals.mothership_y, globals.mothership_theta,
+                    globals.abc_x, globals.abc_y,
+                    globals.af_x, globals.af_y,
+                    globals.def_x, globals.def_y,
+                    globals.cd_x, globals.cd_y
+                ))
 
                 commands.send_drive_forward_command(-16)
                 t.sleep(3)
