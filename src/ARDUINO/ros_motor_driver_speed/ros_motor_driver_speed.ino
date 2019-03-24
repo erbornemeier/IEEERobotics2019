@@ -118,7 +118,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define K_I                     270 
 // Distance Controller
 #define K_P_DIST                1.1 //inches error -> rad/s
-#define MAX_SPEED               3 //rad/s
+#define MAX_SPEED               6 //rad/s
 #define MIN_SPEED               0.8 //rad/s
 #define ZERO_ERROR_MARGIN       0.17 //inches until distance is considered achieved
 #define K_DIFF                  1.5
@@ -222,7 +222,7 @@ void loop() {
 
 void rosUpdate(){
     static long lastTime = millis();
-    robot_pose.theta = getHeading();
+    //robot_pose.theta = getHeading();
     if (millis() - lastTime > POSE_PUBLISH_RATE_MS){
         pose_pub.publish(&robot_pose);
         lastTime = millis();
