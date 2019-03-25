@@ -31,8 +31,8 @@ y_train, y_test = y[:int(data_len*0.7)], y[int(data_len*0.7):]
 #get input and normalize
 print(image_size)
 print(len(X_train))
-X_train = X_train.reshape(-1, image_size[0], image_size[1], 1)
-X_test = X_test.reshape(-1, image_size[0], image_size[1], 1)
+X_train = X_train.reshape(len(X_train), image_size)
+X_test = X_test.reshape(len(X_test), image_size)
 X_train = X_train.astype('float32') 
 X_test = X_test.astype('float32') 
 X_train= X_train / 255.
@@ -48,7 +48,7 @@ while True:
 Y_train = np_utils.to_categorical(y_train, n_classes)
 Y_test = np_utils.to_categorical(y_test, n_classes)
 
-# building a linear stack of layers with the sequential model
+'''# building a linear stack of layers with the sequential model
 model = Sequential()
 model.add(Conv2D(32, kernel_size=(11, 11),
                  activation='relu',
@@ -61,6 +61,18 @@ model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
 model.add(Dense(n_classes, activation='softmax'))
+'''
+model = Sequential()
+model.add(Dense(512, input_shape=(image_size,)))
+model.add(Activation('relu'))                            
+model.add(Dropout(0.2))
+
+model.add(Dense(512))
+model.add(Activation('relu'))
+model.add(Dropout(0.2))
+
+model.add(Dense(6))
+model.add(Activation('softmax'))
 
 # compiling the sequential model
 model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer='adam')
