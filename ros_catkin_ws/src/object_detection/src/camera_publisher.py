@@ -5,12 +5,13 @@ import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
+cap = cv2.VideoCapture(0)
+
 def publisher():
     pub = rospy.Publisher("camera_image", Image, queue_size=1) 
     rospy.init_node("camera_publisher")
     bridge = CvBridge()
 
-    cap = cv2.VideoCapture(0)
 
     while not rospy.is_shutdown():
         for _ in range(3):
@@ -24,6 +25,8 @@ def main():
         publisher()
     except rospy.ROSInterruptException:
         pass
+    finally:
+        cap.release()
 
 if __name__ == '__main__':
     main()

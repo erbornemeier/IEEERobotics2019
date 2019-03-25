@@ -11,10 +11,11 @@ class DetectLetterState(State):
         super(DetectLetterState, self).__init__("Detect Letter")
 
     def start(self):
+        super(DetectLetterState, self).start()
         rospy.loginfo("Entering detect letter state")
         
     def run(self):
-        t.sleep(5)
+	t.sleep(3)
         try:
             detected_letter = commands.letter_srv()
             globals.current_letter = detected_letter.letter
@@ -27,8 +28,5 @@ class DetectLetterState(State):
 
         # from put_down_block_state import * 
         # return PutDownBlockState()
-        from find_mothership_state import *
-        return FindMothershipState()
-
-    def finish(self):
-        rospy.loginfo("Exiting detect letter state")
+        from drive_to_mothership_state import *
+        return DriveToMothershipState()

@@ -9,13 +9,12 @@ import time as t
 import rospy
 
 class FindMothershipState(State):
-    def __init__(self):
+    def __init__(self, isFirstInstance):
         super(FindMothershipState, self).__init__("Find Mothership State")
+        self.isFirstInstance = isFirstInstance
 
     def start(self):
-        rospy.loginfo("Entering find mothership state")
-
-        t.sleep(0.5)
+        super(FindMothershipState, self).start()
 
         commands.send_drive_vel_command(0, 1.0)
         commands.send_cam_command(15)
@@ -37,20 +36,14 @@ class FindMothershipState(State):
             return mothership_pos
 
     def run(self):
-
         self.rate.sleep()
-
         mothership_pos = self.__get_mothership_pos__()
 
         if mothership_pos.y >= 0:
             self.mothership_found = True
             commands.send_drive_vel_command(0, 0)
 
-            from drive_to_mothership_state import *
-            return DriveToMothershipState()
+            from approach_mothership_state import ApproachMothershipState
+            return ApproachMothershipState(self.isFirstInstance)
         else:
             return self
-        
-    def finish(self):
-        rospy.loginfo("Exiting find mothership state")
-

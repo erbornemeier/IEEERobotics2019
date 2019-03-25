@@ -31,20 +31,23 @@ def wait_for_flash_drive():
             break
         t.sleep(1)
 
-    path = mount_path + 'mar1.json'
+    path = mount_path + 'mars1.json'
     with open(path, 'r') as f:
         data = f.read()
     data = json.loads(data)
     globals.num_blocks = data['size']
     globals.x_coords = data['x coords']
     globals.y_coords = data['y coords']
-    print("x coords: {}\ny coords: {}\nsize: {}".format(globals.x_coords, globals.y_coords, globals.num_blocks))
+    print("Read JSON file:")
+    print("\tx coords: {}\ny coords: {}\nsize: {}".format(globals.x_coords, globals.y_coords, globals.num_blocks))
 
 def display_blocks():
-
+    id = 0
     for x, y in zip(globals.x_coords, globals.y_coords):
-        print("Displaying block @ {},{}".format(x, y))
+        print("\tDisplaying block @ {},{}".format(x, y))
         commands.display_block_command(x, y)
+        commands.send_vis_command("init-block id:{} x:{} y:{}".format(id, x, y))
+        id += 1
         t.sleep(0.2)
 
 rospy.init_node("scheduler")
@@ -54,7 +57,6 @@ wait_for_flash_drive()
 display_blocks()
 commands.set_display_state(commands.NORMAL)
 
-state_machine = StateMachine(DriveToBlockState())
+state_machine = StateMachine(FindMothershipState(True))
 while not rospy.is_shutdown():
     state_machine.run()
-

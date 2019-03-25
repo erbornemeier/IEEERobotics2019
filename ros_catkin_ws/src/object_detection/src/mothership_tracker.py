@@ -13,7 +13,7 @@ class mothership_tracker:
     
     LED_MASK = np.array([[ 20,   0,   250],
                           [100, 255, 255]])
-    MAX_ERROR = 0.25
+    MAX_ERROR = 0.18
      
     def get_LED_locations(self, frame, show=False):
         #get potential LED locations

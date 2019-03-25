@@ -162,3 +162,4 @@ CATKIN_IGNORE
 
 *.h5
 *.pickle
+*/usb/
