@@ -105,6 +105,7 @@ class StraightenToMothershipState(State):
 
         mothership_orientation = self.__get_mothership_orientation__(mothership_pos.theta)
         print("MOTHERSHIP ORIENTATION -> {}".format(mothership_orientation))
+
         forward_dist = (self.target_dist**2 + self.approach_dist**2 -\
                         2*self.target_dist*self.approach_dist*\
                         math.cos(math.radians(abs(mothership_orientation))) )**0.5
@@ -117,15 +118,10 @@ class StraightenToMothershipState(State):
 
         print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
 
+        drive_utils.turn(turn_angle) 
         drive_utils.wait_for_pose_update()
-        pose_before = (self.robot_x, self.robot_y, self.robot_theta)
-        commands.send_drive_turn_command(turn_angle)
-        while pose_before == (self.robot_x, self.robot_y, self.robot_theta):
-            pass
-        pose_before = (self.robot_x, self.robot_y, self.robot_theta)
-        commands.send_drive_forward_command(forward_dist)
-        while pose_before == (self.robot_x, self.robot_y, self.robot_theta):
-            pass
+        drive_utils.drive(forward_dist)
+        drive_utils.wait_for_pose_update()
 
         vel = -1 if turn_angle > 0 else 1
         while True:

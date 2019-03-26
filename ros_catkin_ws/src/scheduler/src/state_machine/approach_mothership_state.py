@@ -78,31 +78,24 @@ class ApproachMothershipState(State):
         #camera to mothership
         mothership_pos = self.__get_mothership_pos__()
             
-        if self.isFirstInstance and not self.adjusted and mothership_pos.y < 0 and t.clock() - self.found_time > self.MOTHERSHIP_TIMEOUT:
-            commands.send_drive_turn_command(-10)
-	    self.adjusted = True
-            t.sleep(2)
-            return self
-	elif mothership_pos.y < 0:
+	if mothership_pos.y < 0:
 	    self.__reset__()
 	    return self
         else:
             self.found_time = t.clock()
             self.__camera_to_mothership__(mothership_pos)
-
-        self.__drive_to_mothership__(mothership_pos)
+            self.__drive_to_mothership__(mothership_pos)
 
         #rospy.loginfo("Mothership Pos: " + str(mothership_pos.x) + ", " + str(mothership_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
         if self.cameraAngle == self.target_camera_angle:
-            t.sleep(0.25)
             commands.send_drive_vel_command(0, 0)
 
             if self.isFirstInstance:
-                from determine_mothership_orientation_state import *
+                from determine_mothership_orientation_state import DetermineMothershipOrientationState 
                 return DetermineMothershipOrientationState()
             else:
-                from place_in_slot_state import *
+                from place_in_slot_state import PlaceInSlotState
                 return PlaceInSlotState()
             
         else:
