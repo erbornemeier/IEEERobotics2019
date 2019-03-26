@@ -24,7 +24,7 @@ uint8_t clawAngle = 10;
 //helper enums
 enum MOTOR_IDS {L, R, NUM_MOTORS};
 enum ENC_TYPE {A, B};
-enum STATE {CONST_VEL, DRIVE_DIST, TURN_ANGLE};
+enum STATE {CONST_VEL, DRIVE_DIST, TURN_ANGLE, DROP_BLOCK};
 
 //M is mode (direction), E is PWM (speed)
 enum MOTOR_PINS {ML = 7, EL = 9, MR = 8, ER = 10};
