@@ -15,9 +15,11 @@ class DetectLetterState(State):
         rospy.loginfo("Entering detect letter state")
         
     def run(self):
-	t.sleep(3)
+	t.sleep(1.5)
         try:
             detected_letter = commands.letter_srv()
+            if detected_letter == 0xFF:
+                return self
             globals.current_letter = detected_letter.letter
             commands.display_letter(detected_letter.letter)
             commands.set_display_state(commands.LETTER)

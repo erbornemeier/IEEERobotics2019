@@ -75,7 +75,7 @@ def go_to_point(target_pos, approach_dist=0):
             pass
 
 
-def drive_safely(target_pos, approach_dist=0):
+def drive_safely(target_pos, redo=False):
     global robot_x, robot_y, robot_theta 
     robot_x = -1
     while (robot_x == -1):
@@ -109,15 +109,26 @@ def drive_safely(target_pos, approach_dist=0):
                     __collides__( (b, target_pos)    , mothership_box)):
                 return b
         #no path found, target is in mothership bounds
-        print ("Target in mothership bounds")
-        dx, dy = target_pos[0]-globals.mothership_x, target_pos[1]-globals.mothership_y
-        to_target_angle = math.atan2(dy, dx)  
-        int_point = (globals.mothership_x + 28*math.cos(to_target_angle),\
-                     globals.mothership_y + 28*math.sin(to_target_angle))
-        #go around to proper point
-        approach_point = drive_safely(int_point)
-        go_to_point(approach_point)
-        go_to_point(int_point)
-        print("Done pathfinding, going to target")
+        if not redo:
+            print ("Target in mothership bounds")
+            dx, dy = target_pos[0]-globals.mothership_x, target_pos[1]-globals.mothership_y
+            to_target_angle = math.atan2(dy, dx)  
+            int_point = (globals.mothership_x + 28*math.cos(to_target_angle),\
+                         globals.mothership_y + 28*math.sin(to_target_angle))
+            #go around to proper point
+            approach_point = drive_safely(int_point, True)
+            go_to_point(approach_point)
+            go_to_point(int_point)
+            print("Done pathfinding, going to target")
+        #no path found, robot is in mothership bounds
+        else: 
+            closest_pt = None
+            closest_dist = float('inf')
+            for p in mothership_pts:
+                dist = __dist__(p, current_pos_xy)
+                if dist < closest_dist:
+                    closest_dist = dist
+                    closest_pt = p
+            go_to_point(closest_pt)
 
     return None

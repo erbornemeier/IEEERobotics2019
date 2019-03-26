@@ -41,7 +41,7 @@ public class DisplayController {
         Pattern p = Pattern.compile(
             ".*\\s*x:(\\d*\\.?\\d*)"
             + "\\s*y:(\\d*\\.?\\d*)"
-            + "\\s*theta:(-?\\d*\\.?\\d*)"
+            + "\\s*-?theta:(\\d*\\.?\\d*)"
         );
 
         Matcher m = p.matcher(msg);
@@ -109,7 +109,7 @@ public class DisplayController {
         Pattern p = Pattern.compile(
                 ".*\\s*x:(\\d*\\.?\\d*)"
                 + "\\s*y:(\\d*\\.?\\d*)"
-                + "\\s*theta:(-?\\d*\\.?\\d*)\\s*"
+                + "-?\\s*theta:(\\d*\\.?\\d*)\\s*"
                 + "\\s*abc_x:(\\d*\\.?\\d*)"
                 + "\\s*abc_y:(\\d*\\.?\\d*)"
                 + "\\s*af_x:(\\d*\\.?\\d*)"
