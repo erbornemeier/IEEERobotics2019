@@ -46,7 +46,7 @@ public class Pathfinding {
             }
 
             g.fillOval((int) ((point.x * Board.PIXELS_PER_INCH) - (POINT_DRAW_SIZE_PIXELS / 2.) + Board.DISPLAY_MARGIN),
-                    Canvas.CANVAS_HEIGHT - (int) ((point.y * Board.PIXELS_PER_INCH) - (POINT_DRAW_SIZE_PIXELS / 2.) + Board.DISPLAY_MARGIN),
+                    Canvas.CANVAS_HEIGHT - (int) ((point.y * Board.PIXELS_PER_INCH) + (POINT_DRAW_SIZE_PIXELS / 2.) + Board.DISPLAY_MARGIN),
                     POINT_DRAW_SIZE_PIXELS,
                     POINT_DRAW_SIZE_PIXELS);
         }
@@ -54,7 +54,7 @@ public class Pathfinding {
 
     public void updatePoint(double x, double y, boolean isBlocked) {
         for(PathfindingPoint p : points) {
-            if(p.x == x && p.y == y) {
+            if(Math.abs(p.x - x) < 0.001 && Math.abs(p.y - y) < 0.001) {
                 p.setBlocked(isBlocked);
                 break;
             }

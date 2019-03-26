@@ -176,6 +176,21 @@ public class DisplayController {
         }
     }
 
+    @Command("draw-path")
+    public void drawPath(String msg) {
+        Pattern p = Pattern.compile(".*\\s*\\[(\\(\\d*\\.?\\d*,\\d*\\.?\\d*\\),?)+]");
+
+        Matcher m = p.matcher(msg);
+        if(m.matches()) {
+            p = Pattern.compile("(\\((\\d*\\.?\\d*),(\\d*\\.?\\d*)\\))");
+            m = p.matcher(msg);
+            while(m.find()) {
+                int x = Integer.parseInt(m.group(2));
+                int y = Integer.parseInt(m.group(3));
+            }
+        }
+    }
+
     public char blockIdToLetter(int id) {
         return (char) ('A' + id);
     }
@@ -186,7 +201,7 @@ public class DisplayController {
 
     public void reset() {
         robot = null;
-
+        pathfinding = null;
         initialize();
     }
 
