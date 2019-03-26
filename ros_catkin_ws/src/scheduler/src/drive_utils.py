@@ -32,10 +32,10 @@ def wait_for_pose_change():
         t.sleep(0.5)
 
 # PATH FINDING
+RESOLUTION = 4
+MARGIN = 6
 
 def __custom_neighbors__( height, width ):
-    RESOLUTION = 4
-    MARGIN = 6
     def func( coord ):
         neighbor_list = [(coord[0]+i,coord[1]+j) 
                             for i in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)

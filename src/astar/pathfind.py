@@ -3,12 +3,6 @@ from pypaths import astar
 RESOLUTION = 4
 MARGIN = 6
 
-
-bad_points = set()
-for i in range(16, 25, 4):
-    for j in range(16,25,4):
-        bad_points.add((i,j))
-
 def custom_neighbors( height, width ):
     def func( coord ):
         neighbor_list = [(coord[0]+i,coord[1]+j) 
@@ -45,6 +39,3 @@ def get_path(from_pt, to_pt):
     path = optimize_path(path) 
     path.append(to_pt)
     return path
-
-print(get_path((11,11), (31,36)))
-    

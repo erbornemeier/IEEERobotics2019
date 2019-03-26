@@ -32,5 +32,5 @@ cd_bb_x = -1
 cd_bb_y = -1
 
 pathfinding_resolution = 4
-bad_points = []
+bad_points = set()
 
