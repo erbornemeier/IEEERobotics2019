@@ -161,10 +161,19 @@ public class DisplayController {
     @Command("update-pathfinding-point")
     public void updatePathfindingPoint(String msg) {
         Pattern p = Pattern.compile(
-                ".*\\s*x:(\\d*\\.?\\d*)"
-                + "\\s*y:(\\d*\\.?\\d*)"
-                + "\\s*isBlocked()"
+            ".*\\s*x:(\\d*\\.?\\d*)"
+            + "\\s*y:(\\d*\\.?\\d*)"
+            + "\\s*isBlocked:([tT]rue|[fF]alse)"
         );
+
+        Matcher m = p.matcher(msg);
+        if(m.matches()) {
+            double x = Double.parseDouble(m.group(1));
+            double y = Double.parseDouble(m.group(2));
+            boolean isBlocked = Boolean.parseBoolean(m.group(3).toLowerCase());
+
+            pathfinding.updatePoint(x, y, isBlocked);
+        }
     }
 
     public char blockIdToLetter(int id) {

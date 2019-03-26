@@ -37,6 +37,8 @@ def wait_for_pose_change():
 RESOLUTION = 4
 MARGIN = 6
 
+commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(RESOLUTION, MARGIN))
+
 def __custom_neighbors__( height, width ):
     def func( coord ):
         neighbor_list = [(coord[0]+i,coord[1]+j) 
