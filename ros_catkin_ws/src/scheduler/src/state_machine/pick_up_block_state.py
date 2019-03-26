@@ -20,5 +20,5 @@ class PickUpBlockState(State):
         t.sleep(0.5)
         commands.send_claw_command(commands.PICKUP_ANGLE)
         t.sleep(0.5)
-        from detect_letter_state import DetectLetterState() 
+        from detect_letter_state import DetectLetterState 
         return DetectLetterState()

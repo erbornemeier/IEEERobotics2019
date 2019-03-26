@@ -24,13 +24,13 @@ def wait_for_pose_update():
     t.sleep(0.5)
     robot_x = -1
     while robot_x == -1:
-        print('waiting for pose update', end='\r')
+        print('waiting for pose update')
         t.sleep(0.25)
 
 def wait_for_pose_change():
     pose_before = (robot_x, robot_y, robot_theta)
     while (robot_x, robot_y, robot_theta) == pose_before:
-        print('waiting for pose change' end='\r')
+        print('waiting for pose change')
         t.sleep(0.25)
 
 # PATH FINDING

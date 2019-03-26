@@ -18,7 +18,7 @@ class DriveToBlockState(State):
         super(DriveToBlockState, self).start()
 
         self.block_pos = ( (globals.x_coords[globals.current_block]+0.5)*12,\
-                            globals.y_coords[globals.current_block]+0.5)*12 )
+                           (globals.y_coords[globals.current_block]+0.5)*12 )
         self.needs_approach = True
 
         self.cam_gain = 6 
@@ -33,7 +33,6 @@ class DriveToBlockState(State):
         commands.set_display_state(commands.NORMAL)
 
         self.camera_angle = self.camera_start_angle
-        commands.
 
 
     def __get_block_pos__(self):
@@ -101,7 +100,7 @@ class DriveToBlockState(State):
 
         if self.camera_angle == self.camera_target_angle:
             commands.send_drive_vel_command(0, 0)
-            from pick_up_block_state import PickUpBlockState() 
+            from pick_up_block_state import PickUpBlockState 
             return PickUpBlockState()
         else:
             return self
