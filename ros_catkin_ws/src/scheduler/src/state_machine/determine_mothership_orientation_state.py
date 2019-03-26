@@ -8,6 +8,7 @@ import time as t
 from math import *
 from geometry_msgs.msg import Pose2D
 import drive_utils
+import geometry_utils
 
 class DetermineMothershipOrientationState(State):
     def __init__(self):
@@ -53,6 +54,16 @@ class DetermineMothershipOrientationState(State):
                 globals.mothership_theta = self.robot_theta if isABC else 180 - self.robot_theta #TODO Check math for DEF, bound angle
                 globals.mothership_x = self.robot_x + 11.75 * cos(radians(self.robot_theta))
                 globals.mothership_y = self.robot_y + 11.75 * sin(radians(self.robot_theta))
+
+                diag_width = 40
+                diag_width_ramp = 48
+
+                # TODO: Better loop
+                for i in range(8, 12*8 - 8, globals.pathfinding_resolution):
+                    for j in range(8, 12*8 - 8, globals.pathfinding_resolution):
+                        if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, diag_width_ramp, diag_width):
+                            globals.bad_points.append((i, j))
+
 
                 # If side is ABC diamond point is behind the robot
                 # Otherwise it is in front
