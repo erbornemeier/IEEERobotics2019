@@ -19,12 +19,6 @@ from cv_bridge import CvBridge
 
 rospack = rospkg.RosPack()
 bridge = CvBridge()
-orange_lower = np.array([4,100,0])
-orange_upper = np.array([18,255,255])
-black_lower = np.array([0,0,0])
-black_upper = np.array([255,255,150])
-kernel = np.ones((5,5),np.uint8)
-
 
 def find_rect_pts(pts):
     new_pts = pts
@@ -45,8 +39,8 @@ def load_h5_model():
 def load_h5_slot_model():
     global slot_model
     path = rospack.get_path('object_detection') + '/src/slot_recognizer.h5'
-    #slot_model = load_model(path)
-    #slot_model._make_predict_function()
+    slot_model = load_model(path)
+    slot_model._make_predict_function()
 
 load_h5_model()
 load_h5_slot_model()
@@ -57,6 +51,11 @@ def image_recieved(data):
     img = bridge.imgmsg_to_cv2(data, "bgr8")
 
 def classify_block(_):
+    orange_lower = np.array([4,100,0])
+    orange_upper = np.array([18,255,255])
+    black_lower = np.array([0,0,0])
+    black_upper = np.array([255,255,150])
+    kernel = np.ones((5,5),np.uint8)
     try:
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
@@ -109,17 +108,41 @@ def classify_block(_):
 
 
 def classify_slot(_):
+    black_lower = np.array([0,0,0])
+    black_upper = np.array([255,255,80])
+    kernel = np.ones((4,4), np.uint8)
+    padding = 7
     try:
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        gray = cv2.resize(gray, (100, 100))
-        #input_img = gray.flatten()                                             
-        input_img = gray                                                        
-        input_img = input_img.astype('float32')                                 
-        input_img /= 255.                                                       
-        input_img = input_img.reshape(-1,100,100,1)                             
+        small_img = cv2.resize(img, (360, 240))
+        h,w  = small_img.shape[:2]
+        cx, cy = w//2, h//2
+        hsv = cv2.cvtColor(small_img, cv2.COLOR_BGR2HSV)
+        thresh = cv2.inRange(hsv, black_lower, black_upper)
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        _, blacks, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        middle_black = blacks[0]
+        min_dist = float('inf')
+        for b in blacks:
+            M = cv2.moments(b)
+            if M['m00'] != 0:
+                x = M['m10']/M['m00']
+                y = M['m01']/M['m00']
+                dist = (cx-x)**2 + (cy-y)**2
+                if dist < min_dist:
+                    min_dist = dist
+                    middle_black = b
+        bx, by, bw, bh = cv2.boundingRect(middle_black)
+        out = thresh[by-padding:by+bh+padding, bx-padding:bx+bw+padding]
+        out = cv2.resize(out, (40,60))
+
+        input_img = out.astype('float32')
+        input_img /= 255.
+        input_img = input_img.reshape(1, 40*60)
 
         with graph.as_default():
             guess = slot_model.predict(input_img).tolist()[0]                            
+            confidence = max(guess)
+            print("CONFIDENCE {}".format(confidence))
             guess = guess.index(max(guess))
             print("Guess: " + str( guess))
             return LetterResponse(guess)

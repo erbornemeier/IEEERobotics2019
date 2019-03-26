@@ -19,6 +19,10 @@ class PlaceInSlotState(State):
         self.robot_y = -1
         self.robot_theta = -1
 
+        new_x, new_y = (globals.abc_approach_x, globals.abc_approach_y) if globals.current_letter <= 2 else\
+                       (globals.def_approach_x, globals.def_approach_y)
+        #commands.send_override_position_command(new_x, new_y)
+
         self.forward_dist = 5 #inches
         self.side_angle = 0
         if globals.current_letter % 3 == 0:
@@ -56,7 +60,7 @@ class PlaceInSlotState(State):
 
         #back off slot
         prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
-        commands.send_drive_forward_command(-16)
+        commands.send_drive_forward_command(-13)
         while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
             pass
 
