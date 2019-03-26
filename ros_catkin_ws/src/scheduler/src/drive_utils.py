@@ -21,21 +21,23 @@ pose_sub = rospy.Subscriber('robot_pose', Pose2D, __set_pose__)
 
 def wait_for_pose_update():
     global robot_x
+    t.sleep(0.5)
     robot_x = -1
     while robot_x == -1:
-        print('waiting for pose update')
-        t.sleep(0.5)
+        print('waiting for pose update', end='\r')
+        t.sleep(0.25)
 
 def wait_for_pose_change():
     pose_before = (robot_x, robot_y, robot_theta)
     while (robot_x, robot_y, robot_theta) == pose_before:
-        t.sleep(0.5)
+        print('waiting for pose change' end='\r')
+        t.sleep(0.25)
 
 # PATH FINDING
+RESOLUTION = 4
+MARGIN = 6
 
 def __custom_neighbors__( height, width ):
-    RESOLUTION = 4
-    MARGIN = 6
     def func( coord ):
         neighbor_list = [(coord[0]+i,coord[1]+j) 
                             for i in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)
