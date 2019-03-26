@@ -36,9 +36,10 @@ class DetermineMothershipOrientationState(State):
     def run(self):
         t.sleep(1)
         try:
-            # detected_slot = commands.slot_srv()
-            detected_slot = Letter()
-            detected_slot.letter = 0
+            detected_slot = commands.slot_srv()
+            print("DETECTED {}".format('B' if detected_slot.letter == 0 else 'E'))
+            #detected_slot = Letter()
+            #detected_slot.letter = 0
 
             commands.display_letter(1 if detected_slot.letter == 0 else 4)
             commands.set_display_state(commands.LETTER)
@@ -68,8 +69,15 @@ class DetermineMothershipOrientationState(State):
                 # If side is ABC diamond point is behind the robot
                 # Otherwise it is in front
                 mult = 1 if isABC else -1
-                diag_width = 40
+                diag_width = 44
+                approach_width = 15
                 diag_width_ramp = 48
+                globals.abc_approach_x = globals.mothership_x - (mult * approach_width * cos(radians(self.robot_theta)))
+                globals.abc_approach_y = globals.mothership_y - (mult * approach_width * sin(radians(self.robot_theta)))
+                globals.def_approach_x = globals.mothership_x + (mult * approach_width * cos(radians(self.robot_theta)))
+                globals.def_approach_y = globals.mothership_y + (mult * approach_width * sin(radians(self.robot_theta)))
+
+
                 globals.abc_x = globals.mothership_x - (mult * diag_width/2 * cos(radians(self.robot_theta)))
                 globals.abc_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(self.robot_theta)))
                 globals.def_x = globals.mothership_x + (mult * diag_width/2 * cos(radians(self.robot_theta)))

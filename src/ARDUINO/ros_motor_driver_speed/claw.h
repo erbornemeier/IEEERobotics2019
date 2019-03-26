@@ -8,7 +8,7 @@
 #define gripperOpenPower 255
 #define gripperClosePower 80
 #define gripperOpenTime 800
-#define gripperCloseTime 1000
+#define gripperCloseTime 1500
 
 #define MS_PER_DEG 2
 

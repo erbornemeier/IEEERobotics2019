@@ -24,7 +24,7 @@ uint8_t clawAngle = 10;
 //helper enums
 enum MOTOR_IDS {L, R, NUM_MOTORS};
 enum ENC_TYPE {A, B};
-enum STATE {CONST_VEL, DRIVE_DIST, TURN_ANGLE};
+enum STATE {CONST_VEL, DRIVE_DIST, TURN_ANGLE, POSITION_OVERRIDE, DROP_BLOCK};
 
 //M is mode (direction), E is PWM (speed)
 enum MOTOR_PINS {ML = 7, EL = 9, MR = 8, ER = 10};
@@ -56,8 +56,8 @@ ros::NodeHandle_<ArduinoHardware, 25, 25, 1024, 256> nh;
 //ros::NodeHandle nh;
 
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
-    String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
-    nh.loginfo(logg.c_str());
+    //String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
+    //nh.loginfo(logg.c_str());
     switch((uint8_t)moveCmd.y){
         case CONST_VEL:
             velocitySetpoints[L] = -moveCmd.theta;
@@ -73,6 +73,13 @@ void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
             newDriveCmd = true;
             angleSetpoint = moveCmd.theta;
             break;
+        case POSITION_OVERRIDE:
+            robot_pose.x = moveCmd.x;
+            robot_pose.y = moveCmd.theta;
+        case DROP_BLOCK:
+            newDriveCmd = true;
+            distanceSetpoint = moveCmd.x;
+            angleSetpoint = moveCmd.theta;
         default:
             break;
         }
@@ -110,7 +117,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 
 // Control Values
 #define SAMPLE_PERIOD           10
-#define POSE_PUBLISH_RATE_MS    1000
+#define POSE_PUBLISH_RATE_MS    500
 #define ROS_UPDATE_RATE         1
 #define DEG2RAD (PI/180)
 // Velocity Controller
@@ -137,6 +144,8 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define ANGLE_PER_REV        ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
 #define STRAIGHT_THRESH      0.5 //degrees
 #define INCHES_PER_COUNT    (WHEEL_CIRC/COUNTS_PER_REV)
+
+#define CLAW_PICKUP_ANGLE   40
 //IMU creation
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
@@ -198,6 +207,7 @@ void setup() {
 void loop() {
     switch(moveState){
         case CONST_VEL:
+        case POSITION_OVERRIDE:
             velDrive();
             updatePosition();
             break;
@@ -213,6 +223,22 @@ void loop() {
                 turn();
             } 
             break;
+        case DROP_BLOCK(){
+            if (newDriveCmd){
+                newDriveCmd = false;
+                // Turn the specified angle
+                turn();
+                // Lift the claw
+                claw.Servo_SetAngle(CLAW_PICKUP_ANGLE);
+                // Drive forward
+                distDrive();
+                // Drop off block
+                claw.Gripper_Open();
+                // Backup
+                distanceSetpoint = -distanceSetpoint;
+                distDrive();
+            }
+        }
         default:
             break;
         }
