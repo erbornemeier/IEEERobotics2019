@@ -1,10 +1,13 @@
 import globals
+from pypaths import astar
 import commands
+from geometry_utils import *
 import time as t
 import math
 import rospy
 from geometry_msgs.msg import Pose2D
 
+# POSE INFORMATION
 x, y = 0, 1
 robot_x = -1
 robot_y = -1
@@ -14,9 +17,100 @@ def __set_pose__(msg):
     robot_x = msg.x
     robot_y = msg.y
     robot_theta = msg.theta
-
 pose_sub = rospy.Subscriber('robot_pose', Pose2D, __set_pose__)
 
+def wait_for_pose_update():
+    global robot_x
+    robot_x = -1
+    while robot_x == -1:
+        print('waiting for pose update')
+        t.sleep(0.5)
+
+def wait_for_pose_change():
+    pose_before = (robot_x, robot_y, robot_theta)
+    while (robot_x, robot_y, robot_theta) == pose_before:
+        t.sleep(0.5)
+
+# PATH FINDING
+
+def __custom_neighbors__( height, width ):
+    RESOLUTION = 4
+    MARGIN = 6
+    def func( coord ):
+        neighbor_list = [(coord[0]+i,coord[1]+j) 
+                            for i in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)
+                            for j in range(-RESOLUTION, RESOLUTION+1, RESOLUTION) ]
+        return [ c for c in neighbor_list
+                 if c != coord
+                 and c not in globals.bad_points
+                 and c[0] >= MARGIN and c[0] <= width-MARGIN
+                 and c[1] >= MARGIN and c[1] <= height-MARGIN ]
+    return func
+
+finder = astar.pathfinder(neighbors=__custom_neighbors__(12*8, 12*8),
+                    distance=astar.absolute_distance,
+                    cost=astar.fixed_cost(1))
+def __optimize_path__(path):
+    #optimized_path = [path[0]]
+    optimized_path = []
+    for i, p in enumerate(path[1:-1]):
+        if p != avg(path[i], path[i+2]):
+            optimized_path.append(p)
+            pass
+    #optimized_path.append(path[-1])
+    return optimized_path
+
+def __get_path__(from_pt, to_pt):
+    from_pt = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in from_pt])
+    to_pt_approx = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in to_pt])
+    path = finder(from_pt, to_pt_approx)[1]
+    path = __optimize_path__(path) 
+    path.append(to_pt)
+    return path
+
+def get_drive_instructions(to_pt):
+    global robot_x, robot_y, robot_theta
+    robot_pos = (robot_x, robot_y)
+    dx, dy = to_pt[0]-robot_pos[0], to_pt[1]-robot_pos[1]
+    forward_dist = max(0, dist(robot_pos, to_pt)) 
+    turn_angle = math.degrees(math.atan2(dy, dx)) - robot_theta 
+    turn_angle = bound_angle(turn_angle)
+    return turn_angle, forward_dist
+
+def drive(forward_dist):
+    if abs(forward_dist) > 0.1:
+        commands.send_drive_forward_command(forward_dist)
+        wait_for_pose_change()
+
+def turn(turn_angle):
+    if abs(turn_angle) > 0.1:
+        commands.send_drive_turn_command(turn_angle)
+        wait_for_pose_change()
+
+def drive_to_point(to_pt):
+    forward_dist, turn_angle = get_drive_instructions(to_pt)
+    print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
+    turn(turn_angle)
+    drive(forward_dist) 
+
+def get_approach_point(from_pt, to_pt, approach_dist):
+    approach_perc = approach_dist / dist(from_pt, to_pt)
+    if approach_perc > 1:
+        return to_pt
+    return avg(from_pt, to_pt, weight=(1-approach_perc))
+
+def go_to_point(to_pt, approach_dist=0):
+    global robot_x, robot_y, robot_theta
+    wait_for_pose_update()
+    robot_pos = (robot_x, robot_y)
+    if approach_dist != 0:
+        to_pt = get_approach_point(robot_pos, to_pt, approach_dist)
+    path = __get_path__(robot_pos, to_pt)
+    #TODO change to instructions to send to arduino
+    for p in path:
+        drive_to_point(p)
+    
+'''
 def __ccw__(a, b, c):
     return (c[y]-a[y])*(b[x]-a[x]) > (b[y]-a[y])*(c[x]-a[x])
 
@@ -132,3 +226,4 @@ def drive_safely(target_pos, redo=False):
             go_to_point(closest_pt)
 
     return None
+'''

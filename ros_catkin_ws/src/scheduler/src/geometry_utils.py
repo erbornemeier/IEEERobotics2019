@@ -1,5 +1,18 @@
 import math
 
+def dist(p1, p2):
+    return sum((z[1] - z[0])**2 for z in zip(p1, p2))**0.5
+
+def avg(p1, p2, weight=0.5):
+    return tuple([a*weight+b*(1-weight) for a,b in zip(p1,p2)])
+
+def bound_angle(angle):
+    if angle > 180:
+        angle -= 360
+    if angle <= -180:
+        angle += 360
+    return angle
+
 def pointInEllipse(ellipse_x, ellipse_y, ellipse_rot_degrees, pt_x, pt_y, width, height):
     rot_rad = math.radians(ellipse_rot_degrees)
 
