@@ -33,32 +33,32 @@ class PlaceInSlotState(State):
 
     def __drop_off_at_letter__(self):
         #drive to slot
-        t.sleep(1)
-        self.robot_x = -1
-        while (self.robot_x == -1):
-            pass
-        if self.side_angle != 0:
-            prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
-            print('SENDING TURN: {}'.format(self.side_angle))
-            commands.send_drive_turn_command(self.side_angle)
-            while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
-                pass
+        #t.sleep(1)
+        #self.robot_x = -1
+        #while (self.robot_x == -1):
+        #    pass
+        #if self.side_angle != 0:
+        #    prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
+        #    print('SENDING TURN: {}'.format(self.side_angle))
+        #    commands.send_drive_turn_command(self.side_angle)
+        #    while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
+        #        pass
         
         self.extra_dist = 0.5 if self.side_angle != 0 else 0
-        prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
-        commands.send_drive_forward_command(self.forward_dist + self.extra_dist)
-        while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
-            pass
+        #prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
+        commands.send_drop_block_command(self.forward_dist + self.extra_dist, self.side_angle)
+        #while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
+        #    pass
 
         #drop in slot
-        commands.send_grip_command(commands.CLAW_OPEN)
-        t.sleep(1)
+        #commands.send_grip_command(commands.CLAW_OPEN)
+        #t.sleep(1)
 
         #back off slot
-        prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
-        commands.send_drive_forward_command(-16)
-        while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
-            pass
+        #prev_pose = (self.robot_x, self.robot_y, self.robot_theta)
+        #commands.send_drive_forward_command(-16)
+        #while prev_pose == (self.robot_x, self.robot_y, self.robot_theta):
+            #pass
 
         globals.current_block += 1
 

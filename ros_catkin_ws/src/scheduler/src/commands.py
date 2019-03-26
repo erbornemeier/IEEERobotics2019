@@ -88,7 +88,12 @@ def send_vis_command(data):
     msg = String()
     msg.data = data
     vis_cmd_pub.publish(msg)
-
+def send_drop_block_command(distance, angle):
+	msg = Pose2D()
+	msg.x = distance
+	msg.y = 4
+	msg.theta = angle
+	drive_pub.publish(msg)
 NORMAL = 0
 LETTER = 1
 WAITING = 2
