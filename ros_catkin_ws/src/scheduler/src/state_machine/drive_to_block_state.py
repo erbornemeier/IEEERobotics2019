@@ -79,9 +79,10 @@ class DriveToBlockState(State):
         if self.needs_approach:
             commands.send_cam_command(self.camera_angle)
             commands.send_claw_command(commands.DROP_ANGLE)
-            drive_utils.go_to_point(block_pos, self.approach_dist)
+            #drive_utils.go_to_point(self.block_pos, self.approach_dist)
+            drive_utils.go_to_point(self.block_pos)
             drive_utils.wait_for_pose_update()
-            turn_angle, _ = drive_utils.get_drive_instructions(block_pos)
+            turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
             print("TURNING TO FACE BLOCK: {}".format(turn_angle))
             drive_utils.turn(turn_angle)
 

@@ -56,8 +56,8 @@ class DetermineMothershipOrientationState(State):
                 globals.mothership_x = self.robot_x + 11.75 * cos(radians(self.robot_theta))
                 globals.mothership_y = self.robot_y + 11.75 * sin(radians(self.robot_theta))
 
-                diag_width = 40
-                diag_width_ramp = 48
+                diag_width = 20
+                diag_width_ramp = 24
 
                 start_x = 0
                 start_y = 0
@@ -70,8 +70,11 @@ class DetermineMothershipOrientationState(State):
 
                 for i in range(start_x, 12*8 - drive_utils.MARGIN + 1,drive_utils.RESOLUTION):
                     for j in range(start_y, 12*8 - drive_utils.MARGIN + 1, drive_utils.RESOLUTION):
-                        if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, diag_width_ramp, diag_width):
+                        if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, diag_width, diag_width_ramp):
                             globals.bad_points.add((i, j))
+                            #TODO: Remove
+                            commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
+                            commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
                             commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
 
 

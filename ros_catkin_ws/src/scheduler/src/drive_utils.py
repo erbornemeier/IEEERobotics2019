@@ -21,13 +21,14 @@ pose_sub = rospy.Subscriber('robot_pose', Pose2D, __set_pose__)
 
 def wait_for_pose_update():
     global robot_x
-    t.sleep(0.5)
     robot_x = -1
     while robot_x == -1:
         print('waiting for pose update')
         t.sleep(0.25)
 
 def wait_for_pose_change():
+    #wait_for_pose_update()
+    global robot_x, robot_y, robot_theta
     pose_before = (robot_x, robot_y, robot_theta)
     while (robot_x, robot_y, robot_theta) == pose_before:
         print('waiting for pose change')
@@ -36,8 +37,6 @@ def wait_for_pose_change():
 # PATH FINDING
 RESOLUTION = 4
 MARGIN = 6
-
-commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(RESOLUTION, MARGIN))
 
 def __custom_neighbors__( height, width ):
     def func( coord ):
@@ -92,7 +91,7 @@ def turn(turn_angle):
         wait_for_pose_change()
 
 def drive_to_point(to_pt):
-    forward_dist, turn_angle = get_drive_instructions(to_pt)
+    turn_angle, forward_dist = get_drive_instructions(to_pt)
     print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
     turn(turn_angle)
     drive(forward_dist) 
@@ -110,6 +109,7 @@ def go_to_point(to_pt, approach_dist=0):
     if approach_dist != 0:
         to_pt = get_approach_point(robot_pos, to_pt, approach_dist)
     path = __get_path__(robot_pos, to_pt)
+    print("PATH: {}".format(path))
     #TODO change to instructions to send to arduino
     for p in path:
         drive_to_point(p)
