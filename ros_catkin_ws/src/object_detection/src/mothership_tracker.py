@@ -106,8 +106,6 @@ class mothership_tracker:
                 return quad 
         return False
 
-   
-
 def image_recieved(data):
     global img
     global width

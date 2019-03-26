@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import commands
+import drive_utils
 import time as t
 import math
 import rospy
@@ -99,6 +100,8 @@ class StraightenToMothershipState(State):
 
             self.__drive_to_mothership__(mothership_pos)
 
+        t.sleep(0.5)
+
         commands.send_drive_vel_command(0, 0)
 
         turnLeft = mothership_pos.theta > 0
@@ -118,10 +121,9 @@ class StraightenToMothershipState(State):
 
         print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
 
+        t.sleep(0.5)
         drive_utils.turn(turn_angle) 
-        drive_utils.wait_for_pose_update()
         drive_utils.drive(forward_dist)
-        drive_utils.wait_for_pose_update()
 
         vel = -1 if turn_angle > 0 else 1
         while True:
