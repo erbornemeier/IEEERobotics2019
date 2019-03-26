@@ -5,9 +5,9 @@ from object_detection.srv import *
 import rospy
 
 PICKUP_ANGLE = 40
-DROP_ANGLE = 10
-CARRY_ANGLE = 13
-CLAW_DETERMINE_MOTHERSHIP_ANGLE = 65
+DROP_ANGLE = 13
+CARRY_ANGLE = 16
+CLAW_DETERMINE_MOTHERSHIP_ANGLE = 63
 
 CAMERA_DETERMINE_MOTHERSHIP_ANGLE = 45
 
@@ -74,6 +74,14 @@ def send_drive_turn_command(theta):
     msg.theta = theta
     drive_pub.publish(msg)
 
+def send_override_position_command(new_x, new_y):
+    msg = Pose2D()
+    msg.x = new_x
+    msg.theta = new_y
+    msg.y = 3 #override pos
+    drive_pub.publish(msg)
+    
+
 def display_letter(letter):
     msg = UInt8()
     msg.data = letter
@@ -88,7 +96,12 @@ def send_vis_command(data):
     msg = String()
     msg.data = data
     vis_cmd_pub.publish(msg)
-
+def send_drop_block_command(distance, angle):
+	msg = Pose2D()
+	msg.x = distance
+	msg.y = 4
+	msg.theta = angle
+	drive_pub.publish(msg)
 NORMAL = 0
 LETTER = 1
 WAITING = 2

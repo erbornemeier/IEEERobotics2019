@@ -21,7 +21,7 @@ class ApproachMothershipState(State):
         self.cam_gain = 6 
         self.drive_gain = 4/27.
         self.turn_gain = 4
-        self.cameraAngle = 27 
+        self.cameraAngle = 20 if self.isFirstInstance else 27
         self.rate = rospy.Rate(5)
         self.target_camera_angle = 37
         
@@ -30,8 +30,9 @@ class ApproachMothershipState(State):
         commands.set_display_state(commands.NORMAL)
 
         self.found_time = t.clock()
-	self.MOTHERSHIP_TIMEOUT = 0.5
-	self.adjusted = False
+	self.MOTHERSHIP_TIMEOUT = 0.1
+	self.adjusted = True
+
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -62,6 +63,7 @@ class ApproachMothershipState(State):
             self.cameraAngle = self.target_camera_angle
 
         commands.send_cam_command(int(self.cameraAngle))
+        print('*********CAMERA ANGLE -> {}'.format(self.cameraAngle))
 
     def __drive_to_mothership__(self, mothership_pos):
 
@@ -75,8 +77,8 @@ class ApproachMothershipState(State):
         self.rate.sleep()
         #camera to mothership
         mothership_pos = self.__get_mothership_pos__()
-
-        if not self.adjusted and mothership_pos.y < 0 and t.clock() - self.found_time > self.MOTHERSHIP_TIMEOUT:
+            
+        if self.isFirstInstance and not self.adjusted and mothership_pos.y < 0 and t.clock() - self.found_time > self.MOTHERSHIP_TIMEOUT:
             commands.send_drive_turn_command(-10)
 	    self.adjusted = True
             t.sleep(2)
@@ -92,13 +94,11 @@ class ApproachMothershipState(State):
 
         #rospy.loginfo("Mothership Pos: " + str(mothership_pos.x) + ", " + str(mothership_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
-        # TODO: Handle end condition
         if self.cameraAngle == self.target_camera_angle:
             t.sleep(0.25)
             commands.send_drive_vel_command(0, 0)
 
             if self.isFirstInstance:
-                # Transition to determine_mothership_orientation
                 from determine_mothership_orientation_state import *
                 return DetermineMothershipOrientationState()
             else:

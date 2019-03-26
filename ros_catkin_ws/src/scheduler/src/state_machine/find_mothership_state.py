@@ -43,7 +43,7 @@ class FindMothershipState(State):
             self.mothership_found = True
             commands.send_drive_vel_command(0, 0)
 
-            from approach_mothership_state import ApproachMothershipState
-            return ApproachMothershipState(self.isFirstInstance)
+            from straighten_to_mothership_state import StraightenToMothershipState
+            return StraightenToMothershipState()
         else:
             return self
