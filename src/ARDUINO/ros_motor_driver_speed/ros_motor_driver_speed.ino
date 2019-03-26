@@ -119,7 +119,8 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define SAMPLE_PERIOD           10
 #define POSE_PUBLISH_RATE_MS    500
 #define ROS_UPDATE_RATE         1
-#define DEG2RAD (PI/180)
+#define DEG2RAD                 (PI/180)
+#define OVERSHOOT_DELAY_MS      200
 // Velocity Controller
 #define K_P                     19.4
 #define K_I                     270 
@@ -133,7 +134,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 // Angle controller
 #define K_P_ANG                 0.04 //degrees error -> rad/s
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
-#define TURN_ESS_GAIN     0.011 //degrees
+#define TURN_ESS_GAIN           0.011 //degrees
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
 #define COUNTS_PER_REV       3200
@@ -143,7 +144,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define TURN_CIRCUMFERENCE   (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV        ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
 #define STRAIGHT_THRESH      0.5 //degrees
-#define INCHES_PER_COUNT    (WHEEL_CIRC/COUNTS_PER_REV)
+#define INCHES_PER_COUNT     (WHEEL_CIRC/COUNTS_PER_REV)
 
 #define CLAW_PICKUP_ANGLE   40
 //IMU creation
@@ -243,7 +244,6 @@ void loop() {
             break;
         }
   rosUpdate();
-
 }
 
 void rosUpdate(){
@@ -310,19 +310,16 @@ void distDrive(){
                 //changes velocity setpoint
                 velocitySetpoints[i] = posErrorToAngVel(posError, i);
             }
-        //changes motor output
-        
-        velDrive();
-        rosUpdate();
+            velDrive();
+            rosUpdate();
         } while (!isZero(posError, false));
         stopMotors();
-        // Delay for motor overshoot calculation
-        delay(400);
+        delay(OVERSHOOT_DELAY_MS);
     } while (!isZero(posError, false));
     stopMotors();
     robot_pose.x += distanceSetpoint*cos(DEG2RAD*getHeading());
     robot_pose.y += distanceSetpoint*sin(DEG2RAD*getHeading());
-    
+    robot_pose.theta = getHeading();
 }
 
 void turn(){
@@ -395,9 +392,6 @@ void updatePosition(){
         robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
         
     }
-    //else if (fabs(velocities[L] + velocities[R]) < 0.75){
-        // Robot is strictly turning, little change to robot position
-    //}
     else {
         // Robot is driving at an arc, approximate position as initial turn then straight path
         float arcLength = (leftDelta + rightDelta)/2;
@@ -405,40 +399,13 @@ void updatePosition(){
         robot_pose.y += (arcLength*sin(DEG2RAD*robot_pose.theta));
     }
     previousTheta = robot_pose.theta;
-    
 }
 
-// Keeps the angle within bounds of -180 to 180
-float boundAngle(float angle){
-    while(abs(angle) > 180){
-        angle += angle > 0 ? -360 : 360;
-    }
-    return angle;
-}
-
-
-void updateVelocity(int motor) {
-    long newEncCounts = encCounts[motor];
-    deltaPosition[motor] = newEncCounts - lastCounts[motor];
-    lastCounts[motor] = newEncCounts;
-    velocities[motor] = (deltaPosition[motor] * 2 * PI) / (SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * COUNTS_PER_REV);
-}
-
-void printErrors(long* errors) {
-
-  for (int i = 0; i < NUM_MOTORS; i++) {
-    //Serial.print(errors[i]);
-    //nh.loginfo(String(errors[i]).c_str());
-    if (i != NUM_MOTORS - 1) {
-      //Serial.print(", ");
-      //nh.loginfo(", ");
-    }
-
-  }
-  ////Serial.println("");
-  //nh.loginfo("--------");
-}
-
+/*
+ * Implements a proportional controller for position. 
+ * Takes in the array of errors (inches) and the motor number and returns the angular velocity setpoint (float, rad/s).
+ * Also implements feedback between the two wheels to keep the robot on a straight path.
+ */
 float posErrorToAngVel(float* errors, int motor){
     float angVel = (errors[motor]*K_P_DIST);
     //saturate vel values
@@ -457,12 +424,9 @@ float posErrorToAngVel(float* errors, int motor){
 }
 
 /*
-   void setMotor()
-   set the identified motor to the desired PWM value (uint_8)
+ * Takes in motor (m) and PWM Value (pwm) and sets each motor and direction.
 */
 void setMotor(int m, int pwm) {
-    //Serial.println("Motor: " + String(m) + ": " + String(pwm));
-  
     //negative on left motor is forwards
     pwm = (m == L) ? -pwm : pwm;
   
@@ -476,33 +440,53 @@ void setMotor(int m, int pwm) {
 }
 
 /*
-   void stopMotors()
-   set both motors to zero speed
+ * Sets all motors to zero speed. Also resets integral control values to 0.
 */
   void stopMotors() {
-    setMotor(L, 0);
-    setMotor(R, 0);
-    integralControlValue[L] = 0;
-    integralControlValue[R] = 0;
-}
-
-/*
-   void resetEncoderCounts()
-   Resets each of the encoder counts to zero
-*/
-void resetEncoderCounts() {
     for (int i = 0; i < NUM_MOTORS; i++){
-      encCounts[i] = 0;
-      lastCounts[i] = 0;
+        setMotor(i, 0);
+        integralControlValue[i] = 0;
     }
 }
 
+/*
+ * Resets encoder counts and last counts to zero.
+*/
+void resetEncoderCounts() {
+    for (int i = 0; i < NUM_MOTORS; i++){
+        encCounts[i] = 0;
+        lastCounts[i] = 0;
+    }
+}
+/*
+ * Returns the absolute angular position of the robot in degrees bounded -180 to 180.
+ */
 double getHeading(){
     sensors_event_t orientationData;
     bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
     double angle = (360 - orientationData.orientation.x) + 90;
     angle = boundAngle(angle);
     return angle;
+}
+
+/*
+ * Helper function that takes in an angle (double) and returns the angle bounded -180 to 180 degrees.
+ */
+double boundAngle(double angle){
+    while(fabs(angle) > 180){
+        angle += angle > 0 ? -360 : 360;
+    }
+    return angle;
+}
+
+/*
+ * Takes in the motor number and updates the robot's velocity based on angPosition/SAMPLE_PERIOD.
+ */
+void updateVelocity(int motor) {
+    long newEncCounts = encCounts[motor];
+    deltaPosition[motor] = newEncCounts - lastCounts[motor];
+    lastCounts[motor] = newEncCounts;
+    velocities[motor] = (deltaPosition[motor] * 2 * PI) / (SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * COUNTS_PER_REV);
 }
 
 /*
