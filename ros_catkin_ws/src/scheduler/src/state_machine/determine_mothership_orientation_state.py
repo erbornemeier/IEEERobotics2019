@@ -63,15 +63,16 @@ class DetermineMothershipOrientationState(State):
                 start_y = 0
 
                 # Go until first point within the margin is found
-                while start_x <= drive_utils.MARGIN:
+                while start_x < drive_utils.MARGIN:
                     start_x += drive_utils.RESOLUTION
-                while start_y <= drive_utils.MARGIN:
+                while start_y < drive_utils.MARGIN:
                     start_y += drive_utils.RESOLUTION
 
                 for i in range(start_x, 12*8 - drive_utils.MARGIN + 1,drive_utils.RESOLUTION):
                     for j in range(start_y, 12*8 - drive_utils.MARGIN + 1, drive_utils.RESOLUTION):
                         if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, diag_width_ramp, diag_width):
                             globals.bad_points.add((i, j))
+                            commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
 
 
                 # If side is ABC diamond point is behind the robot
