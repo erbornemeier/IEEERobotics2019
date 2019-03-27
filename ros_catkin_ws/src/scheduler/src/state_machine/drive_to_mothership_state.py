@@ -25,7 +25,7 @@ class DriveToMothershipState(State):
         else:   
             drive_utils.go_to_point((globals.def_x, globals.def_y))
 
-        drive_utils.wait_for_pose_update()
+        #drive_utils.wait_for_pose_update()
         turn_angle, _ = drive_utils.get_drive_instructions(\
                                 (globals.mothership_x, globals.mothership_y)) 
         print("TURNING TO FACE MOTHERSHIP: {}".format(turn_angle))

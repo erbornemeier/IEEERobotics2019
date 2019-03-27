@@ -21,7 +21,10 @@ def pointInEllipse(ellipse_x, ellipse_y, ellipse_rot_degrees, pt_x, pt_y, width,
     x = (pt_x - ellipse_x)
     y = (pt_y - ellipse_y)
 
-    p = (((x*c + y*s) ** 2) / (width ** 2)) + (((x*s-y*c) ** 2) / (height ** 2)) 
+    a = ((x*c + y*s) ** 2) 
+    b = ((x*s - y*c) ** 2)
+
+    p = (a / ((width/2) ** 2)) + (b / ((height/2) ** 2))
     return p < 1
 
 # Helpful for debugging

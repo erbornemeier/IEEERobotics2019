@@ -28,17 +28,13 @@ class PlaceInSlotState(State):
             self.turn_angle = -15
 
     def run(self):
-        #close claw and lift it up
-        #t.sleep(0.5) 
-        #commands.send_grip_command(commands.CLAW_CLOSED)
-        #t.sleep(0.5)
-        #commands.send_claw_command(commands.PICKUP_ANGLE)
-        #t.sleep(0.5)
 
         #drop it off
-        self.__drop_off_at_letter__()
+        t.sleep(0.5)
         commands.send_drop_block_command(self.forward_dist, self.turn_angle)
         globals.current_block += 1
+        #TODO when done?
+        t.sleep(5)
 
         if globals.current_block == globals.num_blocks:
             from return_to_home_state import ReturnToHomeState

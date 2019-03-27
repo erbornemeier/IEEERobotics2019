@@ -47,17 +47,16 @@ class DetermineMothershipOrientationState(State):
             if detected_slot != 0xFF:
                 isABC = detected_slot.letter == 0
 
-                while self.robot_theta == -1:
-                    pass
+                drive_utils.wait_for_pose_update() 
 
-
-                # TODO: What if robot is turned? How to determine orientation?
                 globals.mothership_theta = self.robot_theta if isABC else 180 - self.robot_theta #TODO Check math for DEF, bound angle
                 globals.mothership_x = self.robot_x + 11.75 * cos(radians(self.robot_theta))
                 globals.mothership_y = self.robot_y + 11.75 * sin(radians(self.robot_theta))
 
-                diag_width = 20
-                diag_width_ramp = 24
+                #diag_width = 20
+                #diag_width_ramp = 24
+                diag_width = 36
+                diag_width_ramp = 40 
 
                 start_x = 0
                 start_y = 0
@@ -72,10 +71,8 @@ class DetermineMothershipOrientationState(State):
                     for j in range(start_y, 12*8 - drive_utils.MARGIN + 1, drive_utils.RESOLUTION):
                         if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, diag_width, diag_width_ramp):
                             globals.bad_points.add((i, j))
-                            #TODO: Remove
                             commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
-                            commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
-                            commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
+
 
 
                 # If side is ABC diamond point is behind the robot

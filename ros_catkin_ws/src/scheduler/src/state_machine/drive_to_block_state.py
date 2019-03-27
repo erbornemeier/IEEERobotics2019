@@ -79,8 +79,8 @@ class DriveToBlockState(State):
         if self.needs_approach:
             commands.send_cam_command(self.camera_angle)
             commands.send_claw_command(commands.DROP_ANGLE)
-            #drive_utils.go_to_point(self.block_pos, self.approach_dist)
-            drive_utils.go_to_point(self.block_pos)
+            drive_utils.go_to_point(self.block_pos, self.approach_dist)
+            #drive_utils.go_to_point(self.block_pos)
             drive_utils.wait_for_pose_update()
             turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
             print("TURNING TO FACE BLOCK: {}".format(turn_angle))
@@ -100,6 +100,7 @@ class DriveToBlockState(State):
         #rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y) + " Cam Angle: " + str(self.camera_angle))
 
         if self.camera_angle == self.camera_target_angle:
+            t.sleep(0.25)
             commands.send_drive_vel_command(0, 0)
             from pick_up_block_state import PickUpBlockState 
             return PickUpBlockState()

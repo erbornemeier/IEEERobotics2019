@@ -1,5 +1,6 @@
 import globals
 from pypaths import astar
+#import astar #custom astar
 import commands
 from geometry_utils import *
 import time as t
@@ -37,6 +38,8 @@ def wait_for_pose_change():
 # PATH FINDING
 RESOLUTION = 4
 MARGIN = 6
+FIRST_POINT_IN = int(math.ceil(MARGIN/float(RESOLUTION))*RESOLUTION)
+print(FIRST_POINT_IN)
 
 def __custom_neighbors__( height, width ):
     def func( coord ):
@@ -63,16 +66,35 @@ def __optimize_path__(path):
     #optimized_path.append(path[-1])
     return optimized_path
 
+grid = [(i,j) for i in range(FIRST_POINT_IN, 12*8-FIRST_POINT_IN+1, RESOLUTION)\
+              for j in range(FIRST_POINT_IN, 12*8-FIRST_POINT_IN+1, RESOLUTION)]
+def __approx_to_grid__(pt):
+    closest = sorted(grid, key=lambda x: dist(x, pt))
+    for p in closest:
+        if p not in globals.bad_points:
+            return p
+    return closest[0]
+
 def __get_path__(from_pt, to_pt):
-    from_pt = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in from_pt])
-    to_pt_approx = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in to_pt])
-    path = finder(from_pt, to_pt_approx)[1]
-    path = __optimize_path__(path) 
-    path.append(to_pt)
-    return path
+    #from_pt = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in from_pt])
+    #to_pt_approx = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in to_pt])
+    from_pt_approx = __approx_to_grid__(from_pt)
+    to_pt_approx = __approx_to_grid__(to_pt)
+    print("FROM PT APRPOX: {}".format(from_pt_approx))
+    print("TO PT APRPOX: {}".format(to_pt_approx))
+
+    path = finder(from_pt_approx, to_pt_approx)[1]
+    print("PREOPTIMIZED PATH: {}".format(path))
+    opt_path = __optimize_path__(path) 
+    if MARGIN <= to_pt[0] <= 12*8-MARGIN and MARGIN <= to_pt[1] <= 12*8-MARGIN:
+        opt_path.append(to_pt)
+    else:
+        opt_path.append(to_pt_approx)
+    return opt_path
 
 def get_drive_instructions(to_pt):
     global robot_x, robot_y, robot_theta
+    wait_for_pose_update()
     robot_pos = (robot_x, robot_y)
     dx, dy = to_pt[0]-robot_pos[0], to_pt[1]-robot_pos[1]
     forward_dist = max(0, dist(robot_pos, to_pt)) 
@@ -81,11 +103,13 @@ def get_drive_instructions(to_pt):
     return turn_angle, forward_dist
 
 def drive(forward_dist):
+    print("DRIVING: {}".format(forward_dist))
     if abs(forward_dist) > 0.1:
         commands.send_drive_forward_command(forward_dist)
         wait_for_pose_change()
 
 def turn(turn_angle):
+    print("TURNING: {}".format(turn_angle))
     if abs(turn_angle) > 0.1:
         commands.send_drive_turn_command(turn_angle)
         wait_for_pose_change()
@@ -100,7 +124,7 @@ def get_approach_point(from_pt, to_pt, approach_dist):
     approach_perc = approach_dist / dist(from_pt, to_pt)
     if approach_perc > 1:
         return to_pt
-    return avg(from_pt, to_pt, weight=(1-approach_perc))
+    return avg(from_pt, to_pt, weight=approach_perc)
 
 def go_to_point(to_pt, approach_dist=0):
     global robot_x, robot_y, robot_theta

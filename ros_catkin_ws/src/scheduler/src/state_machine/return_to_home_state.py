@@ -26,7 +26,8 @@ class ReturnToHomeState(State):
         # wait until robot pos recieved
         drive_utils.go_to_point((self.home_x, self.home_y))
         
-        turn_angle = self.home_theta - self.robot_theta
+        drive_utils.wait_for_pose_update()
+        turn_angle = self.home_theta - drive_utils.robot_theta
         turn_angle = bound_angle(turn_angle)
         print("TURNING TO FACE HOME: {}".format(turn_angle))
         drive_utils.turn(turn_angle)

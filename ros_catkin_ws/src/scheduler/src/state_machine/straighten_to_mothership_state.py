@@ -107,31 +107,34 @@ class StraightenToMothershipState(State):
         turnLeft = mothership_pos.theta > 0
 
         mothership_orientation = self.__get_mothership_orientation__(mothership_pos.theta)
-        print("MOTHERSHIP ORIENTATION -> {}".format(mothership_orientation))
+        #needs to correct itself
+        if abs(mothership_orientation > 10):
+            print("MOTHERSHIP ORIENTATION -> {}".format(mothership_orientation))
 
-        forward_dist = (self.target_dist**2 + self.approach_dist**2 -\
-                        2*self.target_dist*self.approach_dist*\
-                        math.cos(math.radians(abs(mothership_orientation))) )**0.5
-        turn_angle = math.asin(self.approach_dist*math.sin(\
-                                        math.radians(abs(mothership_orientation)))\
-                                        / forward_dist)
-        turn_angle = 180 - math.degrees(turn_angle)
-        if not turnLeft:
-            turn_angle *= -1
+            forward_dist = (self.target_dist**2 + self.approach_dist**2 -\
+                            2*self.target_dist*self.approach_dist*\
+                            math.cos(math.radians(abs(mothership_orientation))) )**0.5
+            turn_angle = math.asin(self.approach_dist*math.sin(\
+                                            math.radians(abs(mothership_orientation)))\
+                                            / forward_dist)
+            turn_angle = 180 - math.degrees(turn_angle)
+            if not turnLeft:
+                turn_angle *= -1
 
-        print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
+            print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
 
-        t.sleep(0.5)
-        drive_utils.turn(turn_angle) 
-        drive_utils.drive(forward_dist)
+            t.sleep(0.5)
+            drive_utils.turn(turn_angle) 
+            drive_utils.drive(forward_dist)
+            drive_utils.turn(90 if turn_angle < 0 else -90)
 
-        vel = -1 if turn_angle > 0 else 1
-        while True:
-            self.rate.sleep()
-            mothership_pos = self.__get_mothership_pos__()
-            if mothership_pos.y >= 0:
-                break
-            commands.send_drive_vel_command(0, vel)
+            vel = -1 if turn_angle > 0 else 1
+            while True:
+                self.rate.sleep()
+                mothership_pos = self.__get_mothership_pos__()
+                if mothership_pos.y >= 0:
+                    break
+                commands.send_drive_vel_command(0, vel)
         
         from approach_mothership_state import ApproachMothershipState
         return ApproachMothershipState(True) 
