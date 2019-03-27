@@ -36,13 +36,14 @@ def wait_for_pose_change():
         t.sleep(0.25)
 
 # PATH FINDING
-RESOLUTION = 4
+RESOLUTION = 3
 MARGIN = 6
 FIRST_POINT_IN = int(math.ceil(MARGIN/float(RESOLUTION))*RESOLUTION)
 print(FIRST_POINT_IN)
 
 def __custom_neighbors__( height, width ):
     def func( coord ):
+        '''
         neighbor_list = [(coord[0]+i,coord[1]+j) 
                             for i in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)
                             for j in range(-RESOLUTION, RESOLUTION+1, RESOLUTION) ]
@@ -51,29 +52,54 @@ def __custom_neighbors__( height, width ):
                  and c not in globals.bad_points
                  and c[0] >= MARGIN and c[0] <= width-MARGIN
                  and c[1] >= MARGIN and c[1] <= height-MARGIN ]
+        '''
+        neighbor_list = [(coord[0], coord[1], coord[2]+angle) \
+                        for angle in range(-135, 181, 45)]
+        next_x = coord[0] + math.cos(math.radians(coord[2]))*\
+                            (1 if coord[2]%90==0 else 2**0.5)*RESOLUTION
+        next_y = coord[1] + math.sin(math.radians(coord[2]))*\
+                            (1 if coord[2]%90==0 else 2**0.5)*RESOLUTION
+        neighbor_list.append((int(round(next_x)), int(round(next_y)), coord[2]))
+
+        return [ c for c in neighbor_list
+                 if c != coord
+                 and c[:2] not in globals.bad_points
+                 and c[0] >= MARGIN and c[0] <= width-MARGIN
+                 and c[1] >= MARGIN and c[1] <= height-MARGIN ]
+
     return func
+
+def __custom_cost__(a, b):
+    if a[2] != b[2]:
+        return 10 # 5 was decent
+    else:
+        return 1
 
 finder = astar.pathfinder(neighbors=__custom_neighbors__(12*8, 12*8),
                     distance=astar.absolute_distance,
-                    cost=astar.fixed_cost(1))
+                    cost=__custom_cost__)
 def __optimize_path__(path):
     #optimized_path = [path[0]]
     optimized_path = []
     for i, p in enumerate(path[1:-1]):
-        if p != avg(path[i], path[i+2]):
+        if path[i][:2] == p[:2]:
+            continue
+        
+        if p[:2] != avg(path[i], path[i+2]):
             optimized_path.append(p)
-            pass
     #optimized_path.append(path[-1])
     return optimized_path
 
 grid = [(i,j) for i in range(FIRST_POINT_IN, 12*8-FIRST_POINT_IN+1, RESOLUTION)\
               for j in range(FIRST_POINT_IN, 12*8-FIRST_POINT_IN+1, RESOLUTION)]
 def __approx_to_grid__(pt):
-    closest = sorted(grid, key=lambda x: dist(x, pt))
+    closest = sorted(grid, key=lambda x: dist(x, pt[:2]))
+    snap_angle = int(round(pt[2]/float(45)))*45
     for p in closest:
         if p not in globals.bad_points:
-            return p
-    return closest[0]
+            return (p[0], p[1], snap_angle)
+    print("COULD NOT APPROXIMATE POINT TO A VALID POINT, CHOSE CLOSEST")
+    return tuple([closest[0]] + [snap_angle])
 
 def __get_path__(from_pt, to_pt):
     #from_pt = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in from_pt])
@@ -129,129 +155,46 @@ def get_approach_point(from_pt, to_pt, approach_dist):
 def go_to_point(to_pt, approach_dist=0):
     global robot_x, robot_y, robot_theta
     wait_for_pose_update()
-    robot_pos = (robot_x, robot_y)
+    robot_pos = (robot_x, robot_y, robot_theta)
     if approach_dist != 0:
         to_pt = get_approach_point(robot_pos, to_pt, approach_dist)
+        to_pt = __approx_to_grid__((to_pt[0], to_pt[1], 0))
+    to_pt = (to_pt[0], to_pt[1], 0)
     path = __get_path__(robot_pos, to_pt)
+
+    if approach_dist != 0:
+        path = path[:-1]
+
     print("PATH: {}".format(path))
     #TODO change to instructions to send to arduino
     for p in path:
         drive_to_point(p)
+
+def add_bad_points_around_block(x, y):
+    '''
+    x,y is the foot location, for example 1, 1 is in cell 1, 1
+    '''
+    x = (x * 12) + 6
+    y = (y * 12) + 6
     
-'''
-def __ccw__(a, b, c):
-    return (c[y]-a[y])*(b[x]-a[x]) > (b[y]-a[y])*(c[x]-a[x])
+    radius = 12
 
-def __intersection__(l1, l2):
-    a, b = l1
-    c, d = l2
-    return __ccw__(a,c,d) != __ccw__(b,c,d) and __ccw__(a,b,c) != __ccw__(a,b,d)
+    grid_pt = __approx_to_grid__((x, y, 0))[:2]
+    for p in grid:
+        if dist(grid_pt, p) <= radius:
+            globals.bad_points.add(p)
 
-def __collides__(segment, box):
+def remove_bad_points_around_block(x, y):    
+    '''
+    x,y is the foot location, for example 1, 1 is in cell 1, 1
+    '''
+    x = (x * 12) + 6
+    y = (y * 12) + 6
+    
+    radius = 12
 
-    #connect box points as a series of line segments
-    box_lines = zip(box, box[1:] + [box[0]])
-    box_lines.append((box[0], box[2]))
-    box_lines.append((box[1], box[3]))
-
-    #check if line segment collides with any box segments
-    for box_line in box_lines:
-        print("Trying {} -> {}".format(segment[0], segment[1]))
-        if __intersection__(segment, box_line):
-            print("Collided with {}".format(box_line))
-            return True
-    return False
-
-def __dist__(p1, p2):
-    return sum((z[1] - z[0])**2 for z in zip(p1, p2))**0.5
-
-def go_to_point(target_pos, approach_dist=0):
-    global robot_x, robot_y, robot_theta 
-    robot_x = -1
-    while (robot_x == -1):
-        print('waiting for pose')
-        t.sleep(0.5)
-        pass
-    dx, dy = target_pos[0]-robot_x, target_pos[1]-robot_y
-    forward_dist = (dx**2 + dy**2)**0.5 - approach_dist 
-    forward_dist = max(0, forward_dist)
-    turn_angle = (math.atan2(dy, dx) * 180.0/3.14159) - robot_theta
-    if turn_angle > 180:
-        turn_angle -= 360
-    if turn_angle < -180:
-        turn_angle += 360
-    print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
-    pose_before = (robot_x, robot_y, robot_theta)
-    if abs(turn_angle) > 0.1:
-        commands.send_drive_turn_command(turn_angle)
-        while (robot_x, robot_y, robot_theta) == pose_before:
-            print('waiting for change')
-            t.sleep(0.5)
-            pass
-    pose_before = (robot_x, robot_y, robot_theta)
-    if forward_dist > 0.1:
-        commands.send_drive_forward_command(forward_dist)
-        while (robot_x, robot_y, robot_theta) == pose_before:
-            print('waiting for change')
-            t.sleep(0.5)
-            pass
-
-
-def drive_safely(target_pos, redo=False):
-    global robot_x, robot_y, robot_theta 
-    robot_x = -1
-    while (robot_x == -1):
-        print('waiting for pose')
-        t.sleep(0.5)
-        pass
-    current_pos_xy = (robot_x, robot_y) 
-    current_pos = (robot_x, robot_y, robot_theta)
-
-    #get line segment to target
-    current_to_target = (current_pos_xy, target_pos)
-    #form box around mothership
-    mothership_box = [(globals.abc_bb_x, globals.abc_bb_y),
-                      (globals.af_bb_x, globals.af_bb_y),
-                      (globals.def_bb_x, globals.def_bb_y),
-                      (globals.cd_bb_x, globals.cd_bb_y)]
-
-    mothership_pts = [(globals.abc_x, globals.abc_y),
-                      (globals.af_x, globals.af_y),
-                      (globals.def_x, globals.def_y),
-                      (globals.cd_x, globals.cd_y)]
-
-    print(mothership_box)
-
-    #if a collision of mothership is predicted
-    if (__collides__(current_to_target, mothership_box)):
-        print("FINDING PATH TO TARGET")
-        #find path to target
-        for b in mothership_pts:
-            if not (__collides__( (current_pos_xy, b), mothership_box) or 
-                    __collides__( (b, target_pos)    , mothership_box)):
-                return b
-        #no path found, target is in mothership bounds
-        if not redo:
-            print ("Target in mothership bounds")
-            dx, dy = target_pos[0]-globals.mothership_x, target_pos[1]-globals.mothership_y
-            to_target_angle = math.atan2(dy, dx)  
-            int_point = (globals.mothership_x + 28*math.cos(to_target_angle),\
-                         globals.mothership_y + 28*math.sin(to_target_angle))
-            #go around to proper point
-            approach_point = drive_safely(int_point, True)
-            go_to_point(approach_point)
-            go_to_point(int_point)
-            print("Done pathfinding, going to target")
-        #no path found, robot is in mothership bounds
-        else: 
-            closest_pt = None
-            closest_dist = float('inf')
-            for p in mothership_pts:
-                dist = __dist__(p, current_pos_xy)
-                if dist < closest_dist:
-                    closest_dist = dist
-                    closest_pt = p
-            go_to_point(closest_pt)
-
-    return None
-'''
+    grid_pt = __approx_to_grid__((x, y, 0))[:2]
+    for p in grid:
+        if dist(grid_pt, p) <= radius:
+            if p in globals.bad_points:
+                globals.bad_points.remove(p)

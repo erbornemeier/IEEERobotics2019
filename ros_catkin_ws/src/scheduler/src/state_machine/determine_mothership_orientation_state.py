@@ -55,8 +55,8 @@ class DetermineMothershipOrientationState(State):
 
                 #diag_width = 20
                 #diag_width_ramp = 24
-                diag_width = 36
-                diag_width_ramp = 40 
+                diag_width = 26
+                diag_width_ramp = 34 
 
                 start_x = 0
                 start_y = 0

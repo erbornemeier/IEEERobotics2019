@@ -5,6 +5,7 @@ import time as t
 import rospy
 from std_msgs.msg import UInt8, Bool
 from geometry_msgs.msg import Pose2D
+import drive_utils
 
 class PlaceInSlotState(State):
     def __init__(self):
@@ -32,6 +33,7 @@ class PlaceInSlotState(State):
         #drop it off
         t.sleep(0.5)
         commands.send_drop_block_command(self.forward_dist, self.turn_angle)
+        drive_utils.remove_bad_points_around_block(globals.x_coords[globals.current_block], globals.y_coords[globals.current_block])
         globals.current_block += 1
         #TODO when done?
         t.sleep(5)

@@ -45,6 +45,7 @@ def wait_for_flash_drive():
 def display_blocks():
     id = 0
     for x, y in zip(globals.x_coords, globals.y_coords):
+        drive_utils.add_bad_points_around_block(x, y)
         print("\tDisplaying block @ {},{}".format(x, y))
         commands.display_block_command(x, y)
         commands.send_vis_command("init-block id:{} x:{} y:{}".format(id, x, y))

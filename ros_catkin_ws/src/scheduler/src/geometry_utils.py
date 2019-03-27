@@ -1,10 +1,10 @@
 import math
 
 def dist(p1, p2):
-    return sum((z[1] - z[0])**2 for z in zip(p1, p2))**0.5
+    return sum((z[1] - z[0])**2 for z in zip(p1[:2], p2[:2]))**0.5
 
 def avg(p1, p2, weight=0.5):
-    return tuple([a*weight+b*(1-weight) for a,b in zip(p1,p2)])
+    return tuple([a*weight+b*(1-weight) for a,b in zip(p1[:2],p2[:2])])
 
 def bound_angle(angle):
     if angle > 180:
