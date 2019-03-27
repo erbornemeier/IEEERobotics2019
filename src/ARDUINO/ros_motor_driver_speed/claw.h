@@ -1,4 +1,3 @@
-//#include <Servo.h>
 #include <Servo_Hardware_PWM.h>
 #define clawServoPin 45
 #define DEG_TO_US(X) (X*(2000/180.0) + 500)

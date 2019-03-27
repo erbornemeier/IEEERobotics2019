@@ -1,6 +1,5 @@
 #include <ros.h>
 #include <PinChangeInterrupt.h>
-//#include <Servo.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
@@ -9,7 +8,6 @@
 #include <std_msgs/UInt8.h>
 #include <geometry_msgs/Pose2D.h>
 #include "claw.h"
-
 
 /*****************************************
  *       HARDWARE DEFINITIONS            * 
@@ -104,6 +102,16 @@ void camCallback(const std_msgs::UInt8& camCmd) {
 }
 
 
+void rosUpdate(){
+    static long lastTime = millis();
+    //robot_pose.theta = getHeading();
+    if (millis() - lastTime > POSE_PUBLISH_RATE_MS){
+        pose_pub.publish(&robot_pose);
+        lastTime = millis();
+    }
+    nh.spinOnce(); 
+}
+
 ros::Subscriber<geometry_msgs::Pose2D> dc ("drive_command", &dcCallback);
 ros::Subscriber<std_msgs::UInt8>   cc ("claw_command",  &ccCallback);
 ros::Subscriber<std_msgs::Bool> gc ("grip_command", &gcCallback);
@@ -119,7 +127,8 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 #define SAMPLE_PERIOD           10
 #define POSE_PUBLISH_RATE_MS    500
 #define ROS_UPDATE_RATE         1
-#define DEG2RAD (PI/180)
+#define DEG2RAD                 (PI/180)
+#define OVERSHOOT_DELAY_MS      200
 // Velocity Controller
 #define K_P                     19.4
 #define K_I                     270 
@@ -133,19 +142,19 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);
 // Angle controller
 #define K_P_ANG                 0.04 //degrees error -> rad/s
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
-#define TURN_ESS_GAIN     0.011 //degrees
+#define TURN_ESS_GAIN           0.011 //degrees
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
-#define COUNTS_PER_REV       3200
-#define WHEEL_DIAMETER       3.45 //inches
-#define WHEEL_CIRC           10.84 //inches
-#define ROBOT_WIDTH          7.63 //inches
-#define TURN_CIRCUMFERENCE   (ROBOT_WIDTH*PI)
-#define ANGLE_PER_REV        ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
-#define STRAIGHT_THRESH      0.5 //degrees
-#define INCHES_PER_COUNT    (WHEEL_CIRC/COUNTS_PER_REV)
+#define COUNTS_PER_REV          3200
+#define WHEEL_DIAMETER          3.45 //inches
+#define WHEEL_CIRC              10.84 //inches
+#define ROBOT_WIDTH             7.63 //inches
+#define TURN_CIRCUMFERENCE      (ROBOT_WIDTH*PI)
+#define ANGLE_PER_REV           ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
+#define STRAIGHT_THRESH         0.5 //degrees
+#define INCHES_PER_COUNT        (WHEEL_CIRC/COUNTS_PER_REV)
 
-#define CLAW_PICKUP_ANGLE   40
+#define CLAW_PICKUP_ANGLE       40
 //IMU creation
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
@@ -169,7 +178,7 @@ void setup() {
         nh.spinOnce();
     }
 
-
+    // Robot initial conditions
     robot_pose.x = 4.5*12;
     robot_pose.y = 4.5*12;
     robot_pose.theta = 90;
@@ -243,18 +252,103 @@ void loop() {
             break;
         }
   rosUpdate();
-
 }
 
-void rosUpdate(){
-    static long lastTime = millis();
-    //robot_pose.theta = getHeading();
-    if (millis() - lastTime > POSE_PUBLISH_RATE_MS){
-        pose_pub.publish(&robot_pose);
-        lastTime = millis();
+/*
+ * Drives the set distance (stored in float distance). Returns when distance setpoint is achieved.
+ * Interruptable at least every SAMPLE_PERIOD by rosUpdate(), which calls nh.spinOnce().
+ */
+void distDrive(){
+    resetEncoderCounts();
+    float posError[NUM_MOTORS] = {0,0};
+    do{
+        do{
+            for (int i = 0; i < NUM_MOTORS; i++){
+                // Find error in inches
+                posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
+                // Convert position error to a velocity setpoint for each wheel
+                velocitySetpoints[i] = posErrorToAngVel(posError, i);
+            }
+            velDrive();
+            rosUpdate();
+        } while (!isZero(posError, false));
+        stopMotors();
+        delay(OVERSHOOT_DELAY_MS);
+    } while (!isZero(posError, false));
+    stopMotors();
+    robot_pose.x += distanceSetpoint*cos(DEG2RAD*getHeading());
+    robot_pose.y += distanceSetpoint*sin(DEG2RAD*getHeading());
+    robot_pose.theta = getHeading();
+}
+
+
+/*
+ * Implements proportional control for position. 
+ * Takes in the array of errors (inches) and the motor number and returns the angular velocity setpoint (float, rad/s).
+ * Also implements feedback between the two wheels to keep the robot on a straight path.
+ */
+float posErrorToAngVel(float* errors, int motor){
+    float angVel = (errors[motor]*K_P_DIST);
+    //saturate vel values
+    if (abs(angVel) > MAX_SPEED) angVel =  angVel > 0 ? MAX_SPEED : -MAX_SPEED;
+    else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
+    
+    // Do error correction to keep wheels consistent with each other
+    int otherMotor = (motor == L) ? R : L;
+    float motorDiff = errors[motor] - errors[otherMotor];
+    float motorDiffCorrection = K_DIFF * motorDiff;
+    if (motorDiffCorrection > MAX_CORRECTION) motorDiffCorrection = MAX_CORRECTION;
+    if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
+
+    angVel += motorDiffCorrection;
+    return angVel;
+}
+
+/*
+ * Turns the robot the angle stored in angleSetpoint. Returns when the angle is achieved. 
+ */
+void turn(){
+    resetEncoderCounts();
+    float angError[NUM_MOTORS] = {0,0};
+    float angleSetpoints[NUM_MOTORS] = {0,0};
+    //CCW rotation, left is reverse, right is forward
+    angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
+    angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
+    do {
+        do {
+            for (int i = 0; i < NUM_MOTORS; i++){
+                // Find error in degrees
+                angError[i] = angleSetpoints[i] - ((encCounts[i]*ANGLE_PER_REV)/(COUNTS_PER_REV));
+                // Convert from error in degrees to an angVel setpoint for each wheel 
+                velocitySetpoints[i] = angErrorToAngVel(angError[i]);
+            }
+            //changes motor output
+            velDrive(); //enforces set sample period
+            rosUpdate();
+        } while (!isZero(angError, true));
+        stopMotors();
+        // Delay for motor overshoot calculation
+        delay(OVERSHOOT_DELAY_MS);
+    } while (!isZero(angError, true));
+    stopMotors();
+    robot_pose.theta = getHeading();
+}
+
+/*
+ * Takes in the angle error in degrees (float) and applies a gain to return the ang vel setpoint (float).
+ * The proportional control gain is set by K_P_ANG.
+ */
+float angErrorToAngVel(float error){
+    float angVel = (error*K_P_ANG);
+    if (abs(angVel) > MAX_SPEED) {
+        return angVel > 0 ? MAX_SPEED : -MAX_SPEED;
     }
-    nh.spinOnce(); 
+    else if (abs(angVel) < MIN_SPEED) {
+        return angVel > 0 ? MIN_SPEED : -MIN_SPEED;
+    }
+    else return angVel;
 }
+
 
 /*
    void velDrive()
@@ -296,91 +390,14 @@ int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
     else return PWMSetpoint;
 }
 
-/*
- * Drives the set distance (stored in float distance). 
- */
-void distDrive(){
-    resetEncoderCounts();
-    float posError[NUM_MOTORS] = {0,0};
-    do{
-        do{
-            for (int i = 0; i < NUM_MOTORS; i++){
-                //find error in inches
-                posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
-                //changes velocity setpoint
-                velocitySetpoints[i] = posErrorToAngVel(posError, i);
-            }
-        //changes motor output
-        
-        velDrive();
-        rosUpdate();
-        } while (!isZero(posError, false));
-        stopMotors();
-        // Delay for motor overshoot calculation
-        delay(400);
-    } while (!isZero(posError, false));
-    stopMotors();
-    robot_pose.x += distanceSetpoint*cos(DEG2RAD*getHeading());
-    robot_pose.y += distanceSetpoint*sin(DEG2RAD*getHeading());
-    
-}
 
-void turn(){
-    resetEncoderCounts();
-    float angError[NUM_MOTORS] = {0,0};
-    float angleSetpoints[NUM_MOTORS] = {0,0};
-    //CCW rotation, left is reverse, right is forward
-    angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
-    angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
-    do {
-        do {
-            for (int i = 0; i < NUM_MOTORS; i++){
-                //find error in degrees
-                angError[i] = angleSetpoints[i] - ((encCounts[i]*ANGLE_PER_REV)/(COUNTS_PER_REV));
-                //changes velocity setpoint
-                velocitySetpoints[i] = angErrorToAngVel(angError[i]);
-            }
-            //changes motor output
-            velDrive(); //enforces set sample period
-            rosUpdate();
-        } while (!isZero(angError, true));
-        stopMotors();
-        // Delay for motor overshoot calculation
-        delay(200);
-    } while (!isZero(angError, true));
-    stopMotors();
-    robot_pose.theta = getHeading();
-}
+
 
 /*
- * Takes in the angle error in degrees (float) and applies a gain to return the ang vel setpoint (float).
- * The proportional control gain is set by K_P_ANG.
+ * Updates the position of the robot based on the velocity values of the wheels. The function
+ * uses an approximation of turning/driving straight for the case when the robot is driving in an 
+ * arc. 
  */
-float angErrorToAngVel(float error){
-    float angVel = (error*K_P_ANG);
-    if (abs(angVel) > MAX_SPEED) {
-        return angVel > 0 ? MAX_SPEED : -MAX_SPEED;
-    }
-    else if (abs(angVel) < MIN_SPEED) {
-        return angVel > 0 ? MIN_SPEED : -MIN_SPEED;
-    }
-    else return angVel;
-}
-
-/*
- * Takes in an array and checks it against the ZERO_ERROR_MARGIN constant. 
- * The function returns true if the values in the array are less than the
- * error margin. 
- */
-bool isZero(float* errors, bool turning){                                                                                                               
-    for (int i = 0; i < NUM_MOTORS; i++){ 
-        float margin = turning ? TURN_ZERO_ERROR_MARGIN : ZERO_ERROR_MARGIN;                                               
-        if (abs(errors[i]) > margin) return false;          
-    }                                                                           
-    return true;                                                                
-} 
-
-  
 void updatePosition(){
     volatile static double previousTheta = getHeading();
     robot_pose.theta = getHeading();
@@ -395,9 +412,6 @@ void updatePosition(){
         robot_pose.y += rightDelta*sin(DEG2RAD*robot_pose.theta);
         
     }
-    //else if (fabs(velocities[L] + velocities[R]) < 0.75){
-        // Robot is strictly turning, little change to robot position
-    //}
     else {
         // Robot is driving at an arc, approximate position as initial turn then straight path
         float arcLength = (leftDelta + rightDelta)/2;
@@ -405,64 +419,13 @@ void updatePosition(){
         robot_pose.y += (arcLength*sin(DEG2RAD*robot_pose.theta));
     }
     previousTheta = robot_pose.theta;
-    
 }
 
-// Keeps the angle within bounds of -180 to 180
-float boundAngle(float angle){
-    while(abs(angle) > 180){
-        angle += angle > 0 ? -360 : 360;
-    }
-    return angle;
-}
-
-
-void updateVelocity(int motor) {
-    long newEncCounts = encCounts[motor];
-    deltaPosition[motor] = newEncCounts - lastCounts[motor];
-    lastCounts[motor] = newEncCounts;
-    velocities[motor] = (deltaPosition[motor] * 2 * PI) / (SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * COUNTS_PER_REV);
-}
-
-void printErrors(long* errors) {
-
-  for (int i = 0; i < NUM_MOTORS; i++) {
-    //Serial.print(errors[i]);
-    //nh.loginfo(String(errors[i]).c_str());
-    if (i != NUM_MOTORS - 1) {
-      //Serial.print(", ");
-      //nh.loginfo(", ");
-    }
-
-  }
-  ////Serial.println("");
-  //nh.loginfo("--------");
-}
-
-float posErrorToAngVel(float* errors, int motor){
-    float angVel = (errors[motor]*K_P_DIST);
-    //saturate vel values
-    if (abs(angVel) > MAX_SPEED) angVel =  angVel > 0 ? MAX_SPEED : -MAX_SPEED;
-    else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
-    
-    // Do error correction to keep wheels consistent with eachother
-    int otherMotor = (motor == L) ? R : L;
-    float motorDiff = errors[motor] - errors[otherMotor];
-    float motorDiffCorrection = K_DIFF * motorDiff;
-    if (motorDiffCorrection > MAX_CORRECTION) motorDiffCorrection = MAX_CORRECTION;
-    if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
-
-    angVel += motorDiffCorrection;
-    return angVel;
-}
 
 /*
-   void setMotor()
-   set the identified motor to the desired PWM value (uint_8)
-*/
+ * Takes in motor (m) and PWM Value (pwm) and sets each motor and direction.
+ */
 void setMotor(int m, int pwm) {
-    //Serial.println("Motor: " + String(m) + ": " + String(pwm));
-  
     //negative on left motor is forwards
     pwm = (m == L) ? -pwm : pwm;
   
@@ -476,33 +439,67 @@ void setMotor(int m, int pwm) {
 }
 
 /*
-   void stopMotors()
-   set both motors to zero speed
-*/
+ * Sets all motors to zero speed. Also resets integral control values to 0.
+ */
   void stopMotors() {
-    setMotor(L, 0);
-    setMotor(R, 0);
-    integralControlValue[L] = 0;
-    integralControlValue[R] = 0;
-}
-
-/*
-   void resetEncoderCounts()
-   Resets each of the encoder counts to zero
-*/
-void resetEncoderCounts() {
     for (int i = 0; i < NUM_MOTORS; i++){
-      encCounts[i] = 0;
-      lastCounts[i] = 0;
+        setMotor(i, 0);
+        integralControlValue[i] = 0;
     }
 }
 
+/*
+ * Resets encoder counts and last counts to zero.
+ */
+void resetEncoderCounts() {
+    for (int i = 0; i < NUM_MOTORS; i++){
+        encCounts[i] = 0;
+        lastCounts[i] = 0;
+    }
+}
+
+/*
+ * Helper function that takes in an array and checks it against the ZERO_ERROR_MARGIN constant. 
+ * The function returns true if the values in the array are less than the
+ * error margin. Distinguishes between zero error margin for turning (TURN_ZERO_ERROR_MARGIN) and going straight. 
+ */
+bool isZero(float* errors, bool turning){                                                                                                               
+    for (int i = 0; i < NUM_MOTORS; i++){ 
+        float margin = turning ? TURN_ZERO_ERROR_MARGIN : ZERO_ERROR_MARGIN;                                               
+        if (abs(errors[i]) > margin) return false;          
+    }                                                                           
+    return true;                                                                
+} 
+
+/*
+ * Returns the absolute angular position of the robot in degrees bounded -180 to 180.
+ */
 double getHeading(){
     sensors_event_t orientationData;
     bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
     double angle = (360 - orientationData.orientation.x) + 90;
     angle = boundAngle(angle);
     return angle;
+}
+
+/*
+ * Helper function that takes in an angle (double) and returns the angle bounded -180 to 180 degrees.
+ */
+double boundAngle(double angle){
+    while(fabs(angle) > 180){
+        angle += angle > 0 ? -360 : 360;
+    }
+    return angle;
+}
+
+/*
+ * Takes in the motor number and updates the robot's velocity based on angPosition/SAMPLE_PERIOD.
+ */
+void updateVelocity(int motor) {
+    long newEncCounts = encCounts[motor];
+    deltaPosition[motor] = newEncCounts - lastCounts[motor];
+    lastCounts[motor] = newEncCounts;
+    velocities[motor] = (deltaPosition[motor] * 2 * PI) / (SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * COUNTS_PER_REV);
 }
 
 /*
