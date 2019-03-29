@@ -19,8 +19,8 @@ public class Mothership extends Entity {
     public void draw(Graphics2D g) {
         g.setColor(Color.GREEN);
 
-        int drawX = (int) (x + Board.MARGIN - diameter/2);
-        int drawY = Canvas.CANVAS_HEIGHT - (int) (y + Board.MARGIN + (diameter / 2));
+        int drawX = (int) (x + Board.DISPLAY_MARGIN - diameter/2);
+        int drawY = Canvas.CANVAS_HEIGHT - (int) (y + Board.DISPLAY_MARGIN + (diameter / 2));
         g.fillOval(drawX, drawY, 25, 25);
 
         g.setColor(Color.BLACK);
@@ -29,10 +29,10 @@ public class Mothership extends Entity {
             BoardPoint p1 = points[i];
             BoardPoint p2 = points[(i + 1) % points.length];
 
-            int x1 = (int) (p1.x + Board.MARGIN);
-            int y1 = (int) (Canvas.CANVAS_HEIGHT - (p1.y + Board.MARGIN));
-            int x2 = (int) (p2.x + Board.MARGIN);
-            int y2 = (int) (Canvas.CANVAS_HEIGHT - (p2.y + Board.MARGIN));
+            int x1 = (int) (p1.x + Board.DISPLAY_MARGIN);
+            int y1 = (int) (Canvas.CANVAS_HEIGHT - (p1.y + Board.DISPLAY_MARGIN));
+            int x2 = (int) (p2.x + Board.DISPLAY_MARGIN);
+            int y2 = (int) (Canvas.CANVAS_HEIGHT - (p2.y + Board.DISPLAY_MARGIN));
 
 
             g.drawLine(x1, y1, x2, y2);

@@ -11,6 +11,7 @@ public class DisplayController {
     private Mothership mothership;
     private Robot robot;
     private HashMap<Character, Block> blocks;
+    private Pathfinding pathfinding;
 
     public DisplayController() {
         initialize();
@@ -41,7 +42,7 @@ public class DisplayController {
         Pattern p = Pattern.compile(
             ".*\\s*x:(\\d*\\.?\\d*)"
             + "\\s*y:(\\d*\\.?\\d*)"
-            + "\\s*-?theta:(\\d*\\.?\\d*)"
+            + "\\s*theta:(-?\\d*\\.?\\d*)"
         );
 
         Matcher m = p.matcher(msg);
@@ -109,7 +110,7 @@ public class DisplayController {
         Pattern p = Pattern.compile(
                 ".*\\s*x:(\\d*\\.?\\d*)"
                 + "\\s*y:(\\d*\\.?\\d*)"
-                + "-?\\s*theta:(\\d*\\.?\\d*)\\s*"
+                + "\\s*theta:(-?\\d*\\.?\\d*)\\s*"
                 + "\\s*abc_x:(\\d*\\.?\\d*)"
                 + "\\s*abc_y:(\\d*\\.?\\d*)"
                 + "\\s*af_x:(\\d*\\.?\\d*)"
@@ -141,7 +142,54 @@ public class DisplayController {
         }
     }
 
+    @Command("init-pathfinding")
+    public void createPathfindingGrid(String msg) {
+        Pattern p = Pattern.compile(
+            ".*\\s*resolution:(\\d*\\.?\\d*)"
+            + "\\s*margin:(\\d*\\.?\\d*)"
+        );
 
+        Matcher m = p.matcher(msg);
+        if(m.matches()) {
+            double resolution = Double.parseDouble(m.group(1));
+            double margin = Double.parseDouble(m.group(2));
+
+            pathfinding = new Pathfinding(resolution, margin);
+        }
+    }
+
+    @Command("update-pathfinding-point")
+    public void updatePathfindingPoint(String msg) {
+        Pattern p = Pattern.compile(
+            ".*\\s*x:(\\d*\\.?\\d*)"
+            + "\\s*y:(\\d*\\.?\\d*)"
+            + "\\s*isBlocked:([tT]rue|[fF]alse)"
+        );
+
+        Matcher m = p.matcher(msg);
+        if(m.matches()) {
+            double x = Double.parseDouble(m.group(1));
+            double y = Double.parseDouble(m.group(2));
+            boolean isBlocked = Boolean.parseBoolean(m.group(3).toLowerCase());
+
+            pathfinding.updatePoint(x, y, isBlocked);
+        }
+    }
+
+    @Command("draw-path")
+    public void drawPath(String msg) {
+        Pattern p = Pattern.compile(".*\\s*\\[(\\(\\d*\\.?\\d*,\\d*\\.?\\d*\\),?)+]");
+
+        Matcher m = p.matcher(msg);
+        if(m.matches()) {
+            p = Pattern.compile("(\\((\\d*\\.?\\d*),(\\d*\\.?\\d*)\\))");
+            m = p.matcher(msg);
+            while(m.find()) {
+                int x = Integer.parseInt(m.group(2));
+                int y = Integer.parseInt(m.group(3));
+            }
+        }
+    }
 
     public char blockIdToLetter(int id) {
         return (char) ('A' + id);
@@ -153,7 +201,11 @@ public class DisplayController {
 
     public void reset() {
         robot = null;
-
+        pathfinding = null;
         initialize();
+    }
+
+    public Pathfinding getPathfinding() {
+        return pathfinding;
     }
 }

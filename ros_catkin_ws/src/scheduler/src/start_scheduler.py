@@ -6,6 +6,8 @@ import subprocess
 import json
 import re
 
+import commands
+import drive_utils
 from std_msgs.msg import UInt8
 from geometry_msgs.msg import Pose2D
 from state_machine.state_machine import StateMachine
@@ -15,7 +17,6 @@ from state_machine.drive_to_mothership_state import DriveToMothershipState
 from state_machine.find_mothership_state import FindMothershipState
 import time as t
 import globals
-import commands
 
 def wait_for_flash_drive():
     rospack = rospkg.RosPack()
@@ -44,13 +45,16 @@ def wait_for_flash_drive():
 def display_blocks():
     id = 0
     for x, y in zip(globals.x_coords, globals.y_coords):
+        drive_utils.add_bad_points_around_block(x, y)
         print("\tDisplaying block @ {},{}".format(x, y))
         commands.display_block_command(x, y)
         commands.send_vis_command("init-block id:{} x:{} y:{}".format(id, x, y))
         id += 1
-        t.sleep(0.2)
+        t.sleep(0.1)
 
 rospy.init_node("scheduler")
+
+commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(drive_utils.RESOLUTION, drive_utils.MARGIN))
 _ = raw_input("Press enter to start")
 
 wait_for_flash_drive()

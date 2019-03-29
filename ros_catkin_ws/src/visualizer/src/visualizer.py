@@ -6,6 +6,7 @@ import subprocess
 import json
 import re
 import time
+import Queue
 
 from socket import *
 
@@ -39,9 +40,11 @@ addr = (server_ip, int(server_port))
 #     exit()
 
 client_socket.sendto("init-robot", addr)
+msg_queue = Queue.Queue()
 
 def sendCommand(msg):
-    client_socket.sendto(msg.data, addr)
+    msg_queue.put(msg.data)
+    # client_socket.sendto(msg.data, addr)
 
 def sendPose(msg):
     client_socket.sendto("update-robot-pose x:{} y:{} theta:{}".format(msg.x, msg.y, msg.theta), addr)
@@ -50,4 +53,6 @@ pose_sub = rospy.Subscriber('robot_pose', Pose2D, sendPose)
 command_sub = rospy.Subscriber('vis_command', String, sendCommand)
 
 while not rospy.is_shutdown():
-    pass
+    if not msg_queue.empty():
+        client_socket.sendto(msg_queue.get(), addr)
+        time.sleep(0.1)

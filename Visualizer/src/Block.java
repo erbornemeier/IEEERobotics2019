@@ -29,8 +29,8 @@ public class Block extends Entity {
         g.setStroke(STROKE);
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-        int drawX = (int) (x + Board.MARGIN + (Board.PIXELS_PER_FOOT / 2) - (drawSize / 2.0));
-        int drawY = Canvas.CANVAS_HEIGHT - (int)(y + Board.MARGIN + (Board.PIXELS_PER_FOOT / 2) + (drawSize / 2.0));
+        int drawX = (int) (x + Board.DISPLAY_MARGIN + (Board.PIXELS_PER_FOOT / 2) - (drawSize / 2.0));
+        int drawY = Canvas.CANVAS_HEIGHT - (int)(y + Board.DISPLAY_MARGIN + (Board.PIXELS_PER_FOOT / 2) + (drawSize / 2.0));
         g.drawRect(drawX, drawY, drawSize, drawSize);
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,

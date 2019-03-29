@@ -57,6 +57,7 @@ public class Server extends Thread {
             }
 
             String data = new String(packet.getData(), 0, packet.getLength());
+            Logger.getInstance().log(TAG, "Received message: " + data);
 
             if(data.equals("initialize")) {
                 // TODO: Get working, but not really important

@@ -13,9 +13,9 @@ class DetectLetterState(State):
     def start(self):
         super(DetectLetterState, self).start()
         rospy.loginfo("Entering detect letter state")
+	t.sleep(3)
         
     def run(self):
-	t.sleep(1.5)
         try:
             detected_letter = commands.letter_srv()
             if detected_letter == 0xFF:
@@ -23,12 +23,11 @@ class DetectLetterState(State):
             globals.current_letter = detected_letter.letter
             commands.display_letter(detected_letter.letter)
             commands.set_display_state(commands.LETTER)
-            t.sleep(1)
+            t.sleep(0.5)
+
         except Exception as e:
             print(e)
             return self
 
-        # from put_down_block_state import * 
-        # return PutDownBlockState()
-        from drive_to_mothership_state import *
+        from drive_to_mothership_state import DriveToMothershipState
         return DriveToMothershipState()

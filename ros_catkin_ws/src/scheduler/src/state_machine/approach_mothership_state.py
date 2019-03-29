@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import commands
+import drive_utils
 import time as t
 import math
 import rospy
@@ -19,7 +20,8 @@ class ApproachMothershipState(State):
         super(ApproachMothershipState, self).start();
 
         self.cam_gain = 6 
-        self.drive_gain = 4/27.
+        self.drive_gain = 6/27.
+        self.min_speed = 0.8
         self.turn_gain = 4
         self.cameraAngle = 20 if self.isFirstInstance else 27
         self.rate = rospy.Rate(5)
@@ -27,10 +29,10 @@ class ApproachMothershipState(State):
         
         commands.send_cam_command(self.cameraAngle)
         commands.send_claw_command(commands.CARRY_ANGLE)
-        commands.set_display_state(commands.NORMAL)
 
-        self.found_time = t.clock()
-	self.MOTHERSHIP_TIMEOUT = 0.1
+        self.found_time = t.time()
+	self.MOTHERSHIP_TIMEOUT = 2.0 
+        self.BACKUP_DIST = 2.0
 	self.adjusted = True
 
 
@@ -68,7 +70,7 @@ class ApproachMothershipState(State):
     def __drive_to_mothership__(self, mothership_pos):
 
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
-        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.3
+        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + self.min_speed
         commands.send_drive_vel_command(forward_speed, turn_speed)
         print("Mothership angle: {}".format(mothership_pos.theta))
 
@@ -78,31 +80,30 @@ class ApproachMothershipState(State):
         #camera to mothership
         mothership_pos = self.__get_mothership_pos__()
             
-        if self.isFirstInstance and not self.adjusted and mothership_pos.y < 0 and t.clock() - self.found_time > self.MOTHERSHIP_TIMEOUT:
-            commands.send_drive_turn_command(-10)
-	    self.adjusted = True
-            t.sleep(2)
+	if mothership_pos.y < 0:
+            if t.time() - self.found_time > self.MOTHERSHIP_TIMEOUT:
+                drive_utils.drive(-self.BACKUP_DIST) 
+                self.cameraAngle -= 2
+                commands.send_cam_command(int(self.cameraAngle))
+                self.found_time = t.time()
+            else:
+                self.__reset__()
             return self
-	elif mothership_pos.y < 0:
-	    self.__reset__()
-	    return self
         else:
-            self.found_time = t.clock()
+            self.found_time = t.time()
             self.__camera_to_mothership__(mothership_pos)
-
-        self.__drive_to_mothership__(mothership_pos)
+            self.__drive_to_mothership__(mothership_pos)
 
         #rospy.loginfo("Mothership Pos: " + str(mothership_pos.x) + ", " + str(mothership_pos.y) + " Cam Angle: " + str(self.cameraAngle))
 
         if self.cameraAngle == self.target_camera_angle:
-            t.sleep(0.25)
             commands.send_drive_vel_command(0, 0)
 
             if self.isFirstInstance:
-                from determine_mothership_orientation_state import *
+                from determine_mothership_orientation_state import DetermineMothershipOrientationState 
                 return DetermineMothershipOrientationState()
             else:
-                from place_in_slot_state import *
+                from place_in_slot_state import PlaceInSlotState
                 return PlaceInSlotState()
             
         else:

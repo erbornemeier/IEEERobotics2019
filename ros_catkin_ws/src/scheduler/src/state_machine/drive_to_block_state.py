@@ -17,42 +17,23 @@ class DriveToBlockState(State):
     def start(self):
         super(DriveToBlockState, self).start()
 
-        self.pose_sub = rospy.Subscriber('robot_pose', Pose2D, self.__set_pose__)
-
-        self.block_x = (globals.x_coords[globals.current_block]+0.5)*12
-        self.block_y = (globals.y_coords[globals.current_block]+0.5)*12
-        self.robot_x = -1
-        self.robot_y = -1
-        self.robot_theta = -1
+        self.block_pos = ( (globals.x_coords[globals.current_block]+0.5)*12,\
+                           (globals.y_coords[globals.current_block]+0.5)*12 )
         self.needs_approach = True
 
         self.cam_gain = 6 
-        self.drive_gain = 1.5/27.
-        self.turn_gain = 3
-        self.cameraAngle = 20
+        self.drive_gain = 2/27.
+        self.min_speed = 0.5
+        self.turn_gain = 4
         self.rate = rospy.Rate(5)
 
-        self.camera_target_angle = 50 
+        self.camera_start_angle = 20
+        self.camera_target_angle = 49 
         self.approach_dist = 18 #inches
 
-        t.sleep(0.5)
         commands.set_display_state(commands.NORMAL)
 
-    def __set_pose__(self, msg):
-        self.robot_x = msg.x
-        self.robot_y = msg.y
-        self.robot_theta = msg.theta
-
-    def __get_close_to_block__(self):
-        # wait until robot pos recieved
-        t.sleep(1)
-        int_point = drive_utils.drive_safely((self.block_x, self.block_y), self.approach_dist) 
-        print("INTERMEDIATE POINT: {}".format(int_point))
-        if int_point is not None:
-            drive_utils.go_to_point(int_point)
-        
-        print("TARGET POINT: {}".format((self.block_x, self.block_y)))
-        drive_utils.go_to_point((self.block_x, self.block_y), self.approach_dist)
+        self.camera_angle = self.camera_start_angle
 
 
     def __get_block_pos__(self):
@@ -67,28 +48,28 @@ class DriveToBlockState(State):
             return block_pos
 
     def __reset__(self):
-        #self.cameraAngle = 20
-        commands.send_cam_command(int(self.cameraAngle))
+        #self.camera_angle = 20
+        commands.send_cam_command(int(self.camera_angle))
         commands.send_drive_vel_command(0, 0)
 
     def __camera_to_block__(self, block_pos):
 
         if block_pos.y > 0.53:
-            self.cameraAngle += self.cam_gain * (block_pos.y - 0.5)
+            self.camera_angle += self.cam_gain * (block_pos.y - 0.5)
         elif block_pos.y < 0.47:
-            self.cameraAngle -= self.cam_gain * (0.5 - block_pos.y) 
+            self.camera_angle -= self.cam_gain * (0.5 - block_pos.y) 
 
-        if self.cameraAngle < 20:
-            self.cameraAngle = 20
-        elif self.cameraAngle > self.camera_target_angle:
-            self.cameraAngle = self.camera_target_angle
+        if self.camera_angle < self.camera_start_angle:
+            self.camera_angle = self.camera_start_angle
+        elif self.camera_angle > self.camera_target_angle:
+            self.camera_angle = self.camera_target_angle
 
-        commands.send_cam_command(int(self.cameraAngle))
+        commands.send_cam_command(int(self.camera_angle))
 
     def __drive_to_block__(self, block_pos):
 
         turn_speed = self.turn_gain * (0.5 - block_pos.x)
-        forward_speed = self.drive_gain * (self.camera_target_angle - self.cameraAngle) + 0.2
+        forward_speed = self.drive_gain * (self.camera_target_angle - self.camera_angle) + self.min_speed 
         commands.send_drive_vel_command(forward_speed, turn_speed)
 
 
@@ -97,9 +78,14 @@ class DriveToBlockState(State):
         self.rate.sleep()
 
         if self.needs_approach:
-            commands.send_cam_command(self.cameraAngle)
+            commands.send_cam_command(self.camera_angle)
             commands.send_claw_command(commands.DROP_ANGLE)
-            self.__get_close_to_block__()
+            drive_utils.go_to_point(self.block_pos, self.approach_dist)
+            #drive_utils.wait_for_pose_update()
+            turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
+            print("TURNING TO FACE BLOCK: {}".format(turn_angle))
+            drive_utils.turn(turn_angle)
+
             self.needs_approach = False
 
         #camera to block
@@ -109,15 +95,14 @@ class DriveToBlockState(State):
             return self
         else:
             self.__camera_to_block__(block_pos)
+            self.__drive_to_block__(block_pos)
 
-        self.__drive_to_block__(block_pos)
+        #rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y) + " Cam Angle: " + str(self.camera_angle))
 
-        #rospy.loginfo("Block Pos: " + str(block_pos.x) + ", " + str(block_pos.y) + " Cam Angle: " + str(self.cameraAngle))
-
-        if self.cameraAngle == self.camera_target_angle:
+        if self.camera_angle == self.camera_target_angle:
             t.sleep(0.25)
             commands.send_drive_vel_command(0, 0)
-            from pick_up_block_state import *
+            from pick_up_block_state import PickUpBlockState 
             return PickUpBlockState()
         else:
             return self

@@ -33,8 +33,8 @@ public class Robot extends Entity {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int drawX = (int)(x + Board.MARGIN - diameter/2.0);
-        int drawY = Canvas.CANVAS_HEIGHT - (int)(y + Board.MARGIN + diameter/2.0);
+        int drawX = (int)(x + Board.DISPLAY_MARGIN - diameter/2.0);
+        int drawY = Canvas.CANVAS_HEIGHT - (int)(y + Board.DISPLAY_MARGIN + diameter/2.0);
         g.drawOval(drawX, drawY, this.diameter, this.diameter);
 
         int lineX = (int) (drawX + diameter/2.0);

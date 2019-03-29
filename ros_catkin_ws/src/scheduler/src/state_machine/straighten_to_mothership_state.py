@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import commands
+import drive_utils
 import time as t
 import math
 import rospy
@@ -18,13 +19,9 @@ class StraightenToMothershipState(State):
     def start(self):
         super(StraightenToMothershipState, self).start();
 
-        self.pose_sub = rospy.Subscriber('robot_pose', Pose2D, self.__set_pose__)
-        self.robot_x = -1
-        self.robot_y = -1
-        self.robot_theta = -1
-
         self.cam_gain = 6 
-        self.drive_gain = 12/27.
+        self.drive_gain = 8/27.
+        self.min_speed = 0.8
         self.turn_gain = 4
         self.cameraAngle = 15 
         self.rate = rospy.Rate(5)
@@ -41,11 +38,8 @@ class StraightenToMothershipState(State):
                         (-17.5, -40), (-11.5, -30), (-7, -20), (-2, -10),\
                         (0,3), (10, 10), (15, 20), (18.5, 30), (24, 40), (30.5, 50),\
                         (38.5, 60), (49.5, 70), (65.5, 80)]
-
-    def __set_pose__(self, msg):
-        self.robot_x = msg.x
-        self.robot_y = msg.y
-        self.robot_theta = msg.theta
+        
+        self.STRAIGHTEN_THRESH = 10 
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -76,12 +70,11 @@ class StraightenToMothershipState(State):
             self.cameraAngle = self.target_camera_angle
 
         commands.send_cam_command(int(self.cameraAngle))
-        print('*********CAMERA ANGLE -> {}'.format(self.cameraAngle))
 
     def __drive_to_mothership__(self, mothership_pos):
 
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
-        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.8 
+        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + self.min_speed 
         commands.send_drive_vel_command(forward_speed, turn_speed)
         print("Mothership angle: {}".format(mothership_pos.theta))
 
@@ -110,45 +103,41 @@ class StraightenToMothershipState(State):
 
             self.__drive_to_mothership__(mothership_pos)
 
+        t.sleep(0.5)
+
         commands.send_drive_vel_command(0, 0)
 
         turnLeft = mothership_pos.theta > 0
 
         mothership_orientation = self.__get_mothership_orientation__(mothership_pos.theta)
         print("MOTHERSHIP ORIENTATION -> {}".format(mothership_orientation))
-        forward_dist = (self.target_dist**2 + self.approach_dist**2 -\
-                        2*self.target_dist*self.approach_dist*\
-                        math.cos(math.radians(abs(mothership_orientation))) )**0.5
-        #forward_dist *= 1.25
-        turn_angle = math.asin(self.approach_dist*math.sin(\
-                                        math.radians(abs(mothership_orientation)))\
-                                        / forward_dist)
-        turn_angle = 180 - math.degrees(turn_angle)
-        if not turnLeft:
-            turn_angle *= -1
+        #needs to correct itself
+        if abs(mothership_orientation) > self.STRAIGHTEN_THRESH:
 
-        print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
+            forward_dist = (self.target_dist**2 + self.approach_dist**2 -\
+                            2*self.target_dist*self.approach_dist*\
+                            math.cos(math.radians(abs(mothership_orientation))) )**0.5
+            turn_angle = math.asin(self.approach_dist*math.sin(\
+                                            math.radians(abs(mothership_orientation)))\
+                                            / forward_dist)
+            turn_angle = 180 - math.degrees(turn_angle)
+            if not turnLeft:
+                turn_angle *= -1
 
-        self.robot_x = -1
-        while self.robot_x == -1:
+            print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
+
             t.sleep(0.5)
+            drive_utils.turn(turn_angle) 
+            drive_utils.drive(forward_dist)
+            drive_utils.turn(90 if turn_angle < 0 else -90)
 
-        pose_before = (self.robot_x, self.robot_y, self.robot_theta)
-        commands.send_drive_turn_command(turn_angle)
-        while pose_before == (self.robot_x, self.robot_y, self.robot_theta):
-            pass
-        pose_before = (self.robot_x, self.robot_y, self.robot_theta)
-        commands.send_drive_forward_command(forward_dist)
-        while pose_before == (self.robot_x, self.robot_y, self.robot_theta):
-            pass
-
-        vel = -1 if turn_angle > 0 else 1
-        while True:
-            self.rate.sleep()
-            mothership_pos = self.__get_mothership_pos__()
-            if mothership_pos.y >= 0:
-                break
-            commands.send_drive_vel_command(0, vel)
+            vel = -1 if turn_angle > 0 else 1
+            while True:
+                self.rate.sleep()
+                mothership_pos = self.__get_mothership_pos__()
+                if mothership_pos.y >= 0:
+                    break
+                commands.send_drive_vel_command(0, vel)
         
         from approach_mothership_state import ApproachMothershipState
         return ApproachMothershipState(True) 
