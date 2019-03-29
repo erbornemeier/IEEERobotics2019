@@ -5,9 +5,9 @@
 #define servoMin 10
 #define servoLevel 40
 #define gripperOpenPower 255
-#define gripperClosePower 80
+#define gripperClosePower 100
 #define gripperOpenTime 800
-#define gripperCloseTime 1500
+#define gripperCloseTime 1200
 
 #define MS_PER_DEG 2
 
