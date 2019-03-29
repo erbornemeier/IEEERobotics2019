@@ -20,7 +20,8 @@ class ApproachMothershipState(State):
         super(ApproachMothershipState, self).start();
 
         self.cam_gain = 6 
-        self.drive_gain = 4/27.
+        self.drive_gain = 6/27.
+        self.min_speed = 0.8
         self.turn_gain = 4
         self.cameraAngle = 20 if self.isFirstInstance else 27
         self.rate = rospy.Rate(5)
@@ -28,10 +29,10 @@ class ApproachMothershipState(State):
         
         commands.send_cam_command(self.cameraAngle)
         commands.send_claw_command(commands.CARRY_ANGLE)
-        commands.set_display_state(commands.NORMAL)
 
-        self.found_time = t.clock()
-	self.MOTHERSHIP_TIMEOUT = 0.1
+        self.found_time = t.time()
+	self.MOTHERSHIP_TIMEOUT = 2.0 
+        self.BACKUP_DIST = 2.0
 	self.adjusted = True
 
 
@@ -69,7 +70,7 @@ class ApproachMothershipState(State):
     def __drive_to_mothership__(self, mothership_pos):
 
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
-        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.3
+        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + self.min_speed
         commands.send_drive_vel_command(forward_speed, turn_speed)
         print("Mothership angle: {}".format(mothership_pos.theta))
 
@@ -80,10 +81,16 @@ class ApproachMothershipState(State):
         mothership_pos = self.__get_mothership_pos__()
             
 	if mothership_pos.y < 0:
-	    self.__reset__()
-	    return self
+            if t.time() - self.found_time > self.MOTHERSHIP_TIMEOUT:
+                drive_utils.drive(-self.BACKUP_DIST) 
+                self.cameraAngle -= 2
+                commands.send_cam_command(int(self.cameraAngle))
+                self.found_time = t.time()
+            else:
+                self.__reset__()
+            return self
         else:
-            self.found_time = t.clock()
+            self.found_time = t.time()
             self.__camera_to_mothership__(mothership_pos)
             self.__drive_to_mothership__(mothership_pos)
 

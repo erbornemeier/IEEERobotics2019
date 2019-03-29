@@ -1,18 +1,28 @@
+from __future__ import print_function
 import globals
 from pypaths import astar
-#import astar #custom astar
 import commands
 from geometry_utils import *
 import time as t
 import math
 import rospy
 from geometry_msgs.msg import Pose2D
+import RPi.GPIO as RPIO
+
+# setup ack pin
+ack_pin = 40
+stop_pin = 38
+RPIO.setmode(RPIO.BOARD)
+RPIO.setup(ack_pin, RPIO.IN, pull_up_down=RPIO.PUD_UP)
+RPIO.setup(stop_pin, RPIO.OUT)
+RPIO.output(stop_pin, RPIO.LOW)
 
 # POSE INFORMATION
 x, y = 0, 1
 robot_x = -1
 robot_y = -1
 robot_theta = -1
+TIMEOUT = 2
 def __set_pose__(msg):
     global robot_x, robot_y, robot_theta
     robot_x = msg.x
@@ -21,23 +31,39 @@ def __set_pose__(msg):
 pose_sub = rospy.Subscriber('robot_pose', Pose2D, __set_pose__)
 
 def wait_for_pose_update():
+    start_time = t.time()
     global robot_x
     robot_x = -1
-    while robot_x == -1:
-        print('waiting for pose update')
-        t.sleep(0.25)
+    dots = 0
+    print("")
+    while robot_x == -1 and t.time() - start_time < TIMEOUT:
+        print('\r                             ', end="")
+        print('\rwaiting for pose update{}'.format('.'*dots), end="")
+        t.sleep(0.05)
+        dots = (dots + 1) % 4
+    print("")
+
+def wait_for_msg_received():
+    start_time = t.time()
+    while RPIO.input(ack_pin) == RPIO.LOW and t.time() - start_time < TIMEOUT:
+        print("Waiting for busy pin to be set")
+        t.sleep(0.05)
+    if t.time() - start_time >= TIMEOUT:
+        return False
+    return True
 
 def wait_for_pose_change():
-    #wait_for_pose_update()
-    global robot_x, robot_y, robot_theta
-    pose_before = (robot_x, robot_y, robot_theta)
-    while (robot_x, robot_y, robot_theta) == pose_before:
-        print('waiting for pose change')
-        t.sleep(0.25)
+    dots = 0
+    while RPIO.input(ack_pin) == RPIO.HIGH:
+        print('\r                             ', end="")
+        print('\rwaiting for pose change{}'.format('.'*dots), end="")
+        t.sleep(0.05)
+        dots = (dots + 1) % 4
+    wait_for_pose_update()
 
 # PATH FINDING
-RESOLUTION = 3
-MARGIN = 6
+RESOLUTION = 4
+MARGIN = 8
 FIRST_POINT_IN = int(math.ceil(MARGIN/float(RESOLUTION))*RESOLUTION)
 print(FIRST_POINT_IN)
 
@@ -71,7 +97,7 @@ def __custom_neighbors__( height, width ):
 
 def __custom_cost__(a, b):
     if a[2] != b[2]:
-        return 10 # 5 was decent
+        return 7 # 5 and 10 was decent
     else:
         return 1
 
@@ -139,6 +165,11 @@ def turn(turn_angle):
     if abs(turn_angle) > 0.1:
         commands.send_drive_turn_command(turn_angle)
         wait_for_pose_change()
+
+def stop():
+    RPIO.output(stop_pin, RPIO.HIGH)
+    t.sleep(0.25)
+    RPIO.output(stop_pin, RPIO.LOW)
 
 def drive_to_point(to_pt):
     turn_angle, forward_dist = get_drive_instructions(to_pt)

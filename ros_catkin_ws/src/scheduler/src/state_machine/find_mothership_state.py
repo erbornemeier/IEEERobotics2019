@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import commands
+import drive_utils
 import time as t
 import rospy
 
@@ -16,7 +17,7 @@ class FindMothershipState(State):
     def start(self):
         super(FindMothershipState, self).start()
 
-        commands.send_drive_vel_command(0, 1.0)
+        commands.send_drive_vel_command(0, 0.8)
         commands.send_cam_command(15)
         commands.send_claw_command(commands.CARRY_ANGLE)
         commands.set_display_state(commands.NORMAL)
@@ -41,7 +42,7 @@ class FindMothershipState(State):
 
         if mothership_pos.y >= 0:
             self.mothership_found = True
-            commands.send_drive_vel_command(0, 0)
+            commands.send_drive_vel_command(0,0)
 
             from straighten_to_mothership_state import StraightenToMothershipState
             return StraightenToMothershipState()

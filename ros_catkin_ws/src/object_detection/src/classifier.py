@@ -31,7 +31,7 @@ def find_rect_pts(pts):
 def load_h5_model():
     global letter_model
     path = rospack.get_path('object_detection') + '/src/letter_recognizer_new.h5'
-    letter_model = load_model(path)
+    letter_model = load_model(path, compile=False)
     letter_model._make_predict_function()
     global graph
     graph = tf.get_default_graph()
@@ -39,7 +39,7 @@ def load_h5_model():
 def load_h5_slot_model():
     global slot_model
     path = rospack.get_path('object_detection') + '/src/slot_recognizer.h5'
-    slot_model = load_model(path)
+    slot_model = load_model(path, compile=False)
     slot_model._make_predict_function()
 
 load_h5_model()
@@ -73,6 +73,8 @@ def classify_block(_):
         _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
         block_contour = max(contours, key=cv2.contourArea)
+        if len(block_contour) < 4:
+            raise Exception('Block face could not be found')
         block_corners = find_rect_pts(block_contour).reshape((4,2)).tolist()
         block_corners = sorted(block_corners, key=lambda x: x[1])
         block_corners = sorted(block_corners[:2], key=lambda x: -x[0]),\
@@ -95,10 +97,10 @@ def classify_block(_):
 
         with graph.as_default():
             guess = letter_model.predict(input_img).tolist()[0] 
-            if max(guess) > 0.95:
-                guess = guess.index(max(guess))
-                print("Guess: " + str( guess))
-                return LetterResponse(guess) 
+            #if max(guess) > 0.95:
+            guess = guess.index(max(guess))
+            print("Guess: " + str( chr(guess + ord('A'))))
+            return LetterResponse(guess) 
         
         #cv2.imshow("thresh", thresh)
 

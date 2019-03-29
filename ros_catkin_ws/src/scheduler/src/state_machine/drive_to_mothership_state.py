@@ -16,7 +16,7 @@ class DriveToMothershipState(State):
 
     def start(self):
         super(DriveToMothershipState, self).start()
-        commands.set_display_state(commands.NORMAL)
+        commands.set_display_state(commands.LETTER)
 
     def run(self):
         

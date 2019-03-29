@@ -22,12 +22,13 @@ class DriveToBlockState(State):
         self.needs_approach = True
 
         self.cam_gain = 6 
-        self.drive_gain = 1.5/27.
-        self.turn_gain = 3
+        self.drive_gain = 2/27.
+        self.min_speed = 0.5
+        self.turn_gain = 4
         self.rate = rospy.Rate(5)
 
         self.camera_start_angle = 20
-        self.camera_target_angle = 50 
+        self.camera_target_angle = 49 
         self.approach_dist = 18 #inches
 
         commands.set_display_state(commands.NORMAL)
@@ -68,7 +69,7 @@ class DriveToBlockState(State):
     def __drive_to_block__(self, block_pos):
 
         turn_speed = self.turn_gain * (0.5 - block_pos.x)
-        forward_speed = self.drive_gain * (self.camera_target_angle - self.camera_angle) + 0.2
+        forward_speed = self.drive_gain * (self.camera_target_angle - self.camera_angle) + self.min_speed 
         commands.send_drive_vel_command(forward_speed, turn_speed)
 
 
@@ -80,8 +81,7 @@ class DriveToBlockState(State):
             commands.send_cam_command(self.camera_angle)
             commands.send_claw_command(commands.DROP_ANGLE)
             drive_utils.go_to_point(self.block_pos, self.approach_dist)
-            #drive_utils.go_to_point(self.block_pos)
-            drive_utils.wait_for_pose_update()
+            #drive_utils.wait_for_pose_update()
             turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
             print("TURNING TO FACE BLOCK: {}".format(turn_angle))
             drive_utils.turn(turn_angle)

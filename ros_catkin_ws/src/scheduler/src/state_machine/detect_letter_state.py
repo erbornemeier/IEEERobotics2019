@@ -13,7 +13,7 @@ class DetectLetterState(State):
     def start(self):
         super(DetectLetterState, self).start()
         rospy.loginfo("Entering detect letter state")
-	t.sleep(2)
+	t.sleep(3)
         
     def run(self):
         try:

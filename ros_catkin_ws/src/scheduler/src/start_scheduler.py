@@ -50,7 +50,7 @@ def display_blocks():
         commands.display_block_command(x, y)
         commands.send_vis_command("init-block id:{} x:{} y:{}".format(id, x, y))
         id += 1
-        t.sleep(0.2)
+        t.sleep(0.1)
 
 rospy.init_node("scheduler")
 

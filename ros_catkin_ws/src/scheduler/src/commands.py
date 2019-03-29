@@ -3,6 +3,7 @@ from std_msgs.msg import UInt8, Bool, String
 from geometry_msgs.msg import Pose2D
 from object_detection.srv import *
 import rospy
+import drive_utils
 
 PICKUP_ANGLE = 40
 DROP_ANGLE = 13
@@ -11,10 +12,8 @@ CLAW_DETERMINE_MOTHERSHIP_ANGLE = 63
 
 CAMERA_DETERMINE_MOTHERSHIP_ANGLE = 45
 
-
 CLAW_OPEN = False
 CLAW_CLOSED = True
-
 
 # Publishers
 claw_pub = rospy.Publisher("claw_command", UInt8, queue_size=1)
@@ -54,25 +53,32 @@ def send_cam_command(angle):
     cam_pub.publish(msg)
 
 def send_drive_vel_command(x, theta):
-    msg = Pose2D()
-    msg.x = x
-    msg.y = 0
-    msg.theta = theta
-    drive_pub.publish(msg)
+    if x==0 and theta == 0:
+        drive_utils.stop()
+    else:
+        msg = Pose2D()
+        msg.x = x
+        msg.y = 0
+        msg.theta = theta
+        drive_pub.publish(msg)
 
 def send_drive_forward_command(x):
     msg = Pose2D()
     msg.x = x
     msg.y = 1
-    msg.theta = 0
     drive_pub.publish(msg)
+    received = drive_utils.wait_for_msg_received()
+    if not received:
+        send_drive_forward_command(x)
 
 def send_drive_turn_command(theta):
     msg = Pose2D()
-    msg.x = 0
     msg.y = 2
     msg.theta = theta
     drive_pub.publish(msg)
+    received = drive_utils.wait_for_msg_received()
+    if not received:
+        send_drive_turn_command(theta)
 
 def send_override_position_command(new_x, new_y):
     msg = Pose2D()
@@ -80,7 +86,33 @@ def send_override_position_command(new_x, new_y):
     msg.theta = new_y
     msg.y = 3 #override pos
     drive_pub.publish(msg)
+
+def send_drop_block_command(distance, angle):
+    msg = Pose2D()
+    msg.x = distance
+    msg.y = 4
+    msg.theta = angle
+    drive_pub.publish(msg)
+    received = drive_utils.wait_for_msg_received()
+    if not received:
+        send_drop_block_command(distance, angle)
     
+def send_pickup_command():
+    msg = Pose2D()
+    msg.y = 5
+    drive_pub.publish(msg)
+    received = drive_utils.wait_for_msg_received()
+    if not received:
+        send_pickup_command()
+
+def send_look_in_mothership_command(distance):
+    msg = Pose2D()
+    msg.x = distance
+    msg.y = 6
+    drive_pub.publish(msg)
+    received = drive_utils.wait_for_msg_received()
+    if not received:
+        send_look_in_mothership_command(distance)
 
 def display_letter(letter):
     msg = UInt8()
@@ -96,12 +128,6 @@ def send_vis_command(data):
     msg = String()
     msg.data = data
     vis_cmd_pub.publish(msg)
-def send_drop_block_command(distance, angle):
-	msg = Pose2D()
-	msg.x = distance
-	msg.y = 4
-	msg.theta = angle
-	drive_pub.publish(msg)
 NORMAL = 0
 LETTER = 1
 WAITING = 2

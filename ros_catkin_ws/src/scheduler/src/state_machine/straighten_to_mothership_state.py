@@ -20,7 +20,8 @@ class StraightenToMothershipState(State):
         super(StraightenToMothershipState, self).start();
 
         self.cam_gain = 6 
-        self.drive_gain = 12/27.
+        self.drive_gain = 8/27.
+        self.min_speed = 0.8
         self.turn_gain = 4
         self.cameraAngle = 15 
         self.rate = rospy.Rate(5)
@@ -37,6 +38,8 @@ class StraightenToMothershipState(State):
                         (-17.5, -40), (-11.5, -30), (-7, -20), (-2, -10),\
                         (0,3), (10, 10), (15, 20), (18.5, 30), (24, 40), (30.5, 50),\
                         (38.5, 60), (49.5, 70), (65.5, 80)]
+        
+        self.STRAIGHTEN_THRESH = 10 
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -71,7 +74,7 @@ class StraightenToMothershipState(State):
     def __drive_to_mothership__(self, mothership_pos):
 
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
-        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + 0.8 
+        forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + self.min_speed 
         commands.send_drive_vel_command(forward_speed, turn_speed)
         print("Mothership angle: {}".format(mothership_pos.theta))
 
@@ -107,9 +110,9 @@ class StraightenToMothershipState(State):
         turnLeft = mothership_pos.theta > 0
 
         mothership_orientation = self.__get_mothership_orientation__(mothership_pos.theta)
+        print("MOTHERSHIP ORIENTATION -> {}".format(mothership_orientation))
         #needs to correct itself
-        if abs(mothership_orientation > 10):
-            print("MOTHERSHIP ORIENTATION -> {}".format(mothership_orientation))
+        if abs(mothership_orientation) > self.STRAIGHTEN_THRESH:
 
             forward_dist = (self.target_dist**2 + self.approach_dist**2 -\
                             2*self.target_dist*self.approach_dist*\
