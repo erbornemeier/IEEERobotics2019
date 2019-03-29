@@ -50,16 +50,22 @@ def display_blocks():
         commands.display_block_command(x, y)
         commands.send_vis_command("init-block id:{} x:{} y:{}".format(id, x, y))
         id += 1
-        t.sleep(0.1)
+        t.sleep(0.2)
 
 rospy.init_node("scheduler")
 
 commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(drive_utils.RESOLUTION, drive_utils.MARGIN))
-_ = raw_input("Press enter to start")
 
 wait_for_flash_drive()
-display_blocks()
+
+#_ = raw_input("Press enter to start")
+print("Ready to start")
+drive_utils.wait_for_start_button()
+print("**Starting in 5 seconds**")
 commands.set_display_state(commands.NORMAL)
+display_blocks()
+t.sleep(5)
+
 
 state_machine = StateMachine(FindMothershipState(True))
 while not rospy.is_shutdown():

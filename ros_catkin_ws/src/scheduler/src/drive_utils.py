@@ -12,10 +12,12 @@ import RPi.GPIO as RPIO
 # setup ack pin
 ack_pin = 40
 stop_pin = 38
+start_pin = 36
 RPIO.setmode(RPIO.BOARD)
 RPIO.setup(ack_pin, RPIO.IN, pull_up_down=RPIO.PUD_UP)
 RPIO.setup(stop_pin, RPIO.OUT)
 RPIO.output(stop_pin, RPIO.LOW)
+RPIO.setup(start_pin, RPIO.IN, pull_up_down=RPIO.PUD_DOWN)
 
 # POSE INFORMATION
 x, y = 0, 1
@@ -51,6 +53,10 @@ def wait_for_msg_received():
     if t.time() - start_time >= TIMEOUT:
         return False
     return True
+
+def wait_for_start_button():
+    while RPIO.input(start_pin) == RPIO.LOW:
+        pass
 
 def wait_for_pose_change():
     dots = 0
