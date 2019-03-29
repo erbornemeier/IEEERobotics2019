@@ -261,7 +261,10 @@ void loop() {
     static bool first = true;
     if (first){
         delay(5000);
-        angleSetpoint = 45;
+        angleSetpoint = 90;
+        turn();
+        turn();
+        turn();
         turn();
         first = false;
     }
@@ -295,6 +298,10 @@ void distDrive(){
         Serial.println("Waiting for OS...");
         stopMotors();
         delay(OVERSHOOT_DELAY_MS);
+        //recalc error for overshoot
+        for (int i = 0; i < NUM_MOTORS; i++){
+            posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
+        }
     } while (!isZero(posError, false));
     Serial.println("Distance achieved.");
     //stopMotors();
@@ -336,11 +343,13 @@ void turn(){
     //angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
     //angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
     double angError = 0;
+    float targetAngle = boundAngle(getHeading() + angleSetpoint);
+    
     do {
         do {
             // Find error in degrees
             double angle = getHeading();
-            angError = (angle + angleSetpoint) - angle;
+            angError = boundAngle(targetAngle - angle);
             Serial.println("Error: " + String(angError));
             // Convert from error in degrees to an angVel setpoint for each wheel 
             for (int i = 0; i < NUM_MOTORS; i++){
@@ -349,11 +358,16 @@ void turn(){
         //changes motor output
         velDrive(); //enforces set sample period
         //rosUpdate();
-        } while (angError != 0);
+        } while (abs(angError) > 1);
         stopMotors();
         // Delay for motor overshoot calculation
         delay(OVERSHOOT_DELAY_MS);
-    } while (angError != 0);
+        //recalc error for overshoot
+        for (int i = 0; i < NUM_MOTORS; i++){
+            double angle = getHeading();
+            angError = boundAngle(targetAngle - angle);
+        }
+    } while (abs(angError) > 1);
     stopMotors();
     //robot_pose.theta = getHeading();
 }
