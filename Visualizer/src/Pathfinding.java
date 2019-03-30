@@ -54,7 +54,7 @@ public class Pathfinding {
 
     public void updatePoint(double x, double y, boolean isBlocked) {
         for(PathfindingPoint p : points) {
-            if(Math.abs(p.x - x) < 0.001 && Math.abs(p.y - y) < 0.001) {
+            if(Math.abs(p.x - x) < 0.01 && Math.abs(p.y - y) < 0.01) {
                 p.setBlocked(isBlocked);
                 break;
             }
