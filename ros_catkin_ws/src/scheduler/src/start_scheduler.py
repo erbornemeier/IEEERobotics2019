@@ -67,7 +67,22 @@ commands.set_display_state(commands.NORMAL)
 display_blocks()
 #t.sleep(5)
 
+START_TIME = t.time()
+has_displayed_time = False
 
 state_machine = StateMachine(FindMothershipState(True))
-while not rospy.is_shutdown():
-    state_machine.run()
+try:
+    while not rospy.is_shutdown():
+        if not state_machine.isFinished():
+            state_machine.run()
+        elif not has_displayed_time:
+            break
+except KeyboardInterrupt:
+    pass
+finally:  
+    seconds = str(int(t.time() - START_TIME)).rjust(2, '0')      
+    minutes = int(seconds // 60)
+    seconds %= 60
+    print("Finished in {}:{}".format(minutes, seconds))
+
+

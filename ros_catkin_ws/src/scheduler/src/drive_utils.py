@@ -234,6 +234,6 @@ def remove_bad_points_around_block(x, y):
     #grid_pt = __approx_to_grid__((x, y, 0))[:2]
     for p in grid:
         if dist((x, y), p) <= radius:
-            if p in globals.bad_points:
+            if p in globals.bad_points and p not in globals.mothership_bad_points:
                 globals.bad_points.remove(p)
                 commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:false".format(p[0], p[1]))

@@ -16,7 +16,7 @@ class DetermineMothershipOrientationState(State):
 
     def start(self):
         super(DetermineMothershipOrientationState, self).start()
-        self.forward_dist = 4.5
+        self.forward_dist = 5
         commands.send_look_in_mothership_command(self.forward_dist)
 
     def run(self):
@@ -68,6 +68,7 @@ class DetermineMothershipOrientationState(State):
                     for j in range(start_y, 12*8 - drive_utils.MARGIN + 1, drive_utils.RESOLUTION):
                         if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, diag_width, diag_width_ramp):
                             globals.bad_points.add((i, j))
+                            globals.mothership_bad_points.add((i, j))
                             #print("BAD POINTS LENGTH: {}".format(len(globals.bad_points)))
                             commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
 

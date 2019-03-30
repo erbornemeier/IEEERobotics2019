@@ -15,4 +15,4 @@ class WaitState(State):
         commands.set_display_state(commands.WAITING)
              
     def run(self):       
-        return self
+        return None

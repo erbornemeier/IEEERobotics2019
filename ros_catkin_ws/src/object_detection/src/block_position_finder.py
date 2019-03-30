@@ -48,7 +48,7 @@ def get_block_pos(_):
             return response
 
     except Exception as e:
-        print (e)
+        #print (e)
         response.x = -1
         response.y = -1
         return response

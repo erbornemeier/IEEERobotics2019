@@ -12,4 +12,9 @@ class StateMachine:
 
             self.currentState.finish()
             self.currentState = nextState
-            self.currentState.start()
+
+            if self.currentState is not None:
+                self.currentState.start()
+
+    def isFinished(self):
+        return self.currentState == None
