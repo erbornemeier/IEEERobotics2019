@@ -3,6 +3,7 @@ from state import State
 import commands
 import time as t
 import rospy
+import drive_utils
 from std_msgs.msg import UInt8, Bool
 
 class PickUpBlockState(State):
@@ -11,17 +12,13 @@ class PickUpBlockState(State):
 
     def start(self):
         super(PickUpBlockState, self).start()
-        #self.cam_pickup_angle = 40
 
     def run(self):
         commands.send_pickup_command()
-        '''
-        commands.send_cam_command(self.cam_pickup_angle) 
-        t.sleep(0.5)
-        commands.send_grip_command(commands.CLAW_CLOSED)
-        t.sleep(0.5)
-        commands.send_claw_command(commands.PICKUP_ANGLE)
-        t.sleep(0.5)
-        '''
+        
+
+        drive_utils.remove_bad_points_around_block(\
+                    globals.x_coords[globals.current_block],\
+                    globals.y_coords[globals.current_block])
         from detect_letter_state import DetectLetterState 
         return DetectLetterState()

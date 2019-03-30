@@ -90,18 +90,22 @@ class StraightenToMothershipState(State):
 
     def run(self):
 
+        last_seen = t.time()
+
         while self.cameraAngle != self.target_camera_angle:
             self.rate.sleep()
             #camera to mothership
             mothership_pos = self.__get_mothership_pos__()
                 
             if mothership_pos.y < 0:
+                if t.time() - last_seen > 2:
+                    from find_mothership_state import FindMothershipState
+                    return FindMothershipState()
                 self.__reset__()
-                continue
             else:
+                last_seen = t.time()
                 self.__camera_to_mothership__(mothership_pos)
-
-            self.__drive_to_mothership__(mothership_pos)
+                self.__drive_to_mothership__(mothership_pos)
 
         t.sleep(0.5)
 

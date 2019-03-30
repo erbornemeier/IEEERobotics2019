@@ -58,14 +58,17 @@ rospy.init_node("scheduler")
 commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(drive_utils.RESOLUTION, drive_utils.MARGIN))
 
 wait_for_flash_drive()
+commands.set_display_state(commands.WAITING)
+t.sleep(0.25)
+commands.set_display_state(commands.WAITING)
 
 #_ = raw_input("Press enter to start")
 print("Ready to start")
-#drive_utils.wait_for_start_button()
+drive_utils.wait_for_start_button()
 print("**Starting in 5 seconds**")
 commands.set_display_state(commands.NORMAL)
 display_blocks()
-#t.sleep(5)
+t.sleep(5)
 
 START_TIME = t.time()
 has_displayed_time = False
@@ -80,9 +83,11 @@ try:
 except KeyboardInterrupt:
     pass
 finally:  
-    seconds = str(int(t.time() - START_TIME)).rjust(2, '0')      
+    commands.set_display_state(commands.FINISHED)
+    seconds = int(t.time() - START_TIME)
     minutes = int(seconds // 60)
     seconds %= 60
+    seconds = str(seconds).rjust(2, '0')
     print("Finished in {}:{}".format(minutes, seconds))
 
 

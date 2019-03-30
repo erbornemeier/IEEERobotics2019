@@ -5,6 +5,7 @@ import commands
 from geometry_utils import *
 import time as t
 import math
+import sys
 import rospy
 from geometry_msgs.msg import Pose2D
 import RPi.GPIO as RPIO
@@ -18,6 +19,10 @@ RPIO.setup(ack_pin, RPIO.IN, pull_up_down=RPIO.PUD_UP)
 RPIO.setup(stop_pin, RPIO.OUT)
 RPIO.output(stop_pin, RPIO.LOW)
 RPIO.setup(start_pin, RPIO.IN, pull_up_down=RPIO.PUD_DOWN)
+
+# PATH FINDING
+RESOLUTION = 3
+MARGIN = 8
 
 # POSE INFORMATION
 x, y = 0, 1
@@ -67,9 +72,6 @@ def wait_for_pose_change():
         #dots = (dots + 1) % 4
     wait_for_pose_update()
 
-# PATH FINDING
-RESOLUTION = 4
-MARGIN = 8
 FIRST_POINT_IN = int(math.ceil(MARGIN/float(RESOLUTION))*RESOLUTION)
 
 def __custom_neighbors__( height, width ):
@@ -134,13 +136,33 @@ def __approx_to_grid__(pt):
     print("COULD NOT APPROXIMATE POINT TO A VALID POINT, CHOSE CLOSEST")
     return tuple([closest[0]] + [snap_angle])
 
+traversed_pts = set()
+def __path_exists__(from_pt, to_pt, start=True):
+    if start:
+        traversed_pts = set()
+    traversed_pts.add(from_pt)
+    if from_pt == to_pt:
+        return True
+    adj_pts = [(from_pt[0] + dx, from_pt[1] + dy)\
+                for dx in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)\
+                for dy in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)\
+                if dx != 0 or dy != 0]
+    for p in adj_pts:
+        if p not in globals.bad_pts and all(MARGIN <= x <= 12*8-MARGIN for x in p):
+            exists = __path_exists__(p, to_pt, start=False)
+            if exists:
+                return True
+    return False
+
 def __get_path__(from_pt, to_pt):
     from_pt_approx = __approx_to_grid__(from_pt)
     to_pt_approx = __approx_to_grid__(to_pt)
     #print("FROM PT APRPOX: {}".format(from_pt_approx))
     #print("TO PT APRPOX: {}".format(to_pt_approx))
-
-    path = finder(from_pt_approx, to_pt_approx)[1]
+    if __path_exists__(from_pt_approx, to_pt_approx):
+        path = finder(from_pt_approx, to_pt_approx)[1]
+    else: 
+        return False
     print("PREOPTIMIZED PATH: {}".format(path))
     opt_path = __optimize_path__(path) 
     opt_path = opt_path[:-1] #ADDED TODO remove comment
@@ -198,6 +220,12 @@ def go_to_point(to_pt, approach_dist=0):
         to_pt = __approx_to_grid__((to_pt[0], to_pt[1], 0))
     to_pt = (to_pt[0], to_pt[1], 0)
     path = __get_path__(robot_pos, to_pt)
+    if not path:
+        while True:
+            try:
+                print('can\'t find a path')
+            except KeyboardInterrupt:
+                sys.exit(0)
     commands.send_vis_command("draw-path {}".format([robot_pos] + path)) 
 
     #if approach_dist != 0:
@@ -231,9 +259,12 @@ def remove_bad_points_around_block(x, y):
     
     radius = 12
 
+    print("REMOVING BLOCK POINTS")
+    print("LEN BERFORE -> {}".format(len(globals.bad_points)))
     #grid_pt = __approx_to_grid__((x, y, 0))[:2]
     for p in grid:
         if dist((x, y), p) <= radius:
             if p in globals.bad_points and p not in globals.mothership_bad_points:
                 globals.bad_points.remove(p)
                 commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:false".format(p[0], p[1]))
+    print("LEN AFTER -> {}".format(len(globals.bad_points)))

@@ -16,7 +16,7 @@ class DetermineMothershipOrientationState(State):
 
     def start(self):
         super(DetermineMothershipOrientationState, self).start()
-        self.forward_dist = 5
+        self.forward_dist = 4.5
         commands.send_look_in_mothership_command(self.forward_dist)
 
     def run(self):

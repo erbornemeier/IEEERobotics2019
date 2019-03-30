@@ -36,7 +36,6 @@ class PlaceInSlotState(State):
         commands.send_drop_block_command(self.forward_dist, self.turn_angle)
         drive_utils.wait_for_pose_change()
 
-        drive_utils.remove_bad_points_around_block(globals.x_coords[globals.current_block], globals.y_coords[globals.current_block])
         globals.current_block += 1
 
         if globals.current_block == globals.num_blocks:

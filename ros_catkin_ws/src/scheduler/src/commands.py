@@ -131,6 +131,8 @@ def send_vis_command(data):
 NORMAL = 0
 LETTER = 1
 WAITING = 2
+LOADING = 3
+FINISHED = 4
 def set_display_state(state):
     msg = UInt8()
     msg.data = state
