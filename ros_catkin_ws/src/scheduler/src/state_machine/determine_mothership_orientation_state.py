@@ -59,9 +59,9 @@ class DetermineMothershipOrientationState(State):
                 start_y = 0
 
                 # Go until first point within the margin is found
-                while start_x <= drive_utils.MARGIN:
+                while start_x < drive_utils.MARGIN:
                     start_x += drive_utils.RESOLUTION
-                while start_y <= drive_utils.MARGIN:
+                while start_y < drive_utils.MARGIN:
                     start_y += drive_utils.RESOLUTION
 
                 for i in range(start_x, 12*8 - drive_utils.MARGIN + 1,drive_utils.RESOLUTION):

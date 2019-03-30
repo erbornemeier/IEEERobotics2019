@@ -1,11 +1,12 @@
+import sun.rmi.runtime.Log;
+
 import javax.swing.*;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.*;
 import java.util.HashMap;
 
 public class Server extends Thread {
@@ -16,19 +17,19 @@ public class Server extends Thread {
     private DisplayController displayController;
     private JFrame frame;
 
-    private DatagramSocket socket;
+    private ServerSocket socket;
     private boolean running;
     private byte[] buf = new byte[1024];
 
     private HashMap<String, Method> commands;
 
-    public Server(DisplayController displayController, JFrame frame) throws SocketException {
+    public Server(DisplayController displayController, JFrame frame) throws IOException {
         this.displayController = displayController;
         this.frame = frame;
 
         initCommands();
 
-        socket = new DatagramSocket(port);
+        socket = new ServerSocket(port);
         System.out.println("Server Listening on Port: " + port);
     }
 
@@ -48,19 +49,29 @@ public class Server extends Thread {
         running = true;
 
         while (running) {
-            DatagramPacket packet = new DatagramPacket(buf, buf.length);
+//            DatagramPacket packet = new DatagramPacket(buf, buf.length);
+//
+//            try {
+//                socket.receive(packet);
+//            } catch (IOException e) {
+//                Logger.getInstance().log(TAG, "Error receiving packet: " + e);
+//            }
 
+            String data = "";
             try {
-                socket.receive(packet);
+                Socket connectionSocket = socket.accept();
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
+                data = bufferedReader.readLine();
             } catch (IOException e) {
                 Logger.getInstance().log(TAG, "Error receiving packet: " + e);
             }
 
-            String data = new String(packet.getData(), 0, packet.getLength());
+//            String data = new String(packet.getData(), 0, packet.getLength());
             Logger.getInstance().log(TAG, "Received message: " + data);
 
             if(data.equals("initialize")) {
                 // TODO: Get working, but not really important
+                // TODO: Probably not necessary anymore
 //                InetAddress address = packet.getAddress();
 //                int port = packet.getPort();
 ////                byte[] response = "success".getBytes();
@@ -98,7 +109,12 @@ public class Server extends Thread {
                 Logger.getInstance().log(TAG, "Message did not match any commands: " + data);
             }
         }
-        socket.close();
+
+        try {
+            socket.close();
+        } catch (IOException e) {
+            Logger.getInstance().log(TAG, "Error closing: " + e);
+        }
     }
 
     public void draw() {

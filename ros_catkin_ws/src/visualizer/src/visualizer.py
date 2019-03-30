@@ -17,9 +17,10 @@ rospy.init_node("visualizer")
 server_ip = rospy.get_param("/visualizer/server_ip")
 server_port = rospy.get_param("/visualizer/server_port")
 
-client_socket = socket(AF_INET, SOCK_DGRAM)
+client_socket = socket(AF_INET, SOCK_SOCK_STREAM)
 client_socket.settimeout(1)
 addr = (server_ip, int(server_port))
+client_socket.connect(addr)
 
 # isConnected = False
 # attempts = 3
@@ -54,5 +55,5 @@ command_sub = rospy.Subscriber('vis_command', String, sendCommand)
 
 while not rospy.is_shutdown():
     if not msg_queue.empty():
-        client_socket.sendto(msg_queue.get(), addr)
-        time.sleep(0.1)
+        client_socket.send(str.encode(msg_queue.get()))
+        #time.sleep(0.1)
