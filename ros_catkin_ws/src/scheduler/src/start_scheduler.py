@@ -49,6 +49,7 @@ def display_blocks():
         print("\tDisplaying block @ {},{}".format(x, y))
         commands.display_block_command(x, y)
         commands.send_vis_command("init-block id:{} x:{} y:{}".format(id, x, y))
+       
         id += 1
         t.sleep(0.2)
 
@@ -60,11 +61,11 @@ wait_for_flash_drive()
 
 #_ = raw_input("Press enter to start")
 print("Ready to start")
-drive_utils.wait_for_start_button()
+#drive_utils.wait_for_start_button()
 print("**Starting in 5 seconds**")
 commands.set_display_state(commands.NORMAL)
 display_blocks()
-t.sleep(5)
+#t.sleep(5)
 
 
 state_machine = StateMachine(FindMothershipState(True))

@@ -20,8 +20,8 @@ class ApproachMothershipState(State):
         super(ApproachMothershipState, self).start();
 
         self.cam_gain = 6 
-        self.drive_gain = 6/27.
-        self.min_speed = 0.8
+        self.drive_gain = 5/27.
+        self.min_speed = 0.6
         self.turn_gain = 4
         self.cameraAngle = 20 if self.isFirstInstance else 27
         self.rate = rospy.Rate(5)
@@ -65,14 +65,14 @@ class ApproachMothershipState(State):
             self.cameraAngle = self.target_camera_angle
 
         commands.send_cam_command(int(self.cameraAngle))
-        print('*********CAMERA ANGLE -> {}'.format(self.cameraAngle))
+        #print('*********CAMERA ANGLE -> {}'.format(self.cameraAngle))
 
     def __drive_to_mothership__(self, mothership_pos):
 
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
         forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + self.min_speed
         commands.send_drive_vel_command(forward_speed, turn_speed)
-        print("Mothership angle: {}".format(mothership_pos.theta))
+        #print("Mothership angle: {}".format(mothership_pos.theta))
 
     def run(self):
 

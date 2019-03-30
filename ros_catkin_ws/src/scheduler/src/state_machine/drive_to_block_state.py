@@ -83,7 +83,7 @@ class DriveToBlockState(State):
             drive_utils.go_to_point(self.block_pos, self.approach_dist)
             #drive_utils.wait_for_pose_update()
             turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
-            print("TURNING TO FACE BLOCK: {}".format(turn_angle))
+            #print("TURNING TO FACE BLOCK: {}".format(turn_angle))
             drive_utils.turn(turn_angle)
 
             self.needs_approach = False

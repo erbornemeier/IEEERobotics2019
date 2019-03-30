@@ -26,7 +26,7 @@ class ReturnToHomeState(State):
         drive_utils.go_to_point((self.home_x, self.home_y))
         turn_angle = self.home_theta - drive_utils.robot_theta
         turn_angle = bound_angle(turn_angle)
-        print("TURNING TO FACE HOME: {}".format(turn_angle))
+        #print("TURNING TO FACE HOME: {}".format(turn_angle))
         drive_utils.turn(turn_angle)
 
         from wait_state import WaitState

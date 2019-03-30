@@ -76,7 +76,7 @@ class StraightenToMothershipState(State):
         turn_speed = self.turn_gain * (0.5 - mothership_pos.x)
         forward_speed = self.drive_gain * (self.target_camera_angle - self.cameraAngle) + self.min_speed 
         commands.send_drive_vel_command(forward_speed, turn_speed)
-        print("Mothership angle: {}".format(mothership_pos.theta))
+        #print("Mothership angle: {}".format(mothership_pos.theta))
 
     def __get_mothership_orientation__(self, light_angle):
         lookup_table = self.lookup_table
@@ -124,9 +124,9 @@ class StraightenToMothershipState(State):
             if not turnLeft:
                 turn_angle *= -1
 
-            print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
+            #print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
 
-            t.sleep(0.5)
+            #t.sleep(0.5)
             drive_utils.turn(turn_angle) 
             drive_utils.drive(forward_dist)
             drive_utils.turn(90 if turn_angle < 0 else -90)

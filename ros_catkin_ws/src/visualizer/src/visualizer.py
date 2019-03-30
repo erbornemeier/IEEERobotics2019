@@ -17,7 +17,7 @@ rospy.init_node("visualizer")
 server_ip = rospy.get_param("/visualizer/server_ip")
 server_port = rospy.get_param("/visualizer/server_port")
 
-client_socket = socket(AF_INET, SOCK_SOCK_STREAM)
+client_socket = socket(AF_INET, SOCK_STREAM)
 client_socket.settimeout(1)
 addr = (server_ip, int(server_port))
 client_socket.connect(addr)
@@ -40,20 +40,22 @@ client_socket.connect(addr)
 #     print("Continuing without visualizer")
 #     exit()
 
-client_socket.sendto("init-robot", addr)
 msg_queue = Queue.Queue()
+
+def sendStr(msg):
+    msg_queue.put(msg)
 
 def sendCommand(msg):
     msg_queue.put(msg.data)
     # client_socket.sendto(msg.data, addr)
 
 def sendPose(msg):
-    client_socket.sendto("update-robot-pose x:{} y:{} theta:{}".format(msg.x, msg.y, msg.theta), addr)
+    sendStr("update-robot-pose x:{} y:{} theta:{}".format(msg.x, msg.y, msg.theta))
 
 pose_sub = rospy.Subscriber('robot_pose', Pose2D, sendPose)
 command_sub = rospy.Subscriber('vis_command', String, sendCommand)
 
+sendStr("init-robot")
 while not rospy.is_shutdown():
     if not msg_queue.empty():
-        client_socket.send(str.encode(msg_queue.get()))
-        #time.sleep(0.1)
+        client_socket.send(bytearray(msg_queue.get() + "\n", "utf-8"))
