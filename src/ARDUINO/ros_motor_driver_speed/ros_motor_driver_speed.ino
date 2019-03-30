@@ -378,32 +378,36 @@ float posErrorToAngVel(float* errors, int motor, float maximumSpeed){
  * Turns the robot the angle stored in angleSetpoint. Returns when the angle is achieved. 
  */
 void turn(){
-    resetEncoderCounts();
-    float angError[NUM_MOTORS] = {0,0};
-    float angleSetpoints[NUM_MOTORS] = {0,0};
+//resetEncoderCounts();
     //CCW rotation, left is reverse, right is forward
-    angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
-    angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
+    //angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
+    //angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
+    double angError = 0;
+    float targetAngle = boundAngle(getHeading() + angleSetpoint);
+    
     do {
         do {
+            // Find error in degrees
+            double angle = getHeading();
+            angError = boundAngle(targetAngle - angle);
+            Serial.println("Error: " + String(angError));
+            // Convert from error in degrees to an angVel setpoint for each wheel 
             for (int i = 0; i < NUM_MOTORS; i++){
-                // Find error in degrees
-                angError[i] = angleSetpoints[i] - ((encCounts[i]*ANGLE_PER_REV)/(COUNTS_PER_REV));
-                // Convert from error in degrees to an angVel setpoint for each wheel 
-                velocitySetpoints[i] = angErrorToAngVel(angError[i]);
+                velocitySetpoints[i] = angErrorToAngVel(angError, i);
             }
-            //changes motor output
-            velDrive(); //enforces set sample period
-            rosUpdate(true); //spin but don't ack
-        } while (!isZero(angError, true));
+        //changes motor output
+        velDrive(); //enforces set sample period
+        rosUpdate(true  );
+        } while (abs(angError) > 1);
         stopMotors();
         // Delay for motor overshoot calculation
-//        delay(OVERSHOOT_DELAY_MS);
-//        for (int i = 0; i < NUM_MOTORS; i++){
-//            // Find error in degrees
-//            angError[i] = angleSetpoints[i] - ((encCounts[i]*ANGLE_PER_REV)/(COUNTS_PER_REV));
-//        }
-    } while (!isZero(angError, true));
+        delay(OVERSHOOT_DELAY_MS);
+        //recalc error for overshoot
+        for (int i = 0; i < NUM_MOTORS; i++){
+            double angle = getHeading();
+            angError = boundAngle(targetAngle - angle);
+        }
+    } while (abs(angError) > 1);
     stopMotors();
     robot_pose.theta = getHeading();
 }
@@ -412,13 +416,14 @@ void turn(){
  * Takes in the angle error in degrees (float) and applies a gain to return the ang vel setpoint (float).
  * The proportional control gain is set by K_P_ANG.
  */
-float angErrorToAngVel(float error){
+float angErrorToAngVel(float error, int motor){
     float angVel = (error*K_P_ANG);
+    if (motor == L) angVel = -angVel;
     if (abs(angVel) > MAX_TURN_SPEED) {
         return angVel > 0 ? MAX_TURN_SPEED : -MAX_TURN_SPEED;
     }
     else if (abs(angVel) < MIN_SPEED) {
-        return angVel > 0 ? MIN_SPEED : -MIN_SPEED; 
+        return angVel > 0 ? MIN_SPEED : -MIN_SPEED;
     }
     else return angVel;
 }
