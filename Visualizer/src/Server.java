@@ -23,6 +23,8 @@ public class Server extends Thread {
 
     private HashMap<String, Method> commands;
 
+    private BufferedReader bufferedReader;
+
     public Server(DisplayController displayController, JFrame frame) throws IOException {
         this.displayController = displayController;
         this.frame = frame;
@@ -31,6 +33,9 @@ public class Server extends Thread {
 
         socket = new ServerSocket(port);
         System.out.println("Server Listening on Port: " + port);
+
+        Socket connectionSocket = socket.accept();
+        bufferedReader = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
     }
 
     private void initCommands() {
@@ -59,15 +64,13 @@ public class Server extends Thread {
 
             String data = "";
             try {
-                Socket connectionSocket = socket.accept();
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
                 data = bufferedReader.readLine();
             } catch (IOException e) {
                 Logger.getInstance().log(TAG, "Error receiving packet: " + e);
             }
 
 //            String data = new String(packet.getData(), 0, packet.getLength());
-            Logger.getInstance().log(TAG, "Received message: " + data);
+//            Logger.getInstance().log(TAG, "Received message: " + data);
 
             if(data.equals("initialize")) {
                 // TODO: Get working, but not really important
@@ -91,17 +94,21 @@ public class Server extends Thread {
             boolean matchedCommand = false;
             for(String command : commands.keySet()) {
                 if(data.startsWith(command)) {
-                    try {
-                        commands.get(command).invoke(displayController, data);
-                        matchedCommand = true;
-                        break;
-                    } catch (IllegalAccessException e) {
-                        System.err.println("Command method is private");
-                        e.printStackTrace();
-                    } catch (InvocationTargetException e) {
-                        System.err.println("Invalid invocation");
-                        e.printStackTrace();
-                    }
+                    final String cmd = data;
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            commands.get(command).invoke(displayController, cmd);
+                        } catch (IllegalAccessException e) {
+                            System.err.println("Command method is private");
+                            e.printStackTrace();
+                        } catch (InvocationTargetException e) {
+                            System.err.println("Invalid invocation");
+                            e.printStackTrace();
+                        }
+                    });
+
+                    matchedCommand = true;
+                    break;
                 }
             }
 

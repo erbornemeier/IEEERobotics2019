@@ -48,12 +48,12 @@ public class Canvas extends JPanel implements ActionListener {
 
         Graphics2D g = (Graphics2D) graphics;
 
-        if(displayController.getPathfinding() != null) {
-            displayController.getPathfinding().drawPoints(g);
-        }
-
         for(int i = 0; i < displayController.getEntities().size(); i++) {
             displayController.getEntities().get(i).draw(g);
+        }
+
+        if(displayController.getPathfinding() != null) {
+            displayController.getPathfinding().drawPoints(g);
         }
     }
 

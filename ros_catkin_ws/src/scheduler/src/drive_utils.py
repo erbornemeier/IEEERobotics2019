@@ -216,9 +216,9 @@ def add_bad_points_around_block(x, y):
     
     radius = 12
 
-    grid_pt = __approx_to_grid__((x, y, 0))[:2]
+    #grid_pt = __approx_to_grid__((x, y, 0))[:2]
     for p in grid:
-        if dist(grid_pt, p) <= radius:
+        if dist((x, y), p) <= radius:
             globals.bad_points.add(p)
             commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(p[0], p[1]))
 
@@ -231,9 +231,9 @@ def remove_bad_points_around_block(x, y):
     
     radius = 12
 
-    grid_pt = __approx_to_grid__((x, y, 0))[:2]
+    #grid_pt = __approx_to_grid__((x, y, 0))[:2]
     for p in grid:
-        if dist(grid_pt, p) <= radius:
+        if dist((x, y), p) <= radius:
             if p in globals.bad_points:
                 globals.bad_points.remove(p)
                 commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:false".format(p[0], p[1]))

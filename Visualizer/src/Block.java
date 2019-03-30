@@ -33,9 +33,9 @@ public class Block extends Entity {
         int drawY = Canvas.CANVAS_HEIGHT - (int)(y + Board.DISPLAY_MARGIN + (Board.PIXELS_PER_FOOT / 2) + (drawSize / 2.0));
         g.drawRect(drawX, drawY, drawSize, drawSize);
 
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                RenderingHints.VALUE_ANTIALIAS_ON);
-        g.drawString("" + letter, drawX + drawSize/2 - 4, drawY + drawSize/2 + 5);
+//        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+//                RenderingHints.VALUE_ANTIALIAS_ON);
+//        g.drawString("" + letter, drawX + drawSize/2 - 4, drawY + drawSize/2 + 5);
     }
 
     public char getLetter() {
