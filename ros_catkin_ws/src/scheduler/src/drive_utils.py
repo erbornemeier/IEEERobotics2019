@@ -5,6 +5,7 @@ import commands
 from geometry_utils import *
 import time as t
 import math
+import sys
 import rospy
 from geometry_msgs.msg import Pose2D
 import RPi.GPIO as RPIO
@@ -18,6 +19,10 @@ RPIO.setup(ack_pin, RPIO.IN, pull_up_down=RPIO.PUD_UP)
 RPIO.setup(stop_pin, RPIO.OUT)
 RPIO.output(stop_pin, RPIO.LOW)
 RPIO.setup(start_pin, RPIO.IN, pull_up_down=RPIO.PUD_DOWN)
+
+# PATH FINDING
+RESOLUTION = 3
+MARGIN = 6
 
 # POSE INFORMATION
 x, y = 0, 1
@@ -36,19 +41,19 @@ def wait_for_pose_update():
     start_time = t.time()
     global robot_x
     robot_x = -1
-    dots = 0
-    print("")
+    #dots = 0
+    #print("")
     while robot_x == -1 and t.time() - start_time < TIMEOUT:
-        print('\r                             ', end="")
-        print('\rwaiting for pose update{}'.format('.'*dots), end="")
+        #print('\r                             ', end="")
+        #print('\rwaiting for pose update{}'.format('.'*dots), end="")
         t.sleep(0.05)
-        dots = (dots + 1) % 4
-    print("")
+        #dots = (dots + 1) % 4
+    #print("")
 
 def wait_for_msg_received():
     start_time = t.time()
     while RPIO.input(ack_pin) == RPIO.LOW and t.time() - start_time < TIMEOUT:
-        print("Waiting for busy pin to be set")
+        #print("Waiting for busy pin to be set")
         t.sleep(0.05)
     if t.time() - start_time >= TIMEOUT:
         return False
@@ -59,19 +64,15 @@ def wait_for_start_button():
         pass
 
 def wait_for_pose_change():
-    dots = 0
+    #dots = 0
     while RPIO.input(ack_pin) == RPIO.HIGH:
-        print('\r                             ', end="")
-        print('\rwaiting for pose change{}'.format('.'*dots), end="")
+        #print('\r                             ', end="")
+        #print('\rwaiting for pose change{}'.format('.'*dots), end="")
         t.sleep(0.05)
-        dots = (dots + 1) % 4
+        #dots = (dots + 1) % 4
     wait_for_pose_update()
 
-# PATH FINDING
-RESOLUTION = 4
-MARGIN = 8
 FIRST_POINT_IN = int(math.ceil(MARGIN/float(RESOLUTION))*RESOLUTION)
-print(FIRST_POINT_IN)
 
 def __custom_neighbors__( height, width ):
     def func( coord ):
@@ -103,9 +104,11 @@ def __custom_neighbors__( height, width ):
 
 def __custom_cost__(a, b):
     if a[2] != b[2]:
-        return 7 # 5 and 10 was decent
-    else:
+        return 5 # 5 and 10 was decent
+    elif a[2] % 90 == 0:
         return 1
+    else:
+        return 2**0.5
 
 finder = astar.pathfinder(neighbors=__custom_neighbors__(12*8, 12*8),
                     distance=astar.absolute_distance,
@@ -133,17 +136,40 @@ def __approx_to_grid__(pt):
     print("COULD NOT APPROXIMATE POINT TO A VALID POINT, CHOSE CLOSEST")
     return tuple([closest[0]] + [snap_angle])
 
+traversed_pts = set()
+def __path_exists__(from_pt, to_pt, start=True):
+    return True
+    global traversed_pts
+    if start:
+        traversed_pts = set()
+    traversed_pts.add(from_pt)
+    if from_pt == to_pt:
+        return True
+    adj_pts = [(from_pt[0] + dx, from_pt[1] + dy)\
+                for dx in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)\
+                for dy in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)\
+                if dx != 0 or dy != 0]
+    for p in adj_pts:
+        if p not in traversed_pts and\
+           p not in globals.bad_points and \
+           all(MARGIN <= x <= 12*8-MARGIN for x in p):
+            exists = __path_exists__(p, to_pt, start=False)
+            if exists:
+                return True
+    return False
+
 def __get_path__(from_pt, to_pt):
-    #from_pt = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in from_pt])
-    #to_pt_approx = tuple([int(round(a/RESOLUTION)*RESOLUTION) for a in to_pt])
     from_pt_approx = __approx_to_grid__(from_pt)
     to_pt_approx = __approx_to_grid__(to_pt)
-    print("FROM PT APRPOX: {}".format(from_pt_approx))
-    print("TO PT APRPOX: {}".format(to_pt_approx))
-
-    path = finder(from_pt_approx, to_pt_approx)[1]
+    #print("FROM PT APRPOX: {}".format(from_pt_approx))
+    #print("TO PT APRPOX: {}".format(to_pt_approx))
+    if __path_exists__(from_pt_approx, to_pt_approx):
+        path = finder(from_pt_approx, to_pt_approx)[1]
+    else: 
+        return False
     print("PREOPTIMIZED PATH: {}".format(path))
     opt_path = __optimize_path__(path) 
+    opt_path = opt_path[:-1] #ADDED TODO remove comment
     if MARGIN <= to_pt[0] <= 12*8-MARGIN and MARGIN <= to_pt[1] <= 12*8-MARGIN:
         opt_path.append(to_pt)
     else:
@@ -161,13 +187,13 @@ def get_drive_instructions(to_pt):
     return turn_angle, forward_dist
 
 def drive(forward_dist):
-    print("DRIVING: {}".format(forward_dist))
+    #print("DRIVING: {}".format(forward_dist))
     if abs(forward_dist) > 0.1:
         commands.send_drive_forward_command(forward_dist)
         wait_for_pose_change()
 
 def turn(turn_angle):
-    print("TURNING: {}".format(turn_angle))
+    #print("TURNING: {}".format(turn_angle))
     if abs(turn_angle) > 0.1:
         commands.send_drive_turn_command(turn_angle)
         wait_for_pose_change()
@@ -179,7 +205,7 @@ def stop():
 
 def drive_to_point(to_pt):
     turn_angle, forward_dist = get_drive_instructions(to_pt)
-    print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
+    #print("TURNING: {} THEN DRIVING {}".format(turn_angle, forward_dist))
     turn(turn_angle)
     drive(forward_dist) 
 
@@ -198,12 +224,18 @@ def go_to_point(to_pt, approach_dist=0):
         to_pt = __approx_to_grid__((to_pt[0], to_pt[1], 0))
     to_pt = (to_pt[0], to_pt[1], 0)
     path = __get_path__(robot_pos, to_pt)
+    if not path:
+        while True:
+            try:
+                print('can\'t find a path')
+            except KeyboardInterrupt:
+                sys.exit(0)
+    commands.send_vis_command("draw-path {}".format([robot_pos] + path)) 
 
-    if approach_dist != 0:
-        path = path[:-1]
+    #if approach_dist != 0:
+    #path = path[:-1]
 
     print("PATH: {}".format(path))
-    #TODO change to instructions to send to arduino
     for p in path:
         drive_to_point(p)
 
@@ -216,10 +248,11 @@ def add_bad_points_around_block(x, y):
     
     radius = 12
 
-    grid_pt = __approx_to_grid__((x, y, 0))[:2]
+    #grid_pt = __approx_to_grid__((x, y, 0))[:2]
     for p in grid:
-        if dist(grid_pt, p) <= radius:
+        if dist((x, y), p) <= radius:
             globals.bad_points.add(p)
+            commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(p[0], p[1]))
 
 def remove_bad_points_around_block(x, y):    
     '''
@@ -230,8 +263,12 @@ def remove_bad_points_around_block(x, y):
     
     radius = 12
 
-    grid_pt = __approx_to_grid__((x, y, 0))[:2]
+    print("REMOVING BLOCK POINTS")
+    print("LEN BERFORE -> {}".format(len(globals.bad_points)))
+    #grid_pt = __approx_to_grid__((x, y, 0))[:2]
     for p in grid:
-        if dist(grid_pt, p) <= radius:
-            if p in globals.bad_points:
+        if dist((x, y), p) <= radius:
+            if p in globals.bad_points and p not in globals.mothership_bad_points:
                 globals.bad_points.remove(p)
+                commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:false".format(p[0], p[1]))
+    print("LEN AFTER -> {}".format(len(globals.bad_points)))

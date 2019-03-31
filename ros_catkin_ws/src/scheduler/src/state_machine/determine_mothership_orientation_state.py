@@ -52,8 +52,8 @@ class DetermineMothershipOrientationState(State):
                 blocks = sorted(blocks, key=lambda x : geometry_utils.dist(x, mothership_pos))
                 globals.x_coords = [int(round((p[0]-6)/float(12))) for p in blocks]
                 globals.y_coords = [int(round((p[1]-6)/float(12))) for p in blocks]
-                diag_width = 26
-                diag_width_ramp = 38 
+                diag_width = 24
+                diag_width_ramp = 31 
 
                 start_x = 0
                 start_y = 0
@@ -68,6 +68,8 @@ class DetermineMothershipOrientationState(State):
                     for j in range(start_y, 12*8 - drive_utils.MARGIN + 1, drive_utils.RESOLUTION):
                         if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, diag_width, diag_width_ramp):
                             globals.bad_points.add((i, j))
+                            globals.mothership_bad_points.add((i, j))
+                            #print("BAD POINTS LENGTH: {}".format(len(globals.bad_points)))
                             commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:true".format(i, j))
 
 
@@ -107,11 +109,11 @@ class DetermineMothershipOrientationState(State):
             
                 rospy.loginfo("Determine Mothership Orientation State:")    
                 rospy.loginfo("\tMothership: {} Position: ({},{}) Orientation: {}".format("ABC" if detected_slot.letter == 0 else "DEF", globals.mothership_x, globals.mothership_y, globals.mothership_theta))
-                rospy.loginfo("\tMult: {}".format(mult))
-                rospy.loginfo("\tABC Waypoint: ({},{})".format(globals.abc_x, globals.abc_y))
-                rospy.loginfo("\tDEF Waypoint: ({},{})".format(globals.def_x, globals.def_y))
-                rospy.loginfo("\tAF Waypoint: ({},{})".format(globals.af_x, globals.af_y))
-                rospy.loginfo("\tCD Waypoint: ({},{})".format(globals.cd_x, globals.cd_y))
+                #rospy.loginfo("\tMult: {}".format(mult))
+                #rospy.loginfo("\tABC Waypoint: ({},{})".format(globals.abc_x, globals.abc_y))
+                #rospy.loginfo("\tDEF Waypoint: ({},{})".format(globals.def_x, globals.def_y))
+                #rospy.loginfo("\tAF Waypoint: ({},{})".format(globals.af_x, globals.af_y))
+                #rospy.loginfo("\tCD Waypoint: ({},{})".format(globals.cd_x, globals.cd_y))
 
                 commands.send_vis_command("display-mothership x:{} y:{} theta:{} abc_x:{} abc_y:{} af_x:{} af_y:{} def_x:{} def_y:{} cd_x:{} cd_y:{}".format(
                     globals.mothership_x, globals.mothership_y, globals.mothership_theta,

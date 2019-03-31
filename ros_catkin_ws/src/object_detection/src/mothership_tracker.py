@@ -127,7 +127,7 @@ def get_line_params(_):
         msg.theta = math.atan2(dy, dx) * 180.0/math.pi
         return msg 
     except Exception as e:
-        print(e)
+        #print(e)
         msg.x, msg.y = -1, -1
         return msg
     

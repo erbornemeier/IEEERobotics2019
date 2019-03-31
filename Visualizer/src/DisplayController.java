@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,6 +13,7 @@ public class DisplayController {
     private Robot robot;
     private HashMap<Character, Block> blocks;
     private Pathfinding pathfinding;
+    private Path currentPath;
 
     public DisplayController() {
         initialize();
@@ -178,16 +180,26 @@ public class DisplayController {
 
     @Command("draw-path")
     public void drawPath(String msg) {
-        Pattern p = Pattern.compile(".*\\s*\\[(\\(\\d*\\.?\\d*,\\d*\\.?\\d*\\),?)+]");
+        Pattern p = Pattern.compile(".*\\s*\\[(\\(\\d*\\.?\\d*, \\d*\\.?\\d*,.*\\)(, )?)+]");
 
         Matcher m = p.matcher(msg);
         if(m.matches()) {
-            p = Pattern.compile("(\\((\\d*\\.?\\d*),(\\d*\\.?\\d*)\\))");
-            m = p.matcher(msg);
-            while(m.find()) {
-                int x = Integer.parseInt(m.group(2));
-                int y = Integer.parseInt(m.group(3));
+            if(currentPath != null) {
+                entities.remove(currentPath);
             }
+
+            p = Pattern.compile("(\\((\\d*\\.?\\d*), (\\d*\\.?\\d*), -?(\\d*\\.?\\d*)\\))");
+            m = p.matcher(msg);
+
+            ArrayList<BoardPoint> points = new ArrayList<>();
+            while(m.find()) {
+                double x = Double.parseDouble(m.group(2));
+                double y = Double.parseDouble(m.group(3));
+                points.add(new BoardPoint(x, y));
+            }
+
+            currentPath = new Path(points);
+            entities.add(currentPath);
         }
     }
 
@@ -202,6 +214,7 @@ public class DisplayController {
     public void reset() {
         robot = null;
         pathfinding = null;
+        currentPath = null;
         initialize();
     }
 

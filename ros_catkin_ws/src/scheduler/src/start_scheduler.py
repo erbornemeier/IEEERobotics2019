@@ -49,6 +49,7 @@ def display_blocks():
         print("\tDisplaying block @ {},{}".format(x, y))
         commands.display_block_command(x, y)
         commands.send_vis_command("init-block id:{} x:{} y:{}".format(id, x, y))
+       
         id += 1
         t.sleep(0.2)
 
@@ -57,16 +58,36 @@ rospy.init_node("scheduler")
 commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(drive_utils.RESOLUTION, drive_utils.MARGIN))
 
 wait_for_flash_drive()
+commands.set_display_state(commands.WAITING)
+t.sleep(0.25)
+commands.set_display_state(commands.WAITING)
 
 #_ = raw_input("Press enter to start")
 print("Ready to start")
-drive_utils.wait_for_start_button()
+#drive_utils.wait_for_start_button()
 print("**Starting in 5 seconds**")
 commands.set_display_state(commands.NORMAL)
 display_blocks()
 t.sleep(5)
 
+START_TIME = t.time()
+has_displayed_time = False
 
 state_machine = StateMachine(FindMothershipState(True))
-while not rospy.is_shutdown():
-    state_machine.run()
+try:
+    while not rospy.is_shutdown():
+        if not state_machine.isFinished():
+            state_machine.run()
+        elif not has_displayed_time:
+            break
+except KeyboardInterrupt:
+    pass
+finally:  
+    commands.set_display_state(commands.FINISHED)
+    seconds = int(t.time() - START_TIME)
+    minutes = int(seconds // 60)
+    seconds %= 60
+    seconds = str(seconds).rjust(2, '0')
+    print("Finished in {}:{}".format(minutes, seconds))
+
+
