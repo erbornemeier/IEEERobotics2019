@@ -21,9 +21,9 @@ class DriveToMothershipState(State):
     def run(self):
         
         if globals.current_letter <= 2:
-            drive_utils.go_to_point((globals.abc_x, globals.abc_y))
+            drive_utils.go_to_point((globals.abc_approach_x, globals.abc_approach_y))
         else:   
-            drive_utils.go_to_point((globals.def_x, globals.def_y))
+            drive_utils.go_to_point((globals.def_approach_x, globals.def_approach_y))
 
         #drive_utils.wait_for_pose_update()
         turn_angle, _ = drive_utils.get_drive_instructions(\
