@@ -5,7 +5,7 @@
 #define servoMin 10
 #define servoLevel 40
 #define gripperOpenPower 255
-#define gripperClosePower 100
+#define gripperClosePower 80
 #define gripperOpenTime 800
 #define gripperCloseTime 1200
 
@@ -46,7 +46,8 @@ class Claw {
                 digitalWrite(IN2, LOW);
                 analogWrite(CLAW_PWM, gripperClosePower);  
                 delay(gripperCloseTime);
-                Gripper_UnPower();
+                //Gripper_UnPower();
+                analogWrite(CLAW_PWM, gripperClosePower/2); 
                 gripper_closed = true;
             }
             

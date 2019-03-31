@@ -12,7 +12,7 @@
 /*****************************************
  *       HARDWARE DEFINITIONS            * 
  *****************************************/
-#define cameraServoPin 44s
+#define cameraServoPin 44
 Servo cameraServo;
 uint8_t cameraAngle = 0;
 
@@ -171,7 +171,7 @@ void rosUpdate(bool busy){
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
 #define COUNTS_PER_REV          3200
-#define WHEEL_DIAMETER          3.45 //inches
+#define WHEEL_DIAMETER          3.45 //inches //3.45 orig
 #define WHEEL_CIRC              10.84 //inches
 #define ROBOT_WIDTH             7.63 //inches
 #define TURN_CIRCUMFERENCE      (ROBOT_WIDTH*PI)
@@ -331,7 +331,7 @@ void distDrive(){
                 // Find error in inches
                 posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
                 // Convert position error to a velocity setpoint for each wheel
-                turboAvailible ? maximumSpeed = MAX_SPEED + TURBO;
+                maximumSpeed = turboAvailible ? MAX_SPEED + TURBO : MAX_SPEED;
                 velocitySetpoints[i] = posErrorToAngVel(posError, i, maximumSpeed);
             }
             velDrive();
@@ -526,7 +526,7 @@ void setMotor(int m, int pwm) {
 }
 
 void do_stop() {
-    nh.loginfo("STOPPING*************");
+    //nh.loginfo("STOPPING*************");
     velocitySetpoints[L] = 0;
     velocitySetpoints[R] = 0;
     distanceSetpoint = 0;
