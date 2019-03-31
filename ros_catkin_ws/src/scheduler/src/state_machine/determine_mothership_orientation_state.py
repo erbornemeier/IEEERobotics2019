@@ -52,8 +52,8 @@ class DetermineMothershipOrientationState(State):
                 blocks = sorted(blocks, key=lambda x : geometry_utils.dist(x, mothership_pos))
                 globals.x_coords = [int(round((p[0]-6)/float(12))) for p in blocks]
                 globals.y_coords = [int(round((p[1]-6)/float(12))) for p in blocks]
-                diag_width = 26
-                diag_width_ramp = 38 
+                diag_width = 24
+                diag_width_ramp = 31 
 
                 start_x = 0
                 start_y = 0

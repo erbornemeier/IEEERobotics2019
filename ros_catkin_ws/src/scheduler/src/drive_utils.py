@@ -22,7 +22,7 @@ RPIO.setup(start_pin, RPIO.IN, pull_up_down=RPIO.PUD_DOWN)
 
 # PATH FINDING
 RESOLUTION = 3
-MARGIN = 8
+MARGIN = 6
 
 # POSE INFORMATION
 x, y = 0, 1
@@ -138,6 +138,8 @@ def __approx_to_grid__(pt):
 
 traversed_pts = set()
 def __path_exists__(from_pt, to_pt, start=True):
+    return True
+    global traversed_pts
     if start:
         traversed_pts = set()
     traversed_pts.add(from_pt)
@@ -148,7 +150,9 @@ def __path_exists__(from_pt, to_pt, start=True):
                 for dy in range(-RESOLUTION, RESOLUTION+1, RESOLUTION)\
                 if dx != 0 or dy != 0]
     for p in adj_pts:
-        if p not in globals.bad_pts and all(MARGIN <= x <= 12*8-MARGIN for x in p):
+        if p not in traversed_pts and\
+           p not in globals.bad_points and \
+           all(MARGIN <= x <= 12*8-MARGIN for x in p):
             exists = __path_exists__(p, to_pt, start=False)
             if exists:
                 return True
