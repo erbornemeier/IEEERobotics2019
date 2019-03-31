@@ -52,6 +52,7 @@ volatile int moveState = CONST_VEL;
 volatile bool newDriveCmd = false;
 long deltaPosition[NUM_MOTORS];
 float integralControlValue[NUM_MOTORS] = {0, 0};
+bool turboAvailible = false;
 
 /*****************************************
  *               ROS                     *
@@ -154,6 +155,8 @@ void rosUpdate(bool busy){
 // Distance Controller
 #define K_P_DIST                1.1 //inches error -> rad/s
 #define MAX_SPEED               8 //rad/s
+#define TURBO                   4
+#define TURBO_SETPOINT          0.5
 #define MAX_TURN_SPEED          6 //rad/s
 #define MAX_REVERSE_SPEED       4 //rad/s, slower because the wheel is crappy
 #define MIN_SPEED               1.0 //rad/s
@@ -168,7 +171,7 @@ void rosUpdate(bool busy){
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
 #define COUNTS_PER_REV          3200
-#define WHEEL_DIAMETER          3.45 //inches
+#define WHEEL_DIAMETER          3.45 //inches //3.45 orig
 #define WHEEL_CIRC              10.84 //inches
 #define ROBOT_WIDTH             7.63 //inches
 #define TURN_CIRCUMFERENCE      (ROBOT_WIDTH*PI)
@@ -328,19 +331,21 @@ void distDrive(){
                 // Find error in inches
                 posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
                 // Convert position error to a velocity setpoint for each wheel
+                maximumSpeed = turboAvailible ? MAX_SPEED + TURBO : MAX_SPEED;
                 velocitySetpoints[i] = posErrorToAngVel(posError, i, maximumSpeed);
             }
             velDrive();
             rosUpdate(true);
         } while (!isZero(posError, false));
         stopMotors();
-//        delay(OVERSHOOT_DELAY_MS);
-//        for (int i = 0; i < NUM_MOTORS; i++){
-//            // Find error in inches
-//            posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
-//        }
+        delay(OVERSHOOT_DELAY_MS);
+        for (int i = 0; i < NUM_MOTORS; i++){
+            // Find error in inches
+            posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
+        }
     } while (!isZero(posError, false));
     stopMotors();
+    turboAvailible = false;
     float avgError = 0;
     for (int i = 0; i < NUM_MOTORS; i++){
         avgError += posError[i];
@@ -456,6 +461,9 @@ void velDrive() {
  */
 int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
     updateVelocity(motor);
+    if (angVelSetpoint == 0) return 0;
+    if (velocities[motor] > (MAX_SPEED - TURBO_SETPOINT)) turboAvailible = true;
+
     float error = angVelSetpoint - velocities[motor];
 
     integralControlValue[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
@@ -518,7 +526,7 @@ void setMotor(int m, int pwm) {
 }
 
 void do_stop() {
-    nh.loginfo("STOPPING*************");
+    //nh.loginfo("STOPPING*************");
     velocitySetpoints[L] = 0;
     velocitySetpoints[R] = 0;
     distanceSetpoint = 0;
