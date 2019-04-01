@@ -294,6 +294,7 @@ void loop() {
             if (newDriveCmd){
                 newDriveCmd = false;
                 stopMotors();
+                claw.Servo_SetAngle(13);
                 claw.Gripper_Close();
                 claw.Servo_SetAngle(CLAW_PICKUP_ANGLE);
                 cameraServo.writeMicroseconds(DEG_TO_US(40));
