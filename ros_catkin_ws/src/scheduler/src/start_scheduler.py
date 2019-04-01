@@ -58,15 +58,17 @@ rospy.init_node("scheduler")
 commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(drive_utils.RESOLUTION, drive_utils.MARGIN))
 
 wait_for_flash_drive()
+t.sleep(0.25)
 commands.set_display_state(commands.WAITING)
 t.sleep(0.25)
 commands.set_display_state(commands.WAITING)
 
 #_ = raw_input("Press enter to start")
 print("Ready to start")
-#drive_utils.wait_for_start_button()
+drive_utils.wait_for_start_button()
 print("**Starting in 5 seconds**")
 commands.set_display_state(commands.NORMAL)
+t.sleep(0.25)
 display_blocks()
 t.sleep(5)
 

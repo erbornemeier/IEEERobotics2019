@@ -52,7 +52,7 @@ class DetermineMothershipOrientationState(State):
                 blocks = sorted(blocks, key=lambda x : geometry_utils.dist(x, mothership_pos))
                 globals.x_coords = [int(round((p[0]-6)/float(12))) for p in blocks]
                 globals.y_coords = [int(round((p[1]-6)/float(12))) for p in blocks]
-                diag_width = 24
+                diag_width = 28
                 diag_width_ramp = 31 
 
                 start_x = 0
@@ -78,7 +78,7 @@ class DetermineMothershipOrientationState(State):
                 # Otherwise it is in front
                 mult = 1 if isABC else -1
                 diag_width = 44
-                approach_width = 15
+                approach_width = 20 
                 diag_width_ramp = 48
                 globals.abc_approach_x = globals.mothership_x - (mult * approach_width * cos(radians(robot_theta)))
                 globals.abc_approach_y = globals.mothership_y - (mult * approach_width * sin(radians(robot_theta)))

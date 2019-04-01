@@ -35,6 +35,9 @@ class DriveToBlockState(State):
 
         self.camera_angle = self.camera_start_angle
 
+        self.SEEN_TIMEOUT = 2
+        self.last_seen = t.time()
+
 
     def __get_block_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -79,21 +82,27 @@ class DriveToBlockState(State):
 
         if self.needs_approach:
             commands.send_cam_command(self.camera_angle)
-            commands.send_claw_command(commands.DROP_ANGLE)
+            commands.send_claw_command(commands.PICKUP_ANGLE)
             drive_utils.go_to_point(self.block_pos, self.approach_dist)
             #drive_utils.wait_for_pose_update()
             turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
             #print("TURNING TO FACE BLOCK: {}".format(turn_angle))
             drive_utils.turn(turn_angle)
-
+            commands.send_claw_command(commands.CARRY_ANGLE)
             self.needs_approach = False
+            self.last_seen = t.time()
 
         #camera to block
         block_pos = self.__get_block_pos__()
+
         if block_pos.y < 0:
-            self.__reset__()
+            if t.time() - self.last_seen > self.SEEN_TIMEOUT:
+                drive_utils.drive(-2)
+            else:
+                self.__reset__()
             return self
         else:
+            self.last_seen = t.time()
             self.__camera_to_block__(block_pos)
             self.__drive_to_block__(block_pos)
 

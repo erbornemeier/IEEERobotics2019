@@ -74,6 +74,7 @@ def wait_for_pose_change():
 
 FIRST_POINT_IN = int(math.ceil(MARGIN/float(RESOLUTION))*RESOLUTION)
 
+traversed_astar_points = set()
 def __custom_neighbors__( height, width ):
     def func( coord ):
         '''
@@ -85,20 +86,37 @@ def __custom_neighbors__( height, width ):
                  and c not in globals.bad_points
                  and c[0] >= MARGIN and c[0] <= width-MARGIN
                  and c[1] >= MARGIN and c[1] <= height-MARGIN ]
+        angle_list = [(coord[0], coord[1], coord[2]+angle) \
+                        for angle in range(-135, 181, 45)]
+
+        neighbor_list = []
+        for n in angle_list:
+            next_x = n[0] + math.cos(math.radians(n[2]))*\
+                                (1 if n[2]%90==0 else 2**0.5)*RESOLUTION
+            next_y = n[1] + math.sin(math.radians(n[2]))*\
+                                (1 if n[2]%90==0 else 2**0.5)*RESOLUTION
+            neighbor_list.append((int(round(next_x)), int(round(next_y)), n[2]))
+
         '''
+        #traversed_astar_points.add(coord[:2])
         neighbor_list = [(coord[0], coord[1], coord[2]+angle) \
                         for angle in range(-135, 181, 45)]
         next_x = coord[0] + math.cos(math.radians(coord[2]))*\
                             (1 if coord[2]%90==0 else 2**0.5)*RESOLUTION
         next_y = coord[1] + math.sin(math.radians(coord[2]))*\
                             (1 if coord[2]%90==0 else 2**0.5)*RESOLUTION
+
         neighbor_list.append((int(round(next_x)), int(round(next_y)), coord[2]))
 
-        return [ c for c in neighbor_list
+        neighbor_list = [ c for c in neighbor_list
                  if c != coord
                  and c[:2] not in globals.bad_points
+                 and c[:2] not in traversed_astar_points
                  and c[0] >= MARGIN and c[0] <= width-MARGIN
                  and c[1] >= MARGIN and c[1] <= height-MARGIN ]
+
+
+        return neighbor_list
 
     return func
 
@@ -158,22 +176,31 @@ def __path_exists__(from_pt, to_pt, start=True):
                 return True
     return False
 
+safe_point = None
 def __get_path__(from_pt, to_pt):
+    global safe_point, traversed_astar_points
+    if safe_point is None:
+        safe_point = (robot_x, robot_y, robot_theta)
     from_pt_approx = __approx_to_grid__(from_pt)
     to_pt_approx = __approx_to_grid__(to_pt)
     #print("FROM PT APRPOX: {}".format(from_pt_approx))
     #print("TO PT APRPOX: {}".format(to_pt_approx))
-    if __path_exists__(from_pt_approx, to_pt_approx):
-        path = finder(from_pt_approx, to_pt_approx)[1]
-    else: 
-        return False
+    traversed_astar_points = set()
+    path = finder(from_pt_approx, to_pt_approx)[1]
     print("PREOPTIMIZED PATH: {}".format(path))
+    if len(path) == 0:
+        #go to safe point and try again
+        print('No path -- returning to safe point and re-computing')
+        drive_to_point(safe_point)
+        return __get_path__(safe_point, to_pt)
+
     opt_path = __optimize_path__(path) 
-    opt_path = opt_path[:-1] #ADDED TODO remove comment
+    opt_path = opt_path[:-1] 
     if MARGIN <= to_pt[0] <= 12*8-MARGIN and MARGIN <= to_pt[1] <= 12*8-MARGIN:
         opt_path.append(to_pt)
     else:
         opt_path.append(to_pt_approx)
+    safe_point = opt_path[-1]
     return opt_path
 
 def get_drive_instructions(to_pt):
@@ -215,7 +242,7 @@ def get_approach_point(from_pt, to_pt, approach_dist):
         return to_pt
     return avg(from_pt, to_pt, weight=approach_perc)
 
-def go_to_point(to_pt, approach_dist=0):
+def go_to_point(to_pt, approach_dist=0, safe_point=None):
     global robot_x, robot_y, robot_theta
     wait_for_pose_update()
     robot_pos = (robot_x, robot_y, robot_theta)
@@ -224,12 +251,7 @@ def go_to_point(to_pt, approach_dist=0):
         to_pt = __approx_to_grid__((to_pt[0], to_pt[1], 0))
     to_pt = (to_pt[0], to_pt[1], 0)
     path = __get_path__(robot_pos, to_pt)
-    if not path:
-        while True:
-            try:
-                print('can\'t find a path')
-            except KeyboardInterrupt:
-                sys.exit(0)
+
     commands.send_vis_command("draw-path {}".format([robot_pos] + path)) 
 
     #if approach_dist != 0:
