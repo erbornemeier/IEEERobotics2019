@@ -125,7 +125,6 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);*/
 
 // Control Values
 #define SAMPLE_PERIOD           10
-#define POSE_PUBLISH_RATE_MS    500
 #define ROS_UPDATE_RATE         1
 #define DEG2RAD                 (PI/180)
 #define OVERSHOOT_DELAY_MS      100
@@ -133,17 +132,19 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);*/
 #define K_P                     19.4
 #define K_I                     270 
 // Distance Controller
-#define K_P_DIST                1.1 //inches error -> rad/s
-#define MAX_SPEED               10 //rad/s
-#define MIN_SPEED               1.5 //rad/s
-#define ZERO_ERROR_MARGIN       0.17 //inches until distance is considered achieved
+#define K_P_DIST                1.8 //inches error -> rad/s
+#define MAX_SPEED               8 //rad/s
+#define MAX_TURN_SPEED          6 //rad/s
+#define MAX_REVERSE_SPEED       4 //rad/s, slower because the wheel is crappy
+#define MIN_SPEED               1.0 //rad/s
+#define ZERO_ERROR_MARGIN       0.2 //inches until distance is considered achieved
 #define K_DIFF                  1.5
 #define MAX_CORRECTION          2
 // Angle controller
-//#define K_P_ANG               0.04 //degrees error -> rad/s
-#define K_P_ANG                 0.2
+#define K_P_ANG                 0.1 //degrees error -> rad/s
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
-#define TURN_ESS_GAIN           0.011 //degrees
+//#define TURN_ESS_GAIN           0.011 //degrees
+#define TURN_ESS_GAIN           0 //degrees
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
 #define COUNTS_PER_REV          3200
@@ -157,11 +158,7 @@ ros::Publisher pose_pub("robot_pose", &robot_pose);*/
 
 #define CLAW_PICKUP_ANGLE       40
 //IMU creation
-Adafruit_BNO055 bno = Adafruit_BNO055(55);
-
-
-// ADDED, NEEDED
-#define MAX_TURN_SPEED          4 //rad/s            
+Adafruit_BNO055 bno = Adafruit_BNO055(55);         
 
 /*
    void setup()
@@ -261,11 +258,12 @@ void loop() {
     static bool first = true;
     if (first){
         delay(5000);
-        angleSetpoint = 90;
-        turn();
-        turn();
-        turn();
-        turn();
+        distanceSetpoint = 6;
+        distDrive();
+        distanceSetpoint = 12;
+        distDrive();
+        distanceSetpoint = 24;
+        distDrive();
         first = false;
     }
 
@@ -425,8 +423,8 @@ int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
     if (angVelSetpoint == 0) PWMSetpoint = 0;
     if (abs(PWMSetpoint) > 255) {
       PWMSetpoint = PWMSetpoint > 0 ? 255 : -255;
+      Serial.println("MOTOR PWM SATURATED!");
     }
-    Serial.println("Motor " + String(motor) + " PWM: " + String(PWMSetpoint));
     return PWMSetpoint;
 }
 
