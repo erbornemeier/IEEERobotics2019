@@ -36,8 +36,11 @@ void loading_screen(ros::NodeHandle_<ArduinoHardware, 4, 0, 80, 105>& nh){
         nh.spinOnce();
         
     }
-    delay(1000);
-    nh.spinOnce();
+    for (int i = 0; i < 20; i++){
+        delay(50);
+        nh.spinOnce();
+    }
+    
     
     //blue off
     for (int i = 0; i < 16; i++){
