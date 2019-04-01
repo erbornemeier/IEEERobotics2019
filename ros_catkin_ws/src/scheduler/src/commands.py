@@ -33,8 +33,10 @@ rospy.wait_for_service("mothership")
 mothership_srv = rospy.ServiceProxy("mothership", Mothership)
 rospy.wait_for_service("letter_identifier")
 letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
+rospy.wait_for_service("big_orange")
+big_orange_srv = rospy.ServiceProxy("big_orange", Mothership)
 rospy.wait_for_service("slot_identifier")
-slot_srv = rospy.ServiceProxy("slot_identifier", Letter) #TODO: Check here
+slot_srv = rospy.ServiceProxy("slot_identifier", Letter) 
 print("Services Initialized")
 
 def send_claw_command(cmd):
