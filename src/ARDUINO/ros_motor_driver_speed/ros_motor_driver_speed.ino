@@ -52,6 +52,8 @@ volatile int moveState = CONST_VEL;
 volatile bool newDriveCmd = false;
 long deltaPosition[NUM_MOTORS];
 float integralControlValue[NUM_MOTORS] = {0, 0};
+float lastTurnError[NUM_MOTORS] = {0,0};
+float turnIntegral[NUM_MOTORS] = {0,0};
 bool turboAvailible = false;
 
 /*****************************************
@@ -154,8 +156,8 @@ void rosUpdate(bool busy){
 #define K_I                     270 
 // Distance Controller
 #define K_P_DIST                1.1 //inches error -> rad/s
-#define MAX_SPEED               8 //rad/s
-#define TURBO                   4
+#define MAX_SPEED               7 //rad/s
+#define TURBO                   5
 #define TURBO_SETPOINT          0.5
 #define MAX_TURN_SPEED          8 //rad/s
 #define MAX_REVERSE_SPEED       4 //rad/s, slower because the wheel is crappy
@@ -164,7 +166,9 @@ void rosUpdate(bool busy){
 #define K_DIFF                  1.5
 #define MAX_CORRECTION          2
 // Angle controller
-#define K_P_ANG                 0.2 //degrees error -> rad/s
+#define K_P_ANG                 0.18 //degrees error -> rad/s
+#define K_D_ANG                 0.9
+#define K_I_ANG                 0
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
 //#define TURN_ESS_GAIN           0.011 //degrees
 #define TURN_ESS_GAIN           0 //degrees
@@ -390,7 +394,10 @@ void turn(){
     //angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
     double angError = 0;
     float targetAngle = boundAngle(getHeading() + angleSetpoint);
-    
+    //reset integral
+    for (int i = 0; i < NUM_MOTORS; i++){
+        lastTurnError[i] = -1;
+    }
     do {
         do {
             // Find error in degrees
@@ -423,7 +430,11 @@ void turn(){
  * The proportional control gain is set by K_P_ANG.
  */
 float angErrorToAngVel(float error, int motor){
-    float angVel = (error*K_P_ANG);
+    float dComp = 0, lastE = lastTurnError[motor];
+    if(lastE != -1) dComp = (error - lastE)/SAMPLE_PERIOD;
+    lastTurnError[motor] = error;
+    turnIntegral[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
+    float angVel = (error*K_P_ANG + dComp*K_D_ANG + turnIntegral[motor]*K_I_ANG);
     if (motor == L) angVel = -angVel;
     if (abs(angVel) > MAX_TURN_SPEED) {
         return angVel > 0 ? MAX_TURN_SPEED : -MAX_TURN_SPEED;
@@ -473,7 +484,7 @@ int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
     //saturate PWM value
     if (angVelSetpoint == 0) return 0;
     if (abs(PWMSetpoint) > 255) {
-      return PWMSetpoint > 0 ? 255 : -255;
+        return PWMSetpoint > 0 ? 255 : -255;
     }
     else return PWMSetpoint;
 }
