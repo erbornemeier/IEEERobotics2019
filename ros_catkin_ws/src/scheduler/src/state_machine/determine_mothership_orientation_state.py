@@ -52,8 +52,8 @@ class DetermineMothershipOrientationState(State):
                 blocks = sorted(blocks, key=lambda x : geometry_utils.dist(x, mothership_pos))
                 globals.x_coords = [int(round((p[0]-6)/float(12))) for p in blocks]
                 globals.y_coords = [int(round((p[1]-6)/float(12))) for p in blocks]
-                diag_width = 28
-                diag_width_ramp = 31 
+                globals.diag_width = 28
+                globals.diag_width_ramp = 31 
 
                 start_x = 0
                 start_y = 0
@@ -66,7 +66,7 @@ class DetermineMothershipOrientationState(State):
 
                 for i in range(start_x, 12*8 - drive_utils.MARGIN + 1,drive_utils.RESOLUTION):
                     for j in range(start_y, 12*8 - drive_utils.MARGIN + 1, drive_utils.RESOLUTION):
-                        if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, diag_width, diag_width_ramp):
+                        if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, globals.diag_width, globals.diag_width_ramp):
                             globals.bad_points.add((i, j))
                             globals.mothership_bad_points.add((i, j))
                             #print("BAD POINTS LENGTH: {}".format(len(globals.bad_points)))
@@ -79,13 +79,15 @@ class DetermineMothershipOrientationState(State):
                 mult = 1 if isABC else -1
                 diag_width = 44
                 approach_width = 20 
+                start_approach_width = approach_width
                 diag_width_ramp = 48
+
                 globals.abc_approach_x = globals.mothership_x - (mult * approach_width * cos(radians(robot_theta)))
                 globals.abc_approach_y = globals.mothership_y - (mult * approach_width * sin(radians(robot_theta)))
+
                 globals.def_approach_x = globals.mothership_x + (mult * approach_width * cos(radians(robot_theta)))
                 globals.def_approach_y = globals.mothership_y + (mult * approach_width * sin(radians(robot_theta)))
-
-
+                
                 globals.abc_x = globals.mothership_x - (mult * diag_width/2 * cos(radians(robot_theta)))
                 globals.abc_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(robot_theta)))
                 globals.def_x = globals.mothership_x + (mult * diag_width/2 * cos(radians(robot_theta)))
@@ -117,9 +119,9 @@ class DetermineMothershipOrientationState(State):
 
                 commands.send_vis_command("display-mothership x:{} y:{} theta:{} abc_x:{} abc_y:{} af_x:{} af_y:{} def_x:{} def_y:{} cd_x:{} cd_y:{}".format(
                     globals.mothership_x, globals.mothership_y, globals.mothership_theta,
-                    globals.abc_x, globals.abc_y,
+                    globals.abc_approach_x, globals.abc_approach_y,
                     globals.af_x, globals.af_y,
-                    globals.def_x, globals.def_y,
+                    globals.def_approach_x, globals.def_approach_y,
                     globals.cd_x, globals.cd_y
                 ))
 

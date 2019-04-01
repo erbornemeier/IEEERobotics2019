@@ -22,7 +22,7 @@ RPIO.setup(start_pin, RPIO.IN, pull_up_down=RPIO.PUD_DOWN)
 
 # PATH FINDING
 RESOLUTION = 3
-MARGIN = 6
+MARGIN = 7
 
 # POSE INFORMATION
 x, y = 0, 1
@@ -199,7 +199,23 @@ def __get_path__(from_pt, to_pt):
     if MARGIN <= to_pt[0] <= 12*8-MARGIN and MARGIN <= to_pt[1] <= 12*8-MARGIN:
         opt_path.append(to_pt)
     else:
-        opt_path.append(to_pt_approx)
+        #opt_path.append(to_pt_approx)
+        new_pt_approx = [to_pt[0], to_pt[1]]
+        if to_pt[0] < MARGIN:
+            new_pt_approx[0] = MARGIN
+        elif to_pt[0] > (12*8 - MARGIN):
+            new_pt_approx[0] = (12*8 - MARGIN)
+        if to_pt[1] < MARGIN:
+            new_pt_approx[1] = MARGIN
+        elif to_pt[1] > (12*8 - MARGIN):
+            new_pt_approx[1] = (12*8 - MARGIN)
+        opt_path.append(new_pt_approx)
+        print("Final point outside of margin:")
+        print("\tOriginal Point: {}".format(to_pt))
+        print("\tUpdated Point: {}".format(new_pt_approx))
+
+
+
     safe_point = opt_path[-1]
     return opt_path
 
