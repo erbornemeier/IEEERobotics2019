@@ -8,6 +8,7 @@ import commands
 import drive_utils
 import time as t
 import rospy
+from math import *
 
 class FindMothershipState(State):
     def __init__(self, isFirstInstance):
@@ -23,6 +24,12 @@ class FindMothershipState(State):
         commands.set_display_state(commands.NORMAL)
 
         self.rate = rospy.Rate(5)
+        self.max_size_contour = -1
+        self.angle_of_max = 0
+
+        self.start_time = t.time()
+        self.timeout = 40
+        self.drive_dst = 36
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -36,9 +43,27 @@ class FindMothershipState(State):
             mothership_pos.theta = -1
             return mothership_pos
 
+    def __get_potential_mothership_pos__(self):
+        try:
+            return commands.big_orange_srv()
+        except Exception as e:
+            mothership_pos = MothershipResponse()
+            mothership_pos.x = -1
+            mothership_pos.y = -1
+            mothership_pos.theta = -1
+            return mothership_pos
+
     def run(self):
         self.rate.sleep()
         mothership_pos = self.__get_mothership_pos__()
+
+        if t.time() - self.start_time > self.timeout:
+            target_angle = self.angle_of_max - 45
+            pt_x = 48 + self.drive_dst * cos(radians(target_angle))
+            pt_y = 48 + self.drive_dst * sin(radians(target_angle))
+            drive_utils.go_to_point((pt_x, pt_y))
+            return FindMothershipState('if you are reading this help me')
+
 
         if mothership_pos.y >= 0:
             self.mothership_found = True
@@ -47,4 +72,10 @@ class FindMothershipState(State):
             from straighten_to_mothership_state import StraightenToMothershipState
             return StraightenToMothershipState()
         else:
+            drive_utils.wait_for_pose_update()
+            pot_mothership_pos = self.__get_potential_mothership_pos__()
+            if pot_mothership_pos.x > self.max_size_contour:
+                self.max_size_contour = pot_mothership_pos.x
+                self.angle_of_max = drive_utils.robot_theta 
+                print(self.angle_of_max)
             return self
