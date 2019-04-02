@@ -178,8 +178,8 @@ void rosUpdate(bool busy){
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
 #define COUNTS_PER_REV          3200
-#define WHEEL_DIAMETER          3.45 //inches //3.45 orig
-#define WHEEL_CIRC              10.84 //inches
+#define WHEEL_DIAMETER          3.40 //inches //3.45 orig
+#define WHEEL_CIRC              WHEEL_DIAMETER*PI //inches
 #define ROBOT_WIDTH             7.63 //inches
 #define TURN_CIRCUMFERENCE      (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV           ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
@@ -354,13 +354,14 @@ void distDrive(){
     } while (!isZero(posError, false));
     stopMotors();
     turboAvailible = false;
-    float avgError = 0;
+    float avgPos = 0;
     for (int i = 0; i < NUM_MOTORS; i++){
-        avgError += posError[i];
+        avgPos += (encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV;
     }
-    avgError = avgError/NUM_MOTORS;
-    robot_pose.x += (distanceSetpoint-avgError)*cos(DEG2RAD*getHeading());
-    robot_pose.y += (distanceSetpoint-avgError)*sin(DEG2RAD*getHeading());
+    avgPos = avgPos/NUM_MOTORS;
+    nh.loginfo(String(avgPos).c_str());
+    robot_pose.x += (avgPos)*cos(DEG2RAD*getHeading());
+    robot_pose.y += (avgPos)*sin(DEG2RAD*getHeading());
     robot_pose.theta = getHeading();
 }
 
