@@ -17,8 +17,8 @@ class DriveToBlockState(State):
     def start(self):
         super(DriveToBlockState, self).start()
 
-        self.block_pos = ( (globals.x_coords[globals.current_block]+0.5)*12,\
-                           (globals.y_coords[globals.current_block]+0.5)*12 )
+        self.block_pos = ( (globals.x_coords[globals.current_block])*12 + 6,\
+                           (globals.y_coords[globals.current_block])*12 + 6)
         self.needs_approach = True
 
         self.cam_gain = 6 
@@ -28,7 +28,7 @@ class DriveToBlockState(State):
         self.rate = rospy.Rate(5)
 
         self.camera_start_angle = 20
-        self.camera_target_angle = 49 
+        self.camera_target_angle = 48 #TODO: Changed from 49 for testing
         self.switch_point = 34
         self.approach_dist = 18 #inches
 

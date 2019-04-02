@@ -195,8 +195,9 @@ def __get_path__(from_pt, to_pt):
         return __get_path__(safe_point, to_pt)
 
     opt_path = __optimize_path__(path) 
-    opt_path = opt_path[:-1] 
+    print("OPTIMIZED PATH: {}".format(opt_path))
     if MARGIN <= to_pt[0] <= 12*8-MARGIN and MARGIN <= to_pt[1] <= 12*8-MARGIN:
+        opt_path = opt_path[:-1] 
         opt_path.append(to_pt)
     else:
         #opt_path.append(to_pt_approx)
@@ -209,12 +210,10 @@ def __get_path__(from_pt, to_pt):
             new_pt_approx[1] = MARGIN
         elif to_pt[1] > (12*8 - MARGIN):
             new_pt_approx[1] = (12*8 - MARGIN)
-        opt_path.append(new_pt_approx)
+        opt_path.append(tuple(new_pt_approx))
         print("Final point outside of margin:")
         print("\tOriginal Point: {}".format(to_pt))
         print("\tUpdated Point: {}".format(new_pt_approx))
-
-
 
     safe_point = opt_path[-1]
     return opt_path
@@ -231,9 +230,17 @@ def get_drive_instructions(to_pt):
 
 def drive(forward_dist):
     #print("DRIVING: {}".format(forward_dist))
+    global robot_x, robot_y, robot_theta
+    wait_for_pose_update()
+    
+    if robot_x >= 12*8 - MARGIN or robot_x <= MARGIN\
+        or robot_y >= 12*8 - MARGIN or robot_y <= MARGIN:
+        return False
+
     if abs(forward_dist) > 0.1:
         commands.send_drive_forward_command(forward_dist)
         wait_for_pose_change()
+    return True
 
 def turn(turn_angle):
     #print("TURNING: {}".format(turn_angle))

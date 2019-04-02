@@ -13,7 +13,7 @@ bridge = CvBridge()
                                                                                 
 diff_weight = 1                                                                 
 aspect_weight = 20                                                              
-min_goodness = 16     
+min_goodness = 12     
 
 def image_recieved(data):
     global img
