@@ -29,6 +29,8 @@ print("Publishers Initialized")
 #Services
 rospy.wait_for_service("block_pos")
 block_srv = rospy.ServiceProxy("block_pos", Block)
+rospy.wait_for_service("block_pos_close")
+block_srv_close = rospy.ServiceProxy("block_pos_close", Block)
 rospy.wait_for_service("mothership")
 mothership_srv = rospy.ServiceProxy("mothership", Mothership)
 rospy.wait_for_service("letter_identifier")

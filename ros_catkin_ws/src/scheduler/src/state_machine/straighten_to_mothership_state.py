@@ -41,7 +41,8 @@ class StraightenToMothershipState(State):
         self.lookup_offset = 0.0
         self.forward_mult = 1.0
         
-        self.STRAIGHTEN_THRESH = 10
+        self.STRAIGHTEN_THRESH = 7 
+        t.sleep(1)
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
