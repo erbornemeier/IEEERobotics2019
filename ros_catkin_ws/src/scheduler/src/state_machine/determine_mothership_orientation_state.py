@@ -80,13 +80,34 @@ class DetermineMothershipOrientationState(State):
                 diag_width = 44
                 approach_width = 20 
                 start_approach_width = approach_width
+                min_approach_width = 14
+                approach_decr = 1
                 diag_width_ramp = 48
 
-                globals.abc_approach_x = globals.mothership_x - (mult * approach_width * cos(radians(robot_theta)))
-                globals.abc_approach_y = globals.mothership_y - (mult * approach_width * sin(radians(robot_theta)))
+                
+                globals.abc_approach_x = 0
+                globals.abc_approach_y = 0
+                while ((globals.abc_approach_x < drive_utils.MARGIN
+                    or globals.abc_approach_y < drive_utils.MARGIN
+                    or globals.abc_approach_x > 12*8 - drive_utils.MARGIN
+                    or globals.abc_approach_y > 12*8 - drive_utils.MARGIN)
+                    and approach_width >= min_approach_width):
+                        globals.abc_approach_x = globals.mothership_x - (mult * approach_width * cos(radians(robot_theta)))
+                        globals.abc_approach_y = globals.mothership_y - (mult * approach_width * sin(radians(robot_theta)))
+                        approach_width -= approach_decr
+                
+                approach_width = start_approach_width
+                globals.def_approach_x = 0
+                globals.def_approach_y = 0
+                while ((globals.def_approach_x < drive_utils.MARGIN
+                    or globals.def_approach_y < drive_utils.MARGIN
+                    or globals.def_approach_x > 12*8 - drive_utils.MARGIN
+                    or globals.def_approach_y > 12*8 - drive_utils.MARGIN)
+                    and approach_width >= min_approach_width):
+                        globals.def_approach_x = globals.mothership_x + (mult * approach_width * cos(radians(robot_theta)))
+                        globals.def_approach_y = globals.mothership_y + (mult * approach_width * sin(radians(robot_theta)))
+                        approach_width -= approach_decr
 
-                globals.def_approach_x = globals.mothership_x + (mult * approach_width * cos(radians(robot_theta)))
-                globals.def_approach_y = globals.mothership_y + (mult * approach_width * sin(radians(robot_theta)))
                 
                 globals.abc_x = globals.mothership_x - (mult * diag_width/2 * cos(radians(robot_theta)))
                 globals.abc_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(robot_theta)))
