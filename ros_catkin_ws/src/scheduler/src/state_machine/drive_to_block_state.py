@@ -28,8 +28,8 @@ class DriveToBlockState(State):
         self.rate = rospy.Rate(5)
 
         self.camera_start_angle = 20
-        self.camera_target_angle = 48 #TODO: Changed from 49 for testing
-        self.switch_point = 34
+        self.camera_target_angle = 48 
+        self.switch_point = 48 
         self.approach_dist = 18 #inches
 
         commands.set_display_state(commands.NORMAL)
