@@ -12,27 +12,28 @@ kernel3 = np.ones((5,5),np.uint8)
 cap = cv2.VideoCapture(1)
 
 diff_weight = 1
-aspect_weight = 20 
+aspect_weight = 0 
 min_goodness = -100000
 
 def average_contrast(img, contour, debug=False):
-    x, y, w, h = cv2.boundingRect(contour)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     black = np.zeros(img.shape[:2], dtype=np.uint8)
-    print(img.shape)
     cv2.drawContours(black, [contour], 0, (255,255,255), thickness=cv2.FILLED)
     cropped = cv2.bitwise_and(gray, black)
     if cropped.size == 0:
         return 0
     avg_pixel_value = np.sum(cropped) / np.count_nonzero(cropped)
-
     diff = cv2.bitwise_and(black.astype(np.float64), np.abs(cropped - avg_pixel_value))
     pixel_diffs = np.sum(diff)
     avg_pixel_diff = pixel_diffs / np.count_nonzero(diff)
+
+    x, y, w, h = cv2.boundingRect(contour)
     aspect_error = max(w/float(h), h/float(w))-1
+
     goodness =  avg_pixel_diff*diff_weight - aspect_error*aspect_weight 
+
     if debug:
-        cv2.putText(img, str(round(circularity_error, 3)), (x+w//2, y+h//2),\
+        cv2.putText(img, str(round(goodness, 3)), (x+w//2, y+h//2),\
                  cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0,0,255), 2)
     return goodness
 

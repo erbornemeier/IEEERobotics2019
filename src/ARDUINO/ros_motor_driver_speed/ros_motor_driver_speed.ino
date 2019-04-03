@@ -160,8 +160,8 @@ void rosUpdate(bool busy){
 // Distance Controller
 #define K_P_DIST                1.1 //inches error -> rad/s
 #define MAX_SPEED               6 //rad/s
-#define TURBO                   2
-#define TURBO_SETPOINT          0.5
+#define TURBO                   3
+#define TURBO_SETPOINT          0.75
 #define MAX_TURN_SPEED          10 //rad/s
 #define MAX_REVERSE_SPEED       4 //rad/s, slower because the wheel is crappy
 #define MIN_SPEED               1.0 //rad/s
@@ -311,7 +311,7 @@ void loop() {
             if (newDriveCmd){
                 newDriveCmd = false;
                 stopMotors();
-                claw.Servo_SetAngle(63);
+                claw.Servo_SetAngle(58);
                 cameraServo.writeMicroseconds(DEG_TO_US(45));
                 distDrive();
             }
