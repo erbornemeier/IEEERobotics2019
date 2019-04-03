@@ -1,22 +1,21 @@
 import cv2
 import numpy as np
 
-orange_lower = np.array([4,50,100])                                              
-orange_upper = np.array([18,255,255])                                           
+orange_lower = np.array([4,100,100])                                              
+orange_upper = np.array([18,255,240])                                           
 white_lower = np.array([0,0,140])                                               
 white_upper = np.array([255,255,255])                                           
-kernel = np.ones((5,5),np.uint8)                                                
-kernel2 = np.ones((5,5),np.uint8) 
-kernel3 = np.ones((10,10),np.uint8) 
+kernel = np.ones((2,2),np.uint8)                                                
+kernel2 = np.ones((2,2),np.uint8) 
+kernel3 = np.ones((5,5),np.uint8) 
 
 cap = cv2.VideoCapture(1)
 
 diff_weight = 1
-aspect_weight = 20
-min_goodness = 35
+aspect_weight = 0 
+min_goodness = -100000
 
 def average_contrast(img, contour, debug=False):
-    x, y, w, h = cv2.boundingRect(contour)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     black = np.zeros(img.shape[:2], dtype=np.uint8)
     cv2.drawContours(black, [contour], 0, (255,255,255), thickness=cv2.FILLED)
@@ -24,15 +23,18 @@ def average_contrast(img, contour, debug=False):
     if cropped.size == 0:
         return 0
     avg_pixel_value = np.sum(cropped) / np.count_nonzero(cropped)
-
     diff = cv2.bitwise_and(black.astype(np.float64), np.abs(cropped - avg_pixel_value))
     pixel_diffs = np.sum(diff)
     avg_pixel_diff = pixel_diffs / np.count_nonzero(diff)
+
+    x, y, w, h = cv2.boundingRect(contour)
     aspect_error = max(w/float(h), h/float(w))-1
+
     goodness =  avg_pixel_diff*diff_weight - aspect_error*aspect_weight 
+
     if debug:
         cv2.putText(img, str(round(goodness, 3)), (x+w//2, y+h//2),\
-                 cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255,0,255), 2)
+                 cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0,0,255), 2)
     return goodness
 
 def get_block_contour(img, debug=False):
@@ -74,6 +76,7 @@ def get_block_contour(img, debug=False):
 
 while True:
     _, img = cap.read()
+    img = cv2.resize(img, (360,240))
     block = get_block_contour(img, debug=True)
     if block is not False:
         cv2.drawContours(img, [block], 0, (0,255,0), 3)

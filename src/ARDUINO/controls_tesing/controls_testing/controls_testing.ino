@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
-//#include <utility/imumaths.h>
+#include <utility/imumaths.h>
 //#include <std_msgs/Bool.h>
 //#include <std_msgs/UInt8.h>
 //#include <geometry_msgs/Pose2D.h>
@@ -54,16 +54,17 @@ volatile long deltaPosition[NUM_MOTORS];
 volatile float integralControlValue[NUM_MOTORS] = {0, 0};
 volatile float lastTurnError[NUM_MOTORS] = {0,0};
 volatile float turnIntegral[NUM_MOTORS] = {0,0};
+volatile float distIntegral[NUM_MOTORS] = {0,0};
 bool turboAvailible = false;
-
+bool velIntegratorDisabled = false;
 
 /*****************************************
  *               ROS                     *
 ******************************************/
-//ros::NodeHandle_<ArduinoHardware, 25, 25, 1024, 512> nh;
+/*ros::NodeHandle_<ArduinoHardware, 25, 25, 1024, 512> nh;
 //ros::NodeHandle nh;
 
-/*void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
+void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
     //String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
     //nh.loginfo(logg.c_str());
     switch((uint8_t)moveCmd.y){
@@ -151,43 +152,41 @@ void rosUpdate(bool busy){
 #define SAMPLE_PERIOD           10
 #define ROS_UPDATE_RATE         1
 #define DEG2RAD                 (PI/180)
-#define OVERSHOOT_DELAY_MS      250
-#define OVERSHOOT_TIMEOUT       500
+#define OVERSHOOT_DELAY_MS      100
 // Velocity Controller
-//#define K_P                     19
-#define K_P                     70
-//#define K_I                     217 
-#define K_I                     0
+#define K_P                     19
+#define K_I                     217 
+#define K_P_NO_I                70
+//#define K_I                     0
 // Distance Controller
-#define K_P_DIST                1.1 //inches error -> rad/s
-#define MAX_SPEED               8 //rad/s
-#define TURBO                   4
-#define TURBO_SETPOINT          0.5
+#define K_P_DIST                2 //inches error -> inches/s
+#define K_I_DIST                .1
+#define MAX_SPEED               6 //rad/s
+#define TURBO                   5
+#define TURBO_SETPOINT          0.75
 #define MAX_TURN_SPEED          10 //rad/s
 #define MAX_REVERSE_SPEED       4 //rad/s, slower because the wheel is crappy
 #define MIN_SPEED               1.0 //rad/s
-#define ZERO_ERROR_MARGIN       0.25 //inches until distance is considered achieved
+#define ZERO_ERROR_MARGIN       0.1 //inches until distance is considered achieved
 #define K_DIFF                  1.5
 #define MAX_CORRECTION          2
 // Angle controller
-
+#define K_P_ANG                 0.3 //degrees error -> rad/s
+#define K_D_ANG                 0
+#define K_I_ANG                 0.02
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
 //#define TURN_ESS_GAIN           0.011 //degrees
 #define TURN_ESS_GAIN           0 //degrees
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
 #define COUNTS_PER_REV          3200
-#define WHEEL_DIAMETER          3.45 //inches //3.45 orig
-#define WHEEL_CIRC              10.84 //inches
+#define WHEEL_DIAMETER          3.40 //inches //3.45 orig
+#define WHEEL_CIRC              WHEEL_DIAMETER*PI //inches
 #define ROBOT_WIDTH             7.63 //inches
 #define TURN_CIRCUMFERENCE      (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV           ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
 #define STRAIGHT_THRESH         0.5 //degrees
 #define INCHES_PER_COUNT        (WHEEL_CIRC/COUNTS_PER_REV)
-#define K_P_ANG                 0.4 //degrees error -> rad/s
-//#define K_D_ANG                 0.9
-#define K_D_ANG                 0
-#define K_I_ANG                 .02
 
 #define CLAW_PICKUP_ANGLE       40
 //IMU creation
@@ -199,7 +198,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
 void setup() {
     Serial.begin(115200);
     cameraServo.attach(cameraServoPin);
-    cameraServo.writeMicroseconds(DEG_TO_US(16));
+    cameraServo.writeMicroseconds(DEG_TO_US(0));
     
     pinMode(SEARCH_LIGHT_PIN, OUTPUT);
     analogWrite(SEARCH_LIGHT_PIN, LIGHT_BRIGHTNESS);
@@ -210,7 +209,6 @@ void setup() {
     pinMode(STOP_PIN, INPUT);
   
     claw.Claw_init();
-
   
     /*nh.getHardware()->setBaud(115200);
     nh.initNode();
@@ -223,12 +221,12 @@ void setup() {
     while (!nh.connected()) {
         nh.spinOnce();
     }
-    
+
     // Robot initial conditions
     robot_pose.x = 4.5*12;
     robot_pose.y = 4.5*12;
     robot_pose.theta = 90;
-    
+    */
     /* Initialize the IMU */
     bool flash = true;
     while (!bno.begin()){
@@ -258,21 +256,83 @@ void setup() {
     attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
     attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
     //attachPCINT(digitalPinToPCINT(STOP_PIN), do_stop,  CHANGE);
-    Serial.println("Testing some stuff.");
 }
 
 /*
    void loop()
 */
 void loop() {
-    static bool first = true;
-    if (first){
-        delay(2000);
-        angleSetpoint = 90;
-        turn();
-        first = false;
-        Serial.println("Finished");
-    }
+
+    /*if (newDriveCmd) digitalWrite(DRIVE_BUSY, HIGH);
+  
+    switch(moveState){
+        case CONST_VEL:
+        case POSITION_OVERRIDE:
+            velDrive(K_P, K_I);
+            updatePosition();
+            break;
+        case DRIVE_DIST:
+            if (newDriveCmd){
+                newDriveCmd = false;
+                distDrive(); 
+            }
+            break;
+        case TURN_ANGLE:
+            if (newDriveCmd){
+                newDriveCmd = false;
+                turn();
+            } 
+            break;
+        case DROP_BLOCK:
+            if (newDriveCmd){
+                newDriveCmd = false;
+                stopMotors();
+                // Turn the specified angle
+                turn();
+                // Lift the claw
+                claw.Servo_SetAngle(CLAW_PICKUP_ANGLE);
+                // Drive forward
+                distDrive();
+                // Drop off block
+                claw.Gripper_Open();
+                // Backup
+                distanceSetpoint = -distanceSetpoint;
+                distDrive();
+            }
+            break;
+        case PICKUP_BLOCK:
+            if (newDriveCmd){
+                newDriveCmd = false;
+                stopMotors();
+                claw.Servo_SetAngle(5);
+                claw.Gripper_Close();
+                claw.Servo_SetAngle(CLAW_PICKUP_ANGLE);
+                cameraServo.writeMicroseconds(DEG_TO_US(40));
+            }
+            break;
+        case LOOK_IN_MOTHERSHIP:
+            if (newDriveCmd){
+                newDriveCmd = false;
+                stopMotors();
+                claw.Servo_SetAngle(58);
+                cameraServo.writeMicroseconds(DEG_TO_US(45));
+                distDrive();
+            }
+            break;
+        default:
+            break;
+        }
+  rosUpdate(false); //done with commands, ack back to pi*/
+  static bool first = true;
+  if (first){
+      delay(2000);
+      distanceSetpoint = 40;
+      distDrive();
+
+      first = false;
+  }
+
+  
 }
 
 /*
@@ -295,25 +355,27 @@ void distDrive(){
                 maximumSpeed = turboAvailible ? MAX_SPEED + TURBO : MAX_SPEED;
                 velocitySetpoints[i] = posErrorToAngVel(posError, i, maximumSpeed);
             }
-            velDrive();
-            //rosUpdate(true);
+            velDrive(K_P_NO_I, 0);
+//            rosUpdate(true);
         } while (!isZero(posError, false));
         stopMotors();
         delay(OVERSHOOT_DELAY_MS);
         for (int i = 0; i < NUM_MOTORS; i++){
             // Find error in inches
             posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
+            distIntegral[i] = 0;
         }
     } while (!isZero(posError, false));
     stopMotors();
     turboAvailible = false;
-    float avgError = 0;
+    float avgPos = 0;
     for (int i = 0; i < NUM_MOTORS; i++){
-        avgError += posError[i];
+        avgPos += (encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV;
     }
-    avgError = avgError/NUM_MOTORS;
-    //robot_pose.x += (distanceSetpoint-avgError)*cos(DEG2RAD*getHeading());
-    //robot_pose.y += (distanceSetpoint-avgError)*sin(DEG2RAD*getHeading());
+    avgPos = avgPos/NUM_MOTORS;
+  //  nh.loginfo(String(avgPos).c_str());
+    //robot_pose.x += (avgPos)*cos(DEG2RAD*getHeading());
+    //robot_pose.y += (avgPos)*sin(DEG2RAD*getHeading());
     //robot_pose.theta = getHeading();
 }
 
@@ -324,7 +386,11 @@ void distDrive(){
  * Also implements feedback between the two wheels to keep the robot on a straight path.
  */
 float posErrorToAngVel(float* errors, int motor, float maximumSpeed){
-    float angVel = (errors[motor]*K_P_DIST);
+    distIntegral[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * errors[motor];
+    //find angVel in inches/second
+    float angVel = (errors[motor]*K_P_DIST + errors[motor]*distIntegral[motor]*K_I_DIST);
+    //convert to rad/s
+    angVel = angVel*(2*PI)/(WHEEL_CIRC);
     //saturate vel values
     if (abs(angVel) > maximumSpeed) angVel =  angVel > 0 ? maximumSpeed : -maximumSpeed;
     else if (abs(angVel) < MIN_SPEED) angVel =  angVel > 0 ? MIN_SPEED : -MIN_SPEED;
@@ -337,6 +403,9 @@ float posErrorToAngVel(float* errors, int motor, float maximumSpeed){
     if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
 
     angVel += motorDiffCorrection;
+    if (motor == R){
+        Serial.println(angVel);
+    }
     return angVel;
 }
 
@@ -344,43 +413,42 @@ float posErrorToAngVel(float* errors, int motor, float maximumSpeed){
  * Turns the robot the angle stored in angleSetpoint. Returns when the angle is achieved. 
  */
 void turn(){
+//resetEncoderCounts();
+    //CCW rotation, left is reverse, right is forward
+    //angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
+    //angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
     double angError = 0;
     float targetAngle = boundAngle(getHeading() + angleSetpoint);
-    long debugSamples = 0;
     //reset integral
     for (int i = 0; i < NUM_MOTORS; i++){
         turnIntegral[i] = 0;
     }
-    int overshootSamples = OVERSHOOT_TIMEOUT/SAMPLE_PERIOD;
     do {
         do {
-            debugSamples++;
             // Find error in degrees
             double angle = getHeading();
             angError = boundAngle(targetAngle - angle);
-            //print time and error
-            Serial.print(String(debugSamples*SAMPLE_PERIOD) + "\t");
-            Serial.print(String(angError) + "\t");
+            //Serial.println("Error: " + String(angError));
             // Convert from error in degrees to an angVel setpoint for each wheel 
             for (int i = 0; i < NUM_MOTORS; i++){
                 velocitySetpoints[i] = angErrorToAngVel(angError, i);
             }
         //changes motor output
-        velDrive(); //enforces set sample period
-        //rosUpdate(true);
+        velDrive(K_P_NO_I, 0); //enforces set sample period
+//        rosUpdate(true  );
         } while (abs(angError) > 1);
         stopMotors();
         // Delay for motor overshoot calculation
         delay(OVERSHOOT_DELAY_MS);
-        //recalc error for overshoot
+        //recalc error for overshoot, reset integrator
         for (int i = 0; i < NUM_MOTORS; i++){
-            double angle = getHeading();
             turnIntegral[i] = 0;
+            double angle = getHeading();
             angError = boundAngle(targetAngle - angle);
         }
     } while (abs(angError) > 1);
     stopMotors();
-    //robot_pose.theta = getHeading();
+//    robot_pose.theta = getHeading();
 }
 
 /*
@@ -388,20 +456,8 @@ void turn(){
  * The proportional control gain is set by K_P_ANG.
  */
 float angErrorToAngVel(float error, int motor){
-    float dComp = 0, lastE = lastTurnError[motor];
-    if(lastE != -1) dComp = (error - lastE)/SAMPLE_PERIOD;
-    lastTurnError[motor] = error;
     turnIntegral[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
-    float prop = error*K_P_ANG;
-    float der = dComp*K_D_ANG;
-    float integ = turnIntegral[motor]*K_I_ANG;
-    if (motor == R){
-        Serial.print(String(prop) + "\t");
-        //Serial.print(String(der) + "\t");
-        Serial.print(String(integ) + "\t");
-    }
-
-    float angVel = (prop + der + integ);
+    float angVel = (error*K_P_ANG + turnIntegral[motor]*K_I_ANG);
     if (motor == L) angVel = -angVel;
     if (abs(angVel) > MAX_TURN_SPEED) {
         return angVel > 0 ? MAX_TURN_SPEED : -MAX_TURN_SPEED;
@@ -410,20 +466,19 @@ float angErrorToAngVel(float error, int motor){
         return angVel > 0 ? MIN_SPEED : -MIN_SPEED;
     }
     else return angVel;
-}
+} 
 
 
 /*
    void velDrive()
    Takes in a velocity setpoint and drives forward at that speed.
 */
-void velDrive() {
+void velDrive(float kp, float ki) {
     unsigned long timeRef = millis();
-
     int motorVal[NUM_MOTORS];
     for (int i = 0; i < NUM_MOTORS; i++) {
         float velSetpoint = velocitySetpoints[i];
-        motorVal[i] = findMotorPWMSetpoint(velSetpoint, i);
+        motorVal[i] = findMotorPWMSetpoint(velSetpoint, i, kp, ki);
     }
     for (int i = 0; i < NUM_MOTORS; i++){
         setMotor(i, motorVal[i]);
@@ -438,7 +493,7 @@ void velDrive() {
  * Implements a PI controller to convert the angular velocity setpoint to a PWM value and  
  * saturates the PWM value (-255 to 255).
  */
-int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
+int findMotorPWMSetpoint(float angVelSetpoint, int motor, float kp, float ki) {
     updateVelocity(motor);
     if (angVelSetpoint == 0) return 0;
     if (velocities[motor] > (MAX_SPEED - TURBO_SETPOINT)) turboAvailible = true;
@@ -446,16 +501,12 @@ int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
     float error = angVelSetpoint - velocities[motor];
 
     integralControlValue[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
-    int PWMSetpoint = (int)(error * K_P + integralControlValue[motor] * K_I);
-    if (motor == R){
-        Serial.print(String(velocities[motor]) + "\t");
-        Serial.println(PWMSetpoint);
-    }
+    int PWMSetpoint = (int)(error * kp + integralControlValue[motor] * ki);
     
     //saturate PWM value
     if (angVelSetpoint == 0) return 0;
     if (abs(PWMSetpoint) > 255) {
-      return PWMSetpoint > 0 ? 255 : -255;
+        return PWMSetpoint > 0 ? 255 : -255;
     }
     else return PWMSetpoint;
 }
