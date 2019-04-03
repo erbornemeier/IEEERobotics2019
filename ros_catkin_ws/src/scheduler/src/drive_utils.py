@@ -22,7 +22,7 @@ RPIO.setup(start_pin, RPIO.IN, pull_up_down=RPIO.PUD_DOWN)
 
 # PATH FINDING
 RESOLUTION = 3
-MARGIN = 7
+MARGIN = 8
 
 # POSE INFORMATION
 x, y = 0, 1
@@ -122,7 +122,7 @@ def __custom_neighbors__( height, width ):
 
 def __custom_cost__(a, b):
     if a[2] != b[2]:
-        return 5 # 5 and 10 was decent
+        return 8 # 5 and 10 was decent
     elif a[2] % 90 == 0:
         return 1
     else:

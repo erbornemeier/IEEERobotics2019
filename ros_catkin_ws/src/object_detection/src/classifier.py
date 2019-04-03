@@ -115,7 +115,8 @@ def classify_slot(_):
     kernel = np.ones((4,4), np.uint8)
     padding = 7
     ideal_ratio = 0.6
-    ratio_thresh = 0.1
+    ratio_thresh = 0.4
+    area_thresh = 50
     try:
         small_img = cv2.resize(img, (360, 240))
         h,w  = small_img.shape[:2]
@@ -124,22 +125,24 @@ def classify_slot(_):
         thresh = cv2.inRange(hsv, black_lower, black_upper)
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
         _, blacks, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        middle_black = blacks[0]
+        middle_black = None
         min_dist = float('inf')
         for b in blacks:
-            M = cv2.moments(b)
-            if M['m00'] != 0:
-                x = M['m10']/M['m00']
-                y = M['m01']/M['m00']
-                dist = (cx-x)**2 + (cy-y)**2
-                if dist < min_dist:
-                    bx, by, bw, bh = cv2.boundingRect(b)
-                    if abs(bw/float(bh) - ideal_ratio) < ratio_thresh:
-                        min_dist = dist
-                        middle_black = b
-        bx, by, bw, bh = cv2.boundingRect(middle_black)
-        out = thresh[by-padding:by+bh+padding, bx-padding:bx+bw+padding]
-        out = cv2.resize(out, (40,60))
+            if cv2.contourArea(b) > area_thresh:
+                M = cv2.moments(b)
+                if M['m00'] != 0:
+                    x = M['m10']/M['m00']
+                    y = M['m01']/M['m00']
+                    dist = (cx-x)**2 + (cy-y)**2
+                    if dist < min_dist:
+                        bx, by, bw, bh = cv2.boundingRect(b)
+                        if abs(bw/float(bh) - ideal_ratio) < ratio_thresh:
+                            min_dist = dist
+                            middle_black = b
+        if middle_black is not None:
+            bx, by, bw, bh = cv2.boundingRect(middle_black)
+            out = thresh[by-padding:by+bh+padding, bx-padding:bx+bw+padding]
+            out = cv2.resize(out, (40,60))
 
         input_img = out.astype('float32')
         input_img /= 255.
