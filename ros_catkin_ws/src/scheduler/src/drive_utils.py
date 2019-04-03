@@ -262,8 +262,18 @@ def drive_to_point(to_pt):
 def get_approach_point(from_pt, to_pt, approach_dist):
     approach_perc = approach_dist / dist(from_pt, to_pt)
     if approach_perc > 1:
-        return to_pt
-    return avg(from_pt, to_pt, weight=approach_perc)
+        approach_pt =  to_pt
+    else:
+        approach_pt = avg(from_pt, to_pt, weight=approach_perc)
+
+    #check that nothing in the way
+    mid_pt = avg(approach_pt, to_pt, weight=0.5)
+    closest_grid = min(grid, key=lambda x: dist(x, approach_pt[:2]))
+    if closest_grid not in globals.bad_points:
+        return approach_pt
+    else:
+        approach_pt = avg(from_pt, to_pt, weight=-approach_perc)
+        return approach_pt
 
 def go_to_point(to_pt, approach_dist=0, safe_point=None):
     global robot_x, robot_y, robot_theta
@@ -317,3 +327,4 @@ def remove_bad_points_around_block(x, y):
                 globals.bad_points.remove(p)
                 commands.send_vis_command("update-pathfinding-point x:{} y:{} isBlocked:false".format(p[0], p[1]))
     print("LEN AFTER -> {}".format(len(globals.bad_points)))
+    

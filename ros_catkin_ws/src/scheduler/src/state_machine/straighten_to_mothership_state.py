@@ -41,8 +41,8 @@ class StraightenToMothershipState(State):
         self.lookup_offset = 0.0
         self.forward_mult = 1.0
         
-        self.STRAIGHTEN_THRESH = 7 
-        t.sleep(1)
+        self.STRAIGHTEN_THRESH = 8 
+        self.final_turn_sub = 10
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -110,9 +110,9 @@ class StraightenToMothershipState(State):
                 self.__drive_to_mothership__(mothership_pos)
                 print(self.cameraAngle)
 
-        t.sleep(0.5)
 
         commands.send_drive_vel_command(0, 0)
+        t.sleep(0.5)
 
         turnLeft = mothership_pos.theta > 0
 
@@ -129,16 +129,19 @@ class StraightenToMothershipState(State):
                                             / forward_dist)
             #turn_angle = 180 - math.degrees(turn_angle)
             turn_angle = math.degrees(turn_angle)
+            final_turn = 180 - abs(mothership_orientation) - turn_angle - self.final_turn_sub
             forward_dist *= self.forward_mult
             if not turnLeft:
                 turn_angle *= -1
+            if turnLeft:
+                final_turn *= -1
 
             #print("FORWARD {} and TURNING {}".format(forward_dist, turn_angle))
 
             #t.sleep(0.5)
             drive_utils.turn(turn_angle) 
             drive_utils.drive(forward_dist)
-            #drive_utils.turn(45 if turn_angle < 0 else -45)
+            drive_utils.turn(final_turn)
 
             vel = -1 if turn_angle > 0 else 1
             while True:

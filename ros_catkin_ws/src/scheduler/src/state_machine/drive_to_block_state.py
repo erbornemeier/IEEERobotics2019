@@ -29,7 +29,7 @@ class DriveToBlockState(State):
 
         self.camera_start_angle = 20
         self.camera_target_angle = 48 
-        self.switch_point = 48 
+        self.switch_point = 32 
         self.approach_dist = 18 #inches
 
         commands.set_display_state(commands.NORMAL)

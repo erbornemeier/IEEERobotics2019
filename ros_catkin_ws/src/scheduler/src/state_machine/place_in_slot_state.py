@@ -6,6 +6,7 @@ import rospy
 from std_msgs.msg import UInt8, Bool
 from geometry_msgs.msg import Pose2D
 import drive_utils
+import geometry_utils
 import math
 
 class PlaceInSlotState(State):
@@ -21,7 +22,12 @@ class PlaceInSlotState(State):
 
         self.forward_dist = 5 #inches
         slot_turn = 15
-        
+
+        drive_utils.wait_for_pose_update()
+        robot_pos = (drive_utils.robot_x, drive_utils.robot_y)
+        mothership_pos = (globals.mothership_x, globals.mothership_y)
+
+        print("Dropping blocks: distance to mothership: {}", geometry_utils.dist(robot_pos, mothership_pos))
         if globals.current_letter not in [1,4]:
             self.forward_dist = self.forward_dist / math.cos(math.radians(slot_turn)) 
         self.turn_angle = 0
