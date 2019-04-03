@@ -43,6 +43,7 @@ class PlaceInSlotState(State):
         drive_utils.wait_for_pose_change()
 
         globals.current_block += 1
+        globals.block_queue.popleft()
 
         if globals.current_block == globals.num_blocks:
             from return_to_home_state import ReturnToHomeState

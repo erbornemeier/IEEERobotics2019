@@ -16,9 +16,8 @@ class PickUpBlockState(State):
     def run(self):
         commands.send_pickup_command()
         
+        current_block = globals.block_queue[0]
+        drive_utils.remove_bad_points_around_block(current_block[0], current_block[1])
 
-        drive_utils.remove_bad_points_around_block(\
-                    globals.x_coords[globals.current_block],\
-                    globals.y_coords[globals.current_block])
         from detect_letter_state import DetectLetterState 
         return DetectLetterState()

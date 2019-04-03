@@ -11,7 +11,6 @@ class WaitState(State):
             time.sleep(0.25)
             commands.send_claw_command(commands.CLAW_DETERMINE_MOTHERSHIP_ANGLE)
             time.sleep(0.25)
-        commands.send_claw_command(commands.CARRY_ANGLE)
              
     def run(self):       
         return None

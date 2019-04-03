@@ -18,15 +18,27 @@ class DriveToMothershipState(State):
     def start(self):
         super(DriveToMothershipState, self).start()
         commands.set_display_state(commands.LETTER)
+        self.BACKUP_DIST = 6
 
     def run(self):
         
         if globals.current_letter <= 2:
-            drive_utils.go_to_point((globals.abc_approach_x, globals.abc_approach_y))
+            success = drive_utils.go_to_point((globals.abc_approach_x, globals.abc_approach_y))
         else:   
-            drive_utils.go_to_point((globals.def_approach_x, globals.def_approach_y))
+            success = drive_utils.go_to_point((globals.def_approach_x, globals.def_approach_y))
+        if not success:
+            commands.send_grip_command(commands.CLAW_OPEN)
+            t.sleep(1)
+            current_block = globals.block_queue[0]
+            drive_utils.add_bad_points_around_block(current_block[0],\
+                                                    current_block[1])
+            #move to back of queue
+            globals.block_queue.append(globals.block_queue.popleft())
+            drive_utils.drive(-self.BACKUP_DIST)
+            from drive_to_block_state import DriveToBlockState
+            return DriveToBlockState()
 
-        #drive_utils.wait_for_pose_update()
+
         turn_angle, _ = drive_utils.get_drive_instructions(\
                                 (globals.mothership_x, globals.mothership_y)) 
         #print("TURNING TO FACE MOTHERSHIP: {}".format(turn_angle))

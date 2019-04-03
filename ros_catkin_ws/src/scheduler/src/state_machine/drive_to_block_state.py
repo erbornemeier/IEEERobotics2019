@@ -17,8 +17,11 @@ class DriveToBlockState(State):
     def start(self):
         super(DriveToBlockState, self).start()
 
-        self.block_pos = ( (globals.x_coords[globals.current_block])*12 + 6,\
-                           (globals.y_coords[globals.current_block])*12 + 6)
+        #self.block_pos = ( (globals.x_coords[globals.current_block])*12 + 6,\
+        #                   (globals.y_coords[globals.current_block])*12 + 6)
+        next_block = globals.block_queue[0]
+        self.block_pos = ( (next_block[0])*12 + 6,\
+                           (next_block[1])*12 + 6 )
         self.needs_approach = True
 
         self.cam_gain = 6 
@@ -29,7 +32,7 @@ class DriveToBlockState(State):
 
         self.camera_start_angle = 20
         self.camera_target_angle = 48 
-        self.switch_point = 32 
+        self.switch_point = 30 
         self.approach_dist = 18 #inches
 
         commands.set_display_state(commands.NORMAL)
@@ -93,16 +96,20 @@ class DriveToBlockState(State):
         self.rate.sleep()
 
         if self.needs_approach:
+
             commands.send_cam_command(self.camera_angle)
             commands.send_grip_command(commands.CLAW_CLOSED)
-            #commands.send_claw_command(commands.PICKUP_ANGLE)
             commands.send_claw_command(commands.CARRY_ANGLE)
-            drive_utils.go_to_point(self.block_pos, self.approach_dist)
-            #drive_utils.wait_for_pose_update()
+
+            success = drive_utils.go_to_point(self.block_pos, self.approach_dist)
+            if not success:
+                #move block to back of queue
+                globals.block_queue.append(globals.block_queue.popleft())
+                return DriveToBlockState()
+
             turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
             #print("TURNING TO FACE BLOCK: {}".format(turn_angle))
             drive_utils.turn(turn_angle)
-            #commands.send_claw_command(commands.CARRY_ANGLE)
             self.needs_approach = False
             self.last_seen = t.time()
         
