@@ -17,8 +17,8 @@ class DriveToBlockState(State):
     def start(self):
         super(DriveToBlockState, self).start()
 
-        self.block_pos = ( (globals.x_coords[globals.current_block]+0.5)*12,\
-                           (globals.y_coords[globals.current_block]+0.5)*12 )
+        self.block_pos = ( (globals.x_coords[globals.current_block])*12 + 6,\
+                           (globals.y_coords[globals.current_block])*12 + 6)
         self.needs_approach = True
 
         self.cam_gain = 6 
@@ -28,7 +28,8 @@ class DriveToBlockState(State):
         self.rate = rospy.Rate(5)
 
         self.camera_start_angle = 20
-        self.camera_target_angle = 49 
+        self.camera_target_angle = 48 #TODO: Changed from 49 for testing
+        self.switch_point = 34
         self.approach_dist = 18 #inches
 
         commands.set_display_state(commands.NORMAL)
@@ -44,7 +45,18 @@ class DriveToBlockState(State):
         try:
             return commands.block_srv()
         except Exception as e:
-            print(e)
+            #print(e)
+            block_pos = BlockResponse()
+            block_pos.x = -1
+            block_pos.y = -1
+            return block_pos
+
+    def __get_block_close_pos__(self):
+        # Coordinate system [0,1] top left corner is (0,0)
+        try:
+            return commands.block_srv_close()
+        except Exception as e:
+            #print(e)
             block_pos = BlockResponse()
             block_pos.x = -1
             block_pos.y = -1
@@ -96,12 +108,15 @@ class DriveToBlockState(State):
         
         commands.send_grip_command(commands.CLAW_OPEN)
         #camera to block
-        block_pos = self.__get_block_pos__()
+        if self.camera_angle < self.switch_point:
+            block_pos = self.__get_block_pos__()
+        else:
+            block_pos = self.__get_block_close_pos__()
 
         if block_pos.y < 0:
             if t.time() - self.last_seen > self.SEEN_TIMEOUT:
                 drive_utils.drive(-2)
-                self.camera_angle += 2
+                self.camera_angle -= 1
                 commands.send_cam_command(int(self.camera_angle))
                 self.last_seen = t.time()
             else:

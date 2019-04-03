@@ -3,17 +3,17 @@
 import cv2
 import numpy as np
 import rospy
+import traceback
 from sensor_msgs.msg import Image
 from object_detection.srv import *
 from cv_bridge import CvBridge
 bridge = CvBridge()
 
-orange_lower = np.array([4,100,0])
-orange_upper = np.array([18,255,255])
-white_lower = np.array([0,0,200])
-white_upper = np.array([255,255,255])
-kernel = np.ones((5,5),np.uint8)
-kernel2 = np.ones((5,5),np.uint8)
+
+                                                                                
+diff_weight = 1                                                                 
+aspect_weight = 20                                                              
+min_goodness = 12     
 
 def image_recieved(data):
     global img
@@ -21,8 +21,14 @@ def image_recieved(data):
     global height
     img = bridge.imgmsg_to_cv2(data, "bgr8")
     width, height = len(img[0]), len(img)
-'''
-def get_block_pos(_):
+
+def get_block_pos_close(_):
+    orange_lower = np.array([4,100,0])                                               
+    orange_upper = np.array([18,255,255])                                              
+    white_lower = np.array([0,0,200])                                                  
+    white_upper = np.array([255,255,255])                                              
+    kernel = np.ones((5,5),np.uint8)                                                   
+    kernel2 = np.ones((5,5),np.uint8)                                               
     response = BlockResponse()
     try:
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -52,11 +58,6 @@ def get_block_pos(_):
         response.x = -1
         response.y = -1
         return response
-'''
-
-diff_weight = 1
-aspect_weight = 20
-min_goodness = 35
 
 def average_contrast(img, contour, debug=False):
     x, y, w, h = cv2.boundingRect(contour)
@@ -66,11 +67,11 @@ def average_contrast(img, contour, debug=False):
     cropped = cv2.bitwise_and(gray, black)
     if cropped.size == 0:
         return 0
-    avg_pixel_value = np.sum(cropped) / np.count_nonzero(cropped)
+    avg_pixel_value = np.sum(cropped) / float(np.count_nonzero(cropped))
 
     diff = cv2.bitwise_and(black.astype(np.float64), np.abs(cropped - avg_pixel_value))
     pixel_diffs = np.sum(diff)
-    avg_pixel_diff = pixel_diffs / np.count_nonzero(diff)
+    avg_pixel_diff = pixel_diffs / float(np.count_nonzero(diff))
     aspect_error = max(w/float(h), h/float(w))-1
     goodness =  avg_pixel_diff*diff_weight - aspect_error*aspect_weight 
     if debug:
@@ -79,6 +80,14 @@ def average_contrast(img, contour, debug=False):
     return goodness
 
 def get_block_contour(img, debug=False):
+    orange_lower = np.array([4,100,100])                                               
+    orange_upper = np.array([18,255,240])                                              
+    white_lower = np.array([0,0,140])                                                  
+    white_upper = np.array([255,255,255])                                              
+    kernel = np.ones((2,2),np.uint8)                                                   
+    kernel2 = np.ones((2,2),np.uint8)                                               
+    kernel3 = np.ones((5,5),np.uint8)                                               
+
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)                              
                                                                             
     orange_mask = cv2.inRange(hsv, orange_lower, orange_upper)
@@ -89,7 +98,7 @@ def get_block_contour(img, debug=False):
                                                       cv2.CHAIN_APPROX_SIMPLE) 
     interiors = []
     maxIndex = np.argmax([cv2.contourArea(c) for c in contours])
-    AREA_THRESH = 100
+    AREA_THRESH = 100 
     for i, h in enumerate(hier[0]):
         if h[3] == maxIndex:
             if cv2.contourArea(contours[i]) > AREA_THRESH:
@@ -101,6 +110,7 @@ def get_block_contour(img, debug=False):
         if debug:
             cv2.imshow('mask', orange_mask)
         if max_contrast[1] > min_goodness:
+            print("INTERIOR {}".format(max_contrast[1]))
             return max_contrast[0]
 
     non_orange_mask = cv2.bitwise_not(orange_mask)
@@ -111,6 +121,7 @@ def get_block_contour(img, debug=False):
     if debug:
         cv2.imshow('no_mask', non_orange_mask)
     if max_contrast[1] > min_goodness:
+        print(max_contrast[1])
         return max_contrast[0]
     return None
 
@@ -127,7 +138,8 @@ def get_block_pos(_):
         return response
 
     except Exception as e:
-        #print (e)
+        traceback.print_exc()
+        print (e)
         response.x = -1
         response.y = -1
         return response
@@ -135,4 +147,5 @@ def get_block_pos(_):
 rospy.init_node("block_position_find")
 rospy.Subscriber("camera_image", Image, image_recieved)
 block_pos_srv = rospy.Service("block_pos", Block, get_block_pos)
+block_pos_close_srv = rospy.Service("block_pos_close", Block, get_block_pos_close)
 rospy.spin()

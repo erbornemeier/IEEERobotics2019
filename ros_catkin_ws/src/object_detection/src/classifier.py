@@ -114,6 +114,8 @@ def classify_slot(_):
     black_upper = np.array([255,255,80])
     kernel = np.ones((4,4), np.uint8)
     padding = 7
+    ideal_ratio = 0.6
+    ratio_thresh = 0.1
     try:
         small_img = cv2.resize(img, (360, 240))
         h,w  = small_img.shape[:2]
@@ -131,8 +133,10 @@ def classify_slot(_):
                 y = M['m01']/M['m00']
                 dist = (cx-x)**2 + (cy-y)**2
                 if dist < min_dist:
-                    min_dist = dist
-                    middle_black = b
+                    bx, by, bw, bh = cv2.boundingRect(b)
+                    if abs(bw/float(bh) - ideal_ratio) < ratio_thresh:
+                        min_dist = dist
+                        middle_black = b
         bx, by, bw, bh = cv2.boundingRect(middle_black)
         out = thresh[by-padding:by+bh+padding, bx-padding:bx+bw+padding]
         out = cv2.resize(out, (40,60))

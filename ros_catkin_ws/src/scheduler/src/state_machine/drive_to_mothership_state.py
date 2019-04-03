@@ -9,6 +9,7 @@ import time as t
 import math
 import rospy
 import drive_utils
+import geometry_utils
 
 class DriveToMothershipState(State):
     def __init__(self):
@@ -31,5 +32,13 @@ class DriveToMothershipState(State):
         #print("TURNING TO FACE MOTHERSHIP: {}".format(turn_angle))
         drive_utils.turn(turn_angle)
 
-        from approach_mothership_state import ApproachMothershipState
-        return ApproachMothershipState(False)
+        drive_utils.wait_for_pose_update()
+        
+        #TODO 4/1: Added to account for the mothership being very close to the edge of the board
+        if geometry_utils.dist((drive_utils.robot_x, drive_utils.robot_y),\
+            (globals.mothership_x, globals.mothership_y)) < 17:
+            from place_in_slot_state import PlaceInSlotState
+            return PlaceInSlotState()
+        else:
+            from approach_mothership_state import ApproachMothershipState
+            return ApproachMothershipState(False)

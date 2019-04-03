@@ -50,9 +50,12 @@ volatile float distanceSetpoint = 0;
 volatile float angleSetpoint = 0;
 volatile int moveState = CONST_VEL;
 volatile bool newDriveCmd = false;
-long deltaPosition[NUM_MOTORS];
-float integralControlValue[NUM_MOTORS] = {0, 0};
+volatile long deltaPosition[NUM_MOTORS];
+volatile float integralControlValue[NUM_MOTORS] = {0, 0};
+volatile float lastTurnError[NUM_MOTORS] = {0,0};
+volatile float turnIntegral[NUM_MOTORS] = {0,0};
 bool turboAvailible = false;
+
 
 /*****************************************
  *               ROS                     *
@@ -148,23 +151,26 @@ void rosUpdate(bool busy){
 #define SAMPLE_PERIOD           10
 #define ROS_UPDATE_RATE         1
 #define DEG2RAD                 (PI/180)
-#define OVERSHOOT_DELAY_MS      100
+#define OVERSHOOT_DELAY_MS      250
+#define OVERSHOOT_TIMEOUT       500
 // Velocity Controller
-#define K_P                     19.4
-#define K_I                     270 
+//#define K_P                     19
+#define K_P                     70
+//#define K_I                     217 
+#define K_I                     0
 // Distance Controller
 #define K_P_DIST                1.1 //inches error -> rad/s
 #define MAX_SPEED               8 //rad/s
 #define TURBO                   4
 #define TURBO_SETPOINT          0.5
-#define MAX_TURN_SPEED          8 //rad/s
+#define MAX_TURN_SPEED          10 //rad/s
 #define MAX_REVERSE_SPEED       4 //rad/s, slower because the wheel is crappy
 #define MIN_SPEED               1.0 //rad/s
 #define ZERO_ERROR_MARGIN       0.25 //inches until distance is considered achieved
 #define K_DIFF                  1.5
 #define MAX_CORRECTION          2
 // Angle controller
-#define K_P_ANG                 0.15 //degrees error -> rad/s
+
 #define TURN_ZERO_ERROR_MARGIN  1 //degrees
 //#define TURN_ESS_GAIN           0.011 //degrees
 #define TURN_ESS_GAIN           0 //degrees
@@ -178,6 +184,10 @@ void rosUpdate(bool busy){
 #define ANGLE_PER_REV           ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
 #define STRAIGHT_THRESH         0.5 //degrees
 #define INCHES_PER_COUNT        (WHEEL_CIRC/COUNTS_PER_REV)
+#define K_P_ANG                 0.4 //degrees error -> rad/s
+//#define K_D_ANG                 0.9
+#define K_D_ANG                 0
+#define K_I_ANG                 .02
 
 #define CLAW_PICKUP_ANGLE       40
 //IMU creation
@@ -187,8 +197,9 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
    void setup()
 */
 void setup() {
+    Serial.begin(115200);
     cameraServo.attach(cameraServoPin);
-    cameraServo.writeMicroseconds(DEG_TO_US(0));
+    cameraServo.writeMicroseconds(DEG_TO_US(16));
     
     pinMode(SEARCH_LIGHT_PIN, OUTPUT);
     analogWrite(SEARCH_LIGHT_PIN, LIGHT_BRIGHTNESS);
@@ -200,7 +211,6 @@ void setup() {
   
     claw.Claw_init();
 
-    Serial.begin(115200);
   
     /*nh.getHardware()->setBaud(115200);
     nh.initNode();
@@ -248,6 +258,7 @@ void setup() {
     attachPCINT(digitalPinToPCINT(ENC_PINS[R][A]), RA_changed,  CHANGE);
     attachPCINT(digitalPinToPCINT(ENC_PINS[R][B]), RB_changed,  CHANGE);
     //attachPCINT(digitalPinToPCINT(STOP_PIN), do_stop,  CHANGE);
+    Serial.println("Testing some stuff.");
 }
 
 /*
@@ -257,8 +268,10 @@ void loop() {
     static bool first = true;
     if (first){
         delay(2000);
-        angleSetpoint = 45;
+        angleSetpoint = 90;
+        turn();
         first = false;
+        Serial.println("Finished");
     }
 }
 
@@ -331,26 +344,30 @@ float posErrorToAngVel(float* errors, int motor, float maximumSpeed){
  * Turns the robot the angle stored in angleSetpoint. Returns when the angle is achieved. 
  */
 void turn(){
-//resetEncoderCounts();
-    //CCW rotation, left is reverse, right is forward
-    //angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
-    //angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
     double angError = 0;
     float targetAngle = boundAngle(getHeading() + angleSetpoint);
-    
+    long debugSamples = 0;
+    //reset integral
+    for (int i = 0; i < NUM_MOTORS; i++){
+        turnIntegral[i] = 0;
+    }
+    int overshootSamples = OVERSHOOT_TIMEOUT/SAMPLE_PERIOD;
     do {
         do {
+            debugSamples++;
             // Find error in degrees
             double angle = getHeading();
             angError = boundAngle(targetAngle - angle);
-            Serial.println("Error: " + String(angError));
+            //print time and error
+            Serial.print(String(debugSamples*SAMPLE_PERIOD) + "\t");
+            Serial.print(String(angError) + "\t");
             // Convert from error in degrees to an angVel setpoint for each wheel 
             for (int i = 0; i < NUM_MOTORS; i++){
                 velocitySetpoints[i] = angErrorToAngVel(angError, i);
             }
         //changes motor output
         velDrive(); //enforces set sample period
-        //rosUpdate(true  );
+        //rosUpdate(true);
         } while (abs(angError) > 1);
         stopMotors();
         // Delay for motor overshoot calculation
@@ -358,6 +375,7 @@ void turn(){
         //recalc error for overshoot
         for (int i = 0; i < NUM_MOTORS; i++){
             double angle = getHeading();
+            turnIntegral[i] = 0;
             angError = boundAngle(targetAngle - angle);
         }
     } while (abs(angError) > 1);
@@ -370,7 +388,20 @@ void turn(){
  * The proportional control gain is set by K_P_ANG.
  */
 float angErrorToAngVel(float error, int motor){
-    float angVel = (error*K_P_ANG);
+    float dComp = 0, lastE = lastTurnError[motor];
+    if(lastE != -1) dComp = (error - lastE)/SAMPLE_PERIOD;
+    lastTurnError[motor] = error;
+    turnIntegral[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
+    float prop = error*K_P_ANG;
+    float der = dComp*K_D_ANG;
+    float integ = turnIntegral[motor]*K_I_ANG;
+    if (motor == R){
+        Serial.print(String(prop) + "\t");
+        //Serial.print(String(der) + "\t");
+        Serial.print(String(integ) + "\t");
+    }
+
+    float angVel = (prop + der + integ);
     if (motor == L) angVel = -angVel;
     if (abs(angVel) > MAX_TURN_SPEED) {
         return angVel > 0 ? MAX_TURN_SPEED : -MAX_TURN_SPEED;
@@ -416,6 +447,10 @@ int findMotorPWMSetpoint(float angVelSetpoint, int motor) {
 
     integralControlValue[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
     int PWMSetpoint = (int)(error * K_P + integralControlValue[motor] * K_I);
+    if (motor == R){
+        Serial.print(String(velocities[motor]) + "\t");
+        Serial.println(PWMSetpoint);
+    }
     
     //saturate PWM value
     if (angVelSetpoint == 0) return 0;
