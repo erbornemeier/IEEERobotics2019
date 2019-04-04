@@ -40,9 +40,10 @@ class StraightenToMothershipState(State):
                         (40.1, 60), (53.6, 70), (72.45, 80)]
         self.lookup_offset = 0.0
         self.forward_mult = 1.0
+        self.rotate_speed = 0.6
         
         self.STRAIGHTEN_THRESH = 8 
-        self.final_turn_sub = 10
+        self.final_turn_sub = 0
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -143,7 +144,7 @@ class StraightenToMothershipState(State):
             drive_utils.drive(forward_dist)
             drive_utils.turn(final_turn)
 
-            vel = -1 if turn_angle > 0 else 1
+            vel = -self.rotate_speed if turn_angle > 0 else self.rotate_speed
             while True:
                 self.rate.sleep()
                 mothership_pos = self.__get_mothership_pos__()
