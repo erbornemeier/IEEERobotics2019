@@ -1,3 +1,4 @@
+from collections import deque
 
 #block information
 current_letter = -1
@@ -6,6 +7,7 @@ current_block = 0
 num_blocks = -1
 x_coords = []
 y_coords = []
+block_queue = deque()
 current_block = 0
 
 #mothership position and mothership safety diamond

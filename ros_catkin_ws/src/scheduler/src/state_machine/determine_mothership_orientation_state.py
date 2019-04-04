@@ -50,8 +50,13 @@ class DetermineMothershipOrientationState(State):
                 blocks = [(x*12+6, y*12+6) for x,y in blocks]
                 mothership_pos = (globals.mothership_x, globals.mothership_y)
                 blocks = sorted(blocks, key=lambda x : geometry_utils.dist(x, mothership_pos))
-                globals.x_coords = [int(round((p[0]-6)/float(12))) for p in blocks]
-                globals.y_coords = [int(round((p[1]-6)/float(12))) for p in blocks]
+                for b in blocks:
+                    x = int(round((b[0]-6)/float(12)))
+                    y = int(round((b[1]-6)/float(12)))
+                    globals.block_queue.append((x,y))
+
+                #globals.x_coords = [int(round((p[0]-6)/float(12))) for p in blocks]
+                #globals.y_coords = [int(round((p[1]-6)/float(12))) for p in blocks]
                 globals.diag_width = 28
                 globals.diag_width_ramp = 31 
 
@@ -108,7 +113,7 @@ class DetermineMothershipOrientationState(State):
                         globals.def_approach_y = globals.mothership_y + (mult * approach_width * sin(radians(robot_theta)))
                         approach_width -= approach_decr
 
-                
+                ''' 
                 globals.abc_x = globals.mothership_x - (mult * diag_width/2 * cos(radians(robot_theta)))
                 globals.abc_y = globals.mothership_y - (mult * diag_width/2 * sin(radians(robot_theta)))
                 globals.def_x = globals.mothership_x + (mult * diag_width/2 * cos(radians(robot_theta)))
@@ -118,7 +123,7 @@ class DetermineMothershipOrientationState(State):
                 globals.cd_y = globals.mothership_y - (mult * diag_width_ramp/2 * sin(radians(robot_theta + 90)))
                 globals.af_x = globals.mothership_x - (mult * diag_width_ramp/2 * cos(radians(robot_theta - 90)))
                 globals.af_y = globals.mothership_y - (mult * diag_width_ramp/2 * sin(radians(robot_theta - 90)))
-
+                
                 globals.abc_bb_x = globals.mothership_x - (mult * (diag_width/2 - 1) * cos(radians(robot_theta)))
                 globals.abc_bb_y = globals.mothership_y - (mult * (diag_width/2 - 1) * sin(radians(robot_theta)))
                 globals.def_bb_x = globals.mothership_x + (mult * (diag_width/2 - 1) * cos(radians(robot_theta)))
@@ -128,7 +133,7 @@ class DetermineMothershipOrientationState(State):
                 globals.cd_bb_y = globals.mothership_y - (mult * (diag_width_ramp/2 - 1) * sin(radians(robot_theta + 90)))
                 globals.af_bb_x = globals.mothership_x - (mult * (diag_width_ramp/2 - 1) * cos(radians(robot_theta - 90)))
                 globals.af_bb_y = globals.mothership_y - (mult * (diag_width_ramp/2 - 1) * sin(radians(robot_theta - 90)))
-
+                '''
             
                 rospy.loginfo("Determine Mothership Orientation State:")    
                 rospy.loginfo("\tMothership: {} Position: ({},{}) Orientation: {}".format("ABC" if detected_slot.letter == 0 else "DEF", globals.mothership_x, globals.mothership_y, globals.mothership_theta))
@@ -137,7 +142,7 @@ class DetermineMothershipOrientationState(State):
                 #rospy.loginfo("\tDEF Waypoint: ({},{})".format(globals.def_x, globals.def_y))
                 #rospy.loginfo("\tAF Waypoint: ({},{})".format(globals.af_x, globals.af_y))
                 #rospy.loginfo("\tCD Waypoint: ({},{})".format(globals.cd_x, globals.cd_y))
-
+                '''
                 commands.send_vis_command("display-mothership x:{} y:{} theta:{} abc_x:{} abc_y:{} af_x:{} af_y:{} def_x:{} def_y:{} cd_x:{} cd_y:{}".format(
                     globals.mothership_x, globals.mothership_y, globals.mothership_theta,
                     globals.abc_approach_x, globals.abc_approach_y,
@@ -145,7 +150,7 @@ class DetermineMothershipOrientationState(State):
                     globals.def_approach_x, globals.def_approach_y,
                     globals.cd_x, globals.cd_y
                 ))
-
+                '''
                 drive_utils.drive(-self.forward_dist)
 
                 from drive_to_block_state import DriveToBlockState
