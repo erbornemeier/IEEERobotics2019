@@ -153,14 +153,15 @@
   #define ROS_UPDATE_RATE         1
   #define DEG2RAD                 (PI/180)
   #define OVERSHOOT_DELAY_MS      100
+  #define MOVE_TIMEOUT            3000
   // Velocity Controller
   #define K_P                     19
   #define K_I                     217 
   #define K_P_NO_I                70
   //#define K_I                     0
   // Distance Controller
-  #define K_P_DIST                2 //inches error -> inches/s
-  #define K_I_DIST                .1
+  #define K_P_DIST                3 //inches error -> inches/s //2
+  #define K_I_DIST                .15 //.1
   #define MAX_SPEED               6 //rad/s
   #define TURBO                   4
   #define TURBO_SETPOINT          0.75
@@ -328,6 +329,24 @@
    * Drives the set distance (stored in float distance). Returns when distance setpoint is achieved.
    * Interruptable at least every SAMPLE_PERIOD by rosUpdate(), which calls nh.spinOnce().
    */
+  bool hasMoved(long errors[2]) {
+      static long lastMovedTime = millis();
+      static long last_errors[2] = {0,0};
+      
+      bool moved = (errors[0] != last_errors[0] || errors[1] != last_errors[1]);
+      
+      if (moved){
+          lastMovedTime = millis();  
+      }
+      last_errors[0] = errors[0];
+      last_errors[1] = errors[1];
+      if (millis() - lastMovedTime > MOVE_TIMEOUT){
+          lastMovedTime = millis();
+          return false;
+      }
+      return true;
+  }
+   
   void distDrive(){
       resetEncoderCounts();
       float posError[NUM_MOTORS] = {0,0};
@@ -335,6 +354,7 @@
       if (distanceSetpoint < 0){
           maximumSpeed = MAX_REVERSE_SPEED;
       }
+      bool moving = true;
       do{
           do{
               for (int i = 0; i < NUM_MOTORS; i++){
@@ -346,7 +366,9 @@
               }
               velDrive(K_P_NO_I, 0);
               rosUpdate(true);
-          } while (!isZero(posError, false));
+              moving = hasMoved(encCounts);
+              
+          } while (!isZero(posError, false) && moving);
           stopMotors();
           delay(OVERSHOOT_DELAY_MS);
           for (int i = 0; i < NUM_MOTORS; i++){
@@ -354,7 +376,7 @@
               posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
               distIntegral[i] = 0;
           }
-      } while (!isZero(posError, false));
+      } while (!isZero(posError, false) && moving);
       stopMotors();
       turboAvailible = false;
       float avgPos = 0;
