@@ -33,6 +33,7 @@ af_bb_y = -1
 cd_bb_x = -1
 cd_bb_y = -1
 
-pathfinding_resolution = 4
 bad_points = set()
 mothership_bad_points = set()
+block_attempts = dict()
+max_attempts = 5

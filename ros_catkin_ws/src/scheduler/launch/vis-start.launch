@@ -1,6 +1,6 @@
 <launch>
 	<node pkg="visualizer" type="visualizer.py" name="visualizer" output="screen">
-        <param name="server_ip" value="138.67.206.252"/> 
+        <param name="server_ip" value="138.67.204.16"/> 
         <param name="server_port" value="4445"/> 
     </node>
 

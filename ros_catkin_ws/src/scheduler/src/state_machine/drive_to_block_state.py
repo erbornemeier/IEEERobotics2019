@@ -24,15 +24,15 @@ class DriveToBlockState(State):
                            (next_block[1])*12 + 6 )
         self.needs_approach = True
 
-        self.cam_gain = 9 
+        self.cam_gain = 8 
         self.drive_gain = 2/27.
         self.min_speed = 0.5
-        self.turn_gain = 4
+        self.turn_gain = 3
         self.rate = rospy.Rate(5)
 
         self.camera_start_angle = 20
-        self.camera_target_angle = 48 
-        self.switch_point = 30 
+        self.camera_target_angle = 49 
+        self.switch_point = 34 
         self.approach_dist = 18 #inches 
 
         commands.set_display_state(commands.NORMAL)
@@ -104,7 +104,23 @@ class DriveToBlockState(State):
             success = drive_utils.go_to_point(self.block_pos, self.approach_dist)
             if not success:
                 #move block to back of queue
-                globals.block_queue.append(globals.block_queue.popleft())
+                block = globals.block_queue.popleft()
+                globals.block_queue.append(block)
+
+                #update attempts
+                if block not in globals.block_attempts:
+                    globals.block_attempts[block] = 0
+                globals.block_attempts[block] += 1
+
+                if(globals.block_attempts[block] >= globals.max_attempts):
+                    #drive_utils.set_grid(3, 6) 
+                    #drive_utils.remove_edge_points()
+                    #drive_utils.grid_changed = False
+                    #drive_utils.__assign_regions__()
+                    from return_to_home_state import ReturnToHomeState
+                    return ReturnToHomeState()
+
+
                 return DriveToBlockState()
 
             turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
