@@ -18,8 +18,8 @@ class ReturnToHomeState(State):
     def start(self):
         super(ReturnToHomeState, self).start()
         commands.set_display_state(commands.NORMAL)
-        self.home_x = 4.5*12 
-        self.home_y = 4.5*12
+        self.home_x = 54 
+        self.home_y = 54
         self.home_theta = 90
 
     def run(self):
