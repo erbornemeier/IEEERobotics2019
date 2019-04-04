@@ -19,11 +19,11 @@ class FindMothershipState(State):
     def start(self):
         super(FindMothershipState, self).start()
 
-        commands.send_drive_vel_command(0, 0.6)
         commands.send_cam_command(15)
         commands.send_claw_command(commands.CARRY_ANGLE)
         commands.set_display_state(commands.NORMAL)
 
+        self.rotate_speed = 0.6
         self.rate = rospy.Rate(5)
         self.max_size_contour = -1
         self.angle_of_max = 0
@@ -56,6 +56,7 @@ class FindMothershipState(State):
 
     def run(self):
         self.rate.sleep()
+        commands.send_drive_vel_command(0, self.rotate_speed)
         mothership_pos = self.__get_mothership_pos__()
 
         if t.time() - self.start_time > self.timeout:

@@ -21,7 +21,7 @@ class StraightenToMothershipState(State):
 
         self.cam_gain = 6 
         self.drive_gain = 9/27.
-        self.min_speed = 1.0 
+        self.min_speed = 1.2 
         self.turn_gain = 4
         self.cameraAngle = 15 
         self.rate = rospy.Rate(5)

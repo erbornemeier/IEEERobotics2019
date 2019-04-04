@@ -126,11 +126,11 @@ def __optimize_path__(path):
 
 grid = [(i,j) for i in range(FIRST_POINT_IN, 12*8-FIRST_POINT_IN+1, RESOLUTION)\
               for j in range(FIRST_POINT_IN, 12*8-FIRST_POINT_IN+1, RESOLUTION)]
-def __approx_to_grid__(pt):
+def __approx_to_grid__(pt, other_bad_points=set()):
     closest = sorted(grid, key=lambda x: dist(x, pt[:2]))
     snap_angle = int(round(pt[2]/float(45)))*45
     for p in closest:
-        if p not in globals.bad_points:
+        if p not in globals.bad_points and p not in other_bad_points:
             return (p[0], p[1], snap_angle)
     print("COULD NOT APPROXIMATE POINT TO A VALID POINT, CHOSE CLOSEST")
     return tuple([closest[0]] + [snap_angle])
@@ -161,13 +161,8 @@ def __path_exists__(from_pt, to_pt):
         __assign_regions__()
     return regions[from_pt[:2]] == regions[to_pt[:2]]
 
-safe_point = None
 def __get_path__(from_pt, to_pt):
       
-    global safe_point
-    if safe_point is None:
-        safe_point = (robot_x, robot_y, robot_theta)
-
     from_pt_approx = __approx_to_grid__(from_pt)
     to_pt_approx = __approx_to_grid__(to_pt)
     
@@ -183,7 +178,7 @@ def __get_path__(from_pt, to_pt):
             opt_path = opt_path[:-1] 
             opt_path.append(to_pt)
 
-        #final point outside of margin
+        #final point outside of margin 
         else:
             #opt_path.append(to_pt_approx)
             new_pt_approx = [to_pt[0], to_pt[1]]
@@ -200,16 +195,11 @@ def __get_path__(from_pt, to_pt):
             print("\tOriginal Point: {}".format(to_pt))
             print("\tUpdated Point: {}".format(new_pt_approx))
 
-        safe_point = opt_path[-1]
         return opt_path
 
     else:
-        #go to safe point and try again
-        print('No path -- returning to safe point and re-computing')
+        print('No path -- doing something else')
         return False
-        #safe_pt_approx = __approx_to_grid__(safe_point)
-        #drive_to_point(safe_pt_approx)
-        #return __get_path__(safe_pt_approx, to_pt)
 
 
 def get_drive_instructions(to_pt):
@@ -271,14 +261,23 @@ def get_approach_point(from_pt, to_pt, approach_dist):
         approach_pt = avg(from_pt, to_pt, weight=-approach_perc)
         return approach_pt
 
-def go_to_point(to_pt, approach_dist=0, safe_point=None):
+def go_to_point(to_pt, approach_dist=0):
     global robot_x, robot_y, robot_theta
     wait_for_pose_update()
     robot_pos = (robot_x, robot_y, robot_theta)
-    if approach_dist != 0:
-        to_pt = get_approach_point(robot_pos, to_pt, approach_dist)
-        to_pt = __approx_to_grid__((to_pt[0], to_pt[1], 0))
-        print("APPROXIMATED APPROACH POINT {}".format(to_pt))
+
+    #get approach point at least half approach_dist away from target
+    attempted_approach_pts = set()
+    while approach_dist != 0:
+        to_pt_approach = get_approach_point(robot_pos, to_pt, approach_dist)
+        to_pt_approach = __approx_to_grid__((to_pt_approach[0], to_pt_approach[1], 0), \
+                                            attempted_approach_pts)
+        print("APPROXIMATED APPROACH POINT {}".format(to_pt_approach))
+        if dist(to_pt_approach, to_pt) >= approach_dist:
+            to_pt = to_pt_approach
+            break
+        attempted_approach_pts.add(to_pt_approach[:2])
+
     to_pt = (to_pt[0], to_pt[1], 0)
     path = __get_path__(robot_pos, to_pt)
     if path is False:
@@ -301,7 +300,7 @@ def add_bad_points_around_block(x, y):
     x = (x * 12) + 6
     y = (y * 12) + 6
     
-    radius = 12
+    radius = 8 
 
     #grid_pt = __approx_to_grid__((x, y, 0))[:2]
     for p in grid:

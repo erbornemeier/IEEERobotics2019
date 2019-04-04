@@ -24,7 +24,7 @@ class DriveToBlockState(State):
                            (next_block[1])*12 + 6 )
         self.needs_approach = True
 
-        self.cam_gain = 6 
+        self.cam_gain = 9 
         self.drive_gain = 2/27.
         self.min_speed = 0.5
         self.turn_gain = 4
@@ -33,7 +33,7 @@ class DriveToBlockState(State):
         self.camera_start_angle = 20
         self.camera_target_angle = 48 
         self.switch_point = 30 
-        self.approach_dist = 18 #inches
+        self.approach_dist = 18 #inches 
 
         commands.set_display_state(commands.NORMAL)
 
