@@ -152,7 +152,7 @@ void rosUpdate(bool busy){
 #define ROS_UPDATE_RATE         1
 #define DEG2RAD                 (PI/180)
 #define OVERSHOOT_DELAY_MS      100
-#define MOVE_TIMEOUT            1000
+#define MOVE_TIMEOUT            1q000
 // Velocity Controller
 #define K_P                     19
 #define K_I                     217 
@@ -234,6 +234,7 @@ void setup() {
         nh.loginfo("Imu not connected.");
         bno = Adafruit_BNO055(55);
         analogWrite(SEARCH_LIGHT_PIN, flash ? LIGHT_BRIGHTNESS:0);
+        delay(250);
     }
   
     for (int i = 0; i < NUM_MOTORS; i++) {
@@ -312,7 +313,8 @@ void loop() {
             if (newDriveCmd){
                 newDriveCmd = false;
                 stopMotors();
-                claw.Servo_SetAngle(63);
+                claw.Gripper_Open();
+                claw.Servo_SetAngle(58);
                 cameraServo.writeMicroseconds(DEG_TO_US(45));
                 distDrive();
             }
@@ -378,6 +380,7 @@ void distDrive(){
             posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
         }
     } while (!isZero(posError, false) && moving);
+    float endAngle = getHeading();
     stopMotors();
     turboAvailible = false;
     float avgError = 0;
@@ -385,8 +388,8 @@ void distDrive(){
         avgError += posError[i];
     }
     avgError = avgError/NUM_MOTORS;
-    robot_pose.x += (distanceSetpoint-avgError)*cos(DEG2RAD*getHeading());
-    robot_pose.y += (distanceSetpoint-avgError)*sin(DEG2RAD*getHeading());
+    robot_pose.x += (distanceSetpoint-avgError)*cos(DEG2RAD*endAngle);
+    robot_pose.y += (distanceSetpoint-avgError)*sin(DEG2RAD*endAngle);
     robot_pose.theta = getHeading();
 }
 
