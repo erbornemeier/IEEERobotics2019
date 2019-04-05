@@ -142,15 +142,13 @@ class DetermineMothershipOrientationState(State):
                 #rospy.loginfo("\tDEF Waypoint: ({},{})".format(globals.def_x, globals.def_y))
                 #rospy.loginfo("\tAF Waypoint: ({},{})".format(globals.af_x, globals.af_y))
                 #rospy.loginfo("\tCD Waypoint: ({},{})".format(globals.cd_x, globals.cd_y))
-                '''
-                commands.send_vis_command("display-mothership x:{} y:{} theta:{} abc_x:{} abc_y:{} af_x:{} af_y:{} def_x:{} def_y:{} cd_x:{} cd_y:{}".format(
+                
+                commands.send_vis_command("display-mothership x:{} y:{} theta:{} abc_approach_x:{} abc_approach_y:{} def_approach_x:{} def_approach_y:{}".format(
                     globals.mothership_x, globals.mothership_y, globals.mothership_theta,
                     globals.abc_approach_x, globals.abc_approach_y,
-                    globals.af_x, globals.af_y,
                     globals.def_approach_x, globals.def_approach_y,
-                    globals.cd_x, globals.cd_y
                 ))
-                '''
+                
                 drive_utils.drive(-self.forward_dist)
 
                 from drive_to_block_state import DriveToBlockState
