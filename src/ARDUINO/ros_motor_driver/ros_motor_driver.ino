@@ -179,8 +179,8 @@ void rosUpdate(bool busy){
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
 #define COUNTS_PER_REV          3200
-#define WHEEL_DIAMETER          3.45 //inches //3.45 orig
-#define WHEEL_CIRC              10.84 //inches
+#define WHEEL_DIAMETER          3.40 //inches //3.45 orig
+#define WHEEL_CIRC              WHEEL_DIAMETER*PI //inches
 #define ROBOT_WIDTH             7.63 //inches
 #define TURN_CIRCUMFERENCE      (ROBOT_WIDTH*PI)
 #define ANGLE_PER_REV           ((WHEEL_CIRC/TURN_CIRCUMFERENCE) * 360)
@@ -312,7 +312,7 @@ void loop() {
             if (newDriveCmd){
                 newDriveCmd = false;
                 stopMotors();
-                claw.Servo_SetAngle(63);
+                claw.Servo_SetAngle(58);
                 cameraServo.writeMicroseconds(DEG_TO_US(45));
                 distDrive();
             }
@@ -422,6 +422,7 @@ void turn(){
     //angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
     //angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
     turning = true;
+    bool moving = true;
     double angError = 0;
     float targetAngle = boundAngle(getHeading() + angleSetpoint);
     //reset integral
@@ -440,7 +441,8 @@ void turn(){
             }
         //changes motor output
         velDrive(); //enforces set sample period
-        rosUpdate(true  );
+        rosUpdate(true);
+        //moving = hasMoved()
         } while (abs(angError) > 1);
         stopMotors();
         // Delay for motor overshoot calculation
