@@ -153,7 +153,7 @@
   #define ROS_UPDATE_RATE         1
   #define DEG2RAD                 (PI/180)
   #define OVERSHOOT_DELAY_MS      100
-  #define MOVE_TIMEOUT            3000
+  #define MOVE_TIMEOUT            1000
   // Velocity Controller
   #define K_P                     19
   #define K_I                     217 
@@ -166,7 +166,7 @@
   #define TURBO                   4
   #define TURBO_SETPOINT          0.75
   #define MAX_TURN_SPEED          10 //rad/s
-  #define MAX_REVERSE_SPEED       4 //rad/s, slower because the wheel is crappy
+  #define MAX_REVERSE_SPEED       3 //rad/s, slower because the wheel is crappy
   #define MIN_SPEED               1.0 //rad/s
   #define ZERO_ERROR_MARGIN       0.1 //inches until distance is considered achieved
   #define K_DIFF                  1.5
@@ -236,6 +236,7 @@
           nh.loginfo("Imu not connected.");
           bno = Adafruit_BNO055(55);
           analogWrite(SEARCH_LIGHT_PIN, flash ? LIGHT_BRIGHTNESS:0);
+          delay(250);
       }
     
       for (int i = 0; i < NUM_MOTORS; i++) {
@@ -315,6 +316,7 @@
                   newDriveCmd = false;
                   stopMotors();
                   claw.Servo_SetAngle(58);
+                  claw.Gripper_Open();
                   cameraServo.writeMicroseconds(DEG_TO_US(45));
                   distDrive();
               }
@@ -355,6 +357,8 @@
           maximumSpeed = MAX_REVERSE_SPEED;
       }
       bool moving = true;
+      float startAngle = getHeading();
+      //nh.loginfo((String("START ANGLE: ") + String(startAngle)).c_str());
       do{
           do{
               for (int i = 0; i < NUM_MOTORS; i++){
@@ -377,17 +381,20 @@
               distIntegral[i] = 0;
           }
       } while (!isZero(posError, false) && moving);
+      float endAngle = getHeading();
       stopMotors();
+      //nh.loginfo((String("END ANGLE: ") + String(endAngle)).c_str());
       turboAvailible = false;
       float avgPos = 0;
       for (int i = 0; i < NUM_MOTORS; i++){
           avgPos += (encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV;
       }
       avgPos = avgPos/NUM_MOTORS;
-      nh.loginfo(String(avgPos).c_str());
-      robot_pose.x += (avgPos)*cos(DEG2RAD*getHeading());
-      robot_pose.y += (avgPos)*sin(DEG2RAD*getHeading());
+      //nh.loginfo(String(avgPos).c_str());
+      robot_pose.x += (avgPos)*cos(DEG2RAD*endAngle);
+      robot_pose.y += (avgPos)*sin(DEG2RAD*endAngle);
       robot_pose.theta = getHeading();
+      //nh.loginfo((String("ROBOT ANGLE: ") + String(robot_pose.theta)).c_str());
   }
   
   
@@ -628,6 +635,16 @@
           angle += angle > 0 ? -360 : 360;
       }
       return angle;
+  }
+
+  double getAverageAngle(double a, double b){
+        if (a < b){
+            while (abs(a-b) > 180) a = a + 360;  
+        }
+        else {
+            while (abs(a-b) > 180) a = a - 360;  
+        }
+        return boundAngle((a+b)/2.0);
   }
   
   /*
