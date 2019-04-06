@@ -56,7 +56,9 @@ volatile float lastTurnError[NUM_MOTORS] = {0,0};
 volatile float turnIntegral[NUM_MOTORS] = {0,0};
 bool turboAvailible = false;
 bool turning = false;
-
+volatile float angleOffset = 0;
+//IMU creation
+Adafruit_BNO055 bno = Adafruit_BNO055(55);
 /*****************************************
  *               ROS                     *
 ******************************************/
@@ -66,6 +68,15 @@ ros::NodeHandle_<ArduinoHardware, 25, 25, 1024, 512> nh;
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
     //String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
     //nh.loginfo(logg.c_str());
+    static bool first = true;
+    if (first){
+        sensors_event_t orientationData;
+        bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+        angleOffset = orientationData.orientation.x;
+        first = false;
+        //String loggy = String("Angle offset: ") + String(angleOffset);
+        //nh.loginfo(loggy.c_str());
+    }
     switch((uint8_t)moveCmd.y){
         case CONST_VEL:
             velocitySetpoints[L] = -moveCmd.theta;
@@ -188,8 +199,7 @@ void rosUpdate(bool busy){
 #define INCHES_PER_COUNT        (WHEEL_CIRC/COUNTS_PER_REV)
 
 #define CLAW_PICKUP_ANGLE       40
-//IMU creation
-Adafruit_BNO055 bno = Adafruit_BNO055(55);
+
 
 /*
    void setup()
@@ -636,8 +646,10 @@ bool isZero(float* errors, bool turning){
 double getHeading(){
     sensors_event_t orientationData;
     bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-    double angle = (360 - orientationData.orientation.x) + 90;
+    double angle = (360 - (orientationData.orientation.x - angleOffset)) + 90;
     angle = boundAngle(angle);
+    //String loggy = String("My angle is: ") + String(angle);
+    //nh.loginfo(loggy.c_str());
     return angle;
 }
 
