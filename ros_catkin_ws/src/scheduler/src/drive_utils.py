@@ -39,8 +39,6 @@ def set_grid(resolution, margin):
               for j in range(FIRST_POINT_IN, 12*8-FIRST_POINT_IN+1, RESOLUTION)]
     commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(RESOLUTION, MARGIN))
 
-
-
 # POSE INFORMATION
 x, y = 0, 1
 robot_x = -1
@@ -126,8 +124,10 @@ finder = astar.pathfinder(neighbors=__custom_neighbors__(12*8, 12*8),
                     distance=astar.absolute_distance,
                     cost=__custom_cost__)
 def __optimize_path__(path):
-    #optimized_path = [path[0]]
-    optimized_path = []
+    if dist(path[0], (robot_x, robot_y)) > RESOLUTION:
+        optimized_path = [path[0]]
+    else:
+        optimized_path = []
     for i, p in enumerate(path[1:-1]):
         if path[i][:2] == p[:2]:
             continue
@@ -183,10 +183,19 @@ def __get_path__(from_pt, to_pt):
 
         opt_path = __optimize_path__(path) 
         print("OPTIMIZED PATH: {}".format(opt_path))
+        if len(opt_path) == 0:
+            opt_path.append(to_pt)
+            return opt_path
 
         #final point in margin
-        if MARGIN <= to_pt[0] <= 12*8-MARGIN and MARGIN <= to_pt[1] <= 12*8-MARGIN:
+        if MARGIN <= to_pt[0] <= 12*8-MARGIN and MARGIN <= to_pt[1] <= 12*8-MARGIN and \
+          dist(opt_path[-1], to_pt) < RESOLUTION*2:
             opt_path = opt_path[:-1] 
+            opt_path.append(to_pt)
+            print('Disregarding final approximation point, super close to point')
+
+        elif MARGIN <= to_pt[0] <= 12*8-MARGIN and MARGIN <= to_pt[1] <= 12*8-MARGIN and \
+          dist(opt_path[-1], to_pt) >= RESOLUTION*2:
             opt_path.append(to_pt)
 
         #final point outside of margin 
@@ -256,20 +265,18 @@ def drive_to_point(to_pt):
     drive(forward_dist) 
 
 def get_approach_point(from_pt, to_pt, approach_dist):
-    #approach_perc = approach_dist / dist(from_pt, to_pt)
-    #approach_pt = avg(from_pt, to_pt, weight=approach_perc)
 
-
-    closest = sorted(grid, key=lambda x: dist(x, to_pt[:2]))
+    closest = sorted(grid, key=lambda x: dist(x, from_pt[:2]))
 
     from_pt_approx = __approx_to_grid__(from_pt)
     for p in closest:
-        if approach_dist*0.75 <= dist(p, to_pt) <= approach_dist*1.25 \
-         and __path_exists__(p, from_pt_approx):
-            mid_pt = list(avg(p, to_pt, weight=0.5)) + [0]
-            mid_pt = __approx_to_grid__(mid_pt)
-            if mid_pt not in globals.bad_points:
-                return p
+        if p not in globals.bad_points:
+            if approach_dist*0.95 <= dist(p, to_pt) <= approach_dist*1.25 \
+             and __path_exists__(p, from_pt_approx):
+                mid_pt = list(avg(p, to_pt, weight=0.5)) + [0]
+                mid_pt = __approx_to_grid__(mid_pt)
+                if mid_pt not in globals.bad_points:
+                    return p
     return False
 
 def go_to_point(to_pt, approach_dist=0):
@@ -302,11 +309,18 @@ def go_to_point(to_pt, approach_dist=0):
 
 def remove_edge_points():
     for p in grid:
-        if p[0] == FIRST_POINT_IN or p[1] == 12*8 - FIRST_POINT_IN:
-            if p in globals.bad_points:
-                globals.bad_points.remove(p)
-            if p in globals.mothership_bad_points:
-                globals.mothership_bad_points.remove(p)
+        if p[0] == FIRST_POINT_IN or p[0] == 12*8 - FIRST_POINT_IN\
+            or p[1] == FIRST_POINT_IN or p[1] == 12*8 - FIRST_POINT_IN:
+                if p in globals.bad_points:
+                    globals.bad_points.remove(p)
+                if p in globals.mothership_bad_points:
+                    globals.mothership_bad_points.remove(p)
+    
+    globals.bad_points.add((FIRST_POINT_IN, FIRST_POINT_IN))
+    globals.bad_points.add((FIRST_POINT_IN, 12*8 - FIRST_POINT_IN))
+    globals.bad_points.add((12*8 - FIRST_POINT_IN, FIRST_POINT_IN))
+    globals.bad_points.add((12*8 - FIRST_POINT_IN, 12*8 - FIRST_POINT_IN))
+
     global grid_changed
     grid_changed = True
         

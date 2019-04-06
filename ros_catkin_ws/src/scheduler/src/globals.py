@@ -37,3 +37,4 @@ bad_points = set()
 mothership_bad_points = set()
 block_attempts = dict()
 max_attempts = 5
+detected_letters = dict()

@@ -23,6 +23,7 @@ class DetectLetterState(State):
             globals.current_letter = detected_letter.letter
             commands.display_letter(detected_letter.letter)
             commands.set_display_state(commands.LETTER)
+            globals.detected_letters[globals.block_queue[0]] = detected_letter.letter
             t.sleep(0.5)
 
         except Exception as e:

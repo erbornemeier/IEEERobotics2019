@@ -11,18 +11,19 @@ import math
 import rospy
 
 class ApproachMothershipState(State):
-    def __init__(self, isFirstInstance):
+    def __init__(self, isFirstInstance, is_dynamic=False):
         super(ApproachMothershipState, self).__init__("Approach Mothership State")
 
         self.isFirstInstance = isFirstInstance
+        self.is_dynamic = is_dynamic
 
     def start(self):
         super(ApproachMothershipState, self).start();
 
         self.cam_gain = 6 
-        self.drive_gain = 5/27.
+        self.drive_gain = 3/27.
         self.min_speed = 0.6
-        self.turn_gain = 4
+        self.turn_gain = 2
         self.cameraAngle = 20 if self.isFirstInstance else 27
         self.rate = rospy.Rate(5)
         self.target_camera_angle = 37
@@ -32,12 +33,17 @@ class ApproachMothershipState(State):
 
         self.found_time = t.time()
 	self.MOTHERSHIP_TIMEOUT = 2.0 
-        self.BACKUP_DIST = 2.0
+        self.BACKUP_DIST = 3.0
 	self.adjusted = True
 
-        self.rotate_angles = [5, -10, 15, -20]
+        self.rotate_angles = [10, -20, 30, -40]
         self.rotate_index = 0
 
+        if self.is_dynamic:
+            self.start_time = t.time()
+            self.dynamic_timeout = 2
+
+        
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -82,6 +88,11 @@ class ApproachMothershipState(State):
         self.rate.sleep()
         #camera to mothership
         mothership_pos = self.__get_mothership_pos__()
+
+        if self.is_dynamic and t.time() - self.start_time > self.dynamic_timeout:
+            from place_in_slot_state import PlaceInSlotState
+            return PlaceInSlotState(self.is_dynamic)
+
             
 	if mothership_pos.y < 0:
             if t.time() - self.found_time > self.MOTHERSHIP_TIMEOUT:
@@ -102,6 +113,7 @@ class ApproachMothershipState(State):
                 self.__reset__()
             return self
         else:
+            self.rotate_index = 0
             self.found_time = t.time()
             self.__camera_to_mothership__(mothership_pos)
             self.__drive_to_mothership__(mothership_pos)
@@ -113,7 +125,7 @@ class ApproachMothershipState(State):
 
             if self.isFirstInstance:
                 from determine_mothership_orientation_state import DetermineMothershipOrientationState 
-                return DetermineMothershipOrientationState()
+                return DetermineMothershipOrientationState(mothership_pos.theta)
             else:
                 from place_in_slot_state import PlaceInSlotState
                 return PlaceInSlotState()

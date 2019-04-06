@@ -11,16 +11,18 @@ import drive_utils
 import geometry_utils
 
 class DetermineMothershipOrientationState(State):
-    def __init__(self):
+    def __init__(self, lights_theta):
         super(DetermineMothershipOrientationState, self).__init__("Determine Mothership Orientation")
+        self.lights_theta = lights_theta
+        print("LIGHTS AT APPROACH ->{}".format(self.lights_theta))
 
     def start(self):
         super(DetermineMothershipOrientationState, self).start()
-        self.forward_dist = 4.5
+        self.forward_dist = 4.5 
         commands.send_look_in_mothership_command(self.forward_dist)
 
     def run(self):
-        t.sleep(2)
+        t.sleep(3)
         try:
             detected_slot = commands.slot_srv()
             print("DETECTED {}".format('B' if detected_slot.letter == 0 else 'E'))
@@ -28,6 +30,7 @@ class DetermineMothershipOrientationState(State):
             #detected_slot.letter = 0
 
             commands.display_letter(1 if detected_slot.letter == 0 else 4)
+            t.sleep(0.25)
             commands.set_display_state(commands.LETTER)
 
             if detected_slot != 0xFF:
@@ -37,14 +40,20 @@ class DetermineMothershipOrientationState(State):
                 robot_x = drive_utils.robot_x
                 robot_y = drive_utils.robot_y
                 robot_theta = drive_utils.robot_theta
+                robot_theta -= self.lights_theta
 
                 globals.mothership_theta = robot_theta \
-                                           if isABC else 180 - robot_theta 
+                                           if isABC else robot_theta+180
+                if globals.mothership_theta > 180:
+                    globals.mothership_theta -= 360
+
+                #TODO: added to help correct a bad approach
+                #globals.mothership_theta += self.lights_theta
 
                 #11.75
-                globals.mothership_x = robot_x + 15.5 * \
+                globals.mothership_x = robot_x + 11.75 * \
                                                 cos(radians(robot_theta))
-                globals.mothership_y = robot_y + 15.5 * \
+                globals.mothership_y = robot_y + 11.75 * \
                                                 sin(radians(robot_theta))
 
 
@@ -60,7 +69,7 @@ class DetermineMothershipOrientationState(State):
                 #globals.x_coords = [int(round((p[0]-6)/float(12))) for p in blocks]
                 #globals.y_coords = [int(round((p[1]-6)/float(12))) for p in blocks]
                 globals.diag_width = 28
-                globals.diag_width_ramp = 31 
+                globals.diag_width_ramp = 33 
 
                 start_x = 0
                 start_y = 0
@@ -73,8 +82,12 @@ class DetermineMothershipOrientationState(State):
 
                 for i in range(start_x, 12*8 - drive_utils.MARGIN + 1,drive_utils.RESOLUTION):
                     for j in range(start_y, 12*8 - drive_utils.MARGIN + 1, drive_utils.RESOLUTION): #25 not 5, 20 not 10
-                        #if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, 17, globals.diag_width_ramp):
-                        if geometry_utils.pointInEllipse(globals.mothership_x, globals.mothership_y, globals.mothership_theta, i, j, 20, globals.diag_width):
+                        if geometry_utils.pointInEllipse(globals.mothership_x,\
+                            globals.mothership_y, globals.mothership_theta,\
+                            i, j, globals.diag_width_ramp, 20) or \
+                           geometry_utils.pointInEllipse(globals.mothership_x,\
+                            globals.mothership_y, globals.mothership_theta, \
+                            i, j, 23, globals.diag_width):
                             globals.bad_points.add((i, j))
                             globals.mothership_bad_points.add((i, j))
                             #print("BAD POINTS LENGTH: {}".format(len(globals.bad_points)))
@@ -141,8 +154,8 @@ class DetermineMothershipOrientationState(State):
                 rospy.loginfo("Determine Mothership Orientation State:")    
                 rospy.loginfo("\tMothership: {} Position: ({},{}) Orientation: {}".format("ABC" if detected_slot.letter == 0 else "DEF", globals.mothership_x, globals.mothership_y, globals.mothership_theta))
                 #rospy.loginfo("\tMult: {}".format(mult))
-                #rospy.loginfo("\tABC Waypoint: ({},{})".format(globals.abc_x, globals.abc_y))
-                #rospy.loginfo("\tDEF Waypoint: ({},{})".format(globals.def_x, globals.def_y))
+                rospy.loginfo("\tABC Waypoint: ({},{})".format(globals.abc_approach_x, globals.abc_approach_y))
+                rospy.loginfo("\tDEF Waypoint: ({},{})".format(globals.def_approach_x, globals.def_approach_y))
                 #rospy.loginfo("\tAF Waypoint: ({},{})".format(globals.af_x, globals.af_y))
                 #rospy.loginfo("\tCD Waypoint: ({},{})".format(globals.cd_x, globals.cd_y))
                 

@@ -65,12 +65,12 @@ commands.set_display_state(commands.WAITING)
 
 #_ = raw_input("Press enter to start")
 print("Ready to start")
-#drive_utils.wait_for_start_button()
-#print("**Starting in 5 seconds**")
+drive_utils.wait_for_start_button()
+print("**Starting in 5 seconds**")
 commands.set_display_state(commands.NORMAL)
 t.sleep(0.25)
 display_blocks()
-#t.sleep(5)
+t.sleep(5)
 
 START_TIME = t.time()
 has_displayed_time = False

@@ -25,16 +25,16 @@ class PlaceInSlotState(State):
         robot_pos = (drive_utils.robot_x, drive_utils.robot_y)
         mothership_pos = (globals.mothership_x, globals.mothership_y)
         dist_to_mothership = geometry_utils.dist(robot_pos, mothership_pos)
-        print("Dropping blocks: distance to mothership: {}", geometry_utils.dist(robot_pos, mothership_pos))
+        print("Dropping blocks: distance to mothership: {}".format(\
+                                geometry_utils.dist(robot_pos, mothership_pos)))
 
-        #self.forward_dist = 5 #inches       
-        
         #move forward 5 if distance is 16.5ish, move forward 0 if distance is 16.5-5 = 11.5,
+        #move forward 5 if distance is 15.0ish, move forward 0 if distance is 15.0-5 = 10.0,
         self.forward_dist = 5
         slot_turn = 15
         if self.is_dynamic:
             max_dist = 16.5
-            min_dist = 11.5
+            min_dist = 8
             if dist_to_mothership > max_dist:
                 dist_to_mothership = max_dist
             if dist_to_mothership < min_dist:

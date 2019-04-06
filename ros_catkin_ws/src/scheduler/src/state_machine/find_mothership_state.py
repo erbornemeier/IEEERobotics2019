@@ -21,6 +21,7 @@ class FindMothershipState(State):
 
         commands.send_cam_command(15)
         commands.send_claw_command(commands.CARRY_ANGLE)
+        commands.send_grip_command(commands.CLAW_CLOSED)
         commands.set_display_state(commands.NORMAL)
 
         self.rotate_speed = 0.6

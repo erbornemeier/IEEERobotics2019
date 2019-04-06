@@ -48,9 +48,11 @@ class DriveToMothershipState(State):
         
         #TODO 4/1: Added to account for the mothership being very close to the edge of the board
         if geometry_utils.dist((drive_utils.robot_x, drive_utils.robot_y),\
-            (globals.mothership_x, globals.mothership_y)) < 14:
-            from place_in_slot_state import PlaceInSlotState
-            return PlaceInSlotState(True)
+            (globals.mothership_x, globals.mothership_y)) < 12:
+            #from place_in_slot_state import PlaceInSlotState
+            #return PlaceInSlotState(True)
+            from approach_mothership_state import ApproachMothershipState
+            return ApproachMothershipState(False, True)
         else:
             from approach_mothership_state import ApproachMothershipState
             return ApproachMothershipState(False)

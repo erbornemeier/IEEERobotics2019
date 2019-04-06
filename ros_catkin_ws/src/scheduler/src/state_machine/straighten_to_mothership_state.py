@@ -20,9 +20,9 @@ class StraightenToMothershipState(State):
         super(StraightenToMothershipState, self).start();
 
         self.cam_gain = 6 
-        self.drive_gain = 9/27.
-        self.min_speed = 1.2 
-        self.turn_gain = 4
+        self.drive_gain = 6/27.
+        self.min_speed = 1.0 
+        self.turn_gain = 2
         self.cameraAngle = 15 
         self.rate = rospy.Rate(5)
         self.target_camera_angle = 19.5 
@@ -42,7 +42,7 @@ class StraightenToMothershipState(State):
         self.forward_mult = 1.0
         self.rotate_speed = 0.6
         
-        self.STRAIGHTEN_THRESH = 8 
+        self.STRAIGHTEN_THRESH = 10
         self.final_turn_sub = 0
 
     def __get_mothership_pos__(self):
@@ -130,7 +130,7 @@ class StraightenToMothershipState(State):
                                             / forward_dist)
             #turn_angle = 180 - math.degrees(turn_angle)
             turn_angle = math.degrees(turn_angle)
-            final_turn = 180 - abs(mothership_orientation) - turn_angle - self.final_turn_sub
+            final_turn = 180 - abs(mothership_orientation) - abs(turn_angle) - self.final_turn_sub
             forward_dist *= self.forward_mult
             if not turnLeft:
                 turn_angle *= -1

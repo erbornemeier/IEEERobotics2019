@@ -75,7 +75,9 @@ def classify_block(_):
         block_contour = max(contours, key=cv2.contourArea)
         if len(block_contour) < 4:
             raise Exception('Block face could not be found')
-        block_corners = find_rect_pts(block_contour).reshape((4,2)).tolist()
+        #block_corners = find_rect_pts(block_contour).reshape((4,2)).tolist()
+        rotated = cv2.minAreaRect(block_contour)
+        block_corners = cv2.boxPoints(rotated)
         block_corners = sorted(block_corners, key=lambda x: x[1])
         block_corners = sorted(block_corners[:2], key=lambda x: -x[0]),\
                         sorted(block_corners[2:], key=lambda x: x[0])
@@ -111,7 +113,7 @@ def classify_block(_):
 
 def classify_slot(_):
     black_lower = np.array([0,0,0])
-    black_upper = np.array([255,255,80])
+    black_upper = np.array([255,255,100])
     kernel = np.ones((4,4), np.uint8)
     padding = 7
     ideal_ratio = 0.6

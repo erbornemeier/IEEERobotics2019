@@ -14,7 +14,7 @@ class mothership_tracker:
     LED_MASK = np.array([[ 20,   0,   250],
                           [100, 255, 255]])
     MAX_ERROR = 0.18
-    MAX_THREE_ERROR = 0.1
+    MAX_THREE_ERROR = 0.05
      
     def get_LED_locations(self, frame, show=False):
         #get potential LED locations
@@ -81,7 +81,7 @@ class mothership_tracker:
         quad_min = None
         for tri in permutations(centers, 3):
             l, m, r = tri
-            if l[0] > r[0]:
+            if r[0] - l[0] > 10:
                 continue
             line_dist = self.__dist__(l,r)
             l_m_dist  = self.__dist__(l,m)
@@ -129,7 +129,7 @@ class mothership_tracker:
 
         for quad in permutations(centers, 4):
             l, lm, rm, r = quad
-            if l[0] > r[0]:
+            if r[0] - l[0] > 10:
                 continue
             line_dist = self.__dist__(l,r)
             l_lm_dist = self.__dist__(l, lm)

@@ -32,8 +32,8 @@ class DriveToBlockState(State):
 
         self.camera_start_angle = 20
         self.camera_target_angle = 49 
-        self.switch_point = 34 
-        self.approach_dist = 18 #inches 
+        self.switch_point = 30 
+        self.approach_dist = 16 #inches 
 
         commands.set_display_state(commands.NORMAL)
 
@@ -41,6 +41,10 @@ class DriveToBlockState(State):
 
         self.SEEN_TIMEOUT = 2
         self.last_seen = t.time()
+
+        self.rotate_angles = [10, -20, 20, -20, 20, -20]
+        self.rotate_index = 0
+        self.claw_open = False
 
 
     def __get_block_pos__(self):
@@ -95,6 +99,52 @@ class DriveToBlockState(State):
 
         self.rate.sleep()
 
+        if globals.block_queue[0] in globals.detected_letters:
+            letter = globals.detected_letters[globals.block_queue[0]]
+            from_pt = self.block_pos
+            
+            if letter < 3:
+                to_pt = (globals.abc_approach_x, globals.abc_approach_y)
+            else:
+                to_pt = (globals.def_approach_x, globals.def_approach_y)
+
+            from_pt = drive_utils.__approx_to_grid__((from_pt[0], from_pt[1], 0))
+            to_pt = drive_utils.__approx_to_grid__((to_pt[0], to_pt[1], 0))
+
+            if not drive_utils.__path_exists__(from_pt, to_pt):
+                #move block to back of queue
+                block = globals.block_queue.popleft()
+                globals.block_queue.append(block)
+
+                #update attempts
+                if block not in globals.block_attempts:
+                    globals.block_attempts[block] = 0
+                globals.block_attempts[block] += 1
+
+
+                #drop block and back up
+                commands.send_grip_command(commands.OPEN)
+                drive_utils.drive(-4)
+
+                if(globals.block_attempts[block] >= globals.max_attempts):
+                    drive_utils.set_grid(3, 6) 
+                    drive_utils.remove_edge_points()
+                    drive_utils.grid_changed = False
+                    drive_utils.__assign_regions__()
+                    globals.block_attempts.clear()
+
+
+                    return DriveToBlockState()
+
+                    #from return_to_home_state import ReturnToHomeState
+                    #return ReturnToHomeState()
+
+
+                return DriveToBlockState()
+
+
+
+
         if self.needs_approach:
 
             commands.send_cam_command(self.camera_angle)
@@ -113,12 +163,16 @@ class DriveToBlockState(State):
                 globals.block_attempts[block] += 1
 
                 if(globals.block_attempts[block] >= globals.max_attempts):
-                    #drive_utils.set_grid(3, 6) 
-                    #drive_utils.remove_edge_points()
-                    #drive_utils.grid_changed = False
-                    #drive_utils.__assign_regions__()
-                    from return_to_home_state import ReturnToHomeState
-                    return ReturnToHomeState()
+                    drive_utils.set_grid(3, 6) 
+                    drive_utils.remove_edge_points()
+                    drive_utils.grid_changed = False
+                    drive_utils.__assign_regions__()
+                    globals.block_attempts.clear()
+
+                    return DriveToBlockState()
+
+                    #from return_to_home_state import ReturnToHomeState
+                    #return ReturnToHomeState()
 
 
                 return DriveToBlockState()
@@ -129,23 +183,34 @@ class DriveToBlockState(State):
             self.needs_approach = False
             self.last_seen = t.time()
         
-        commands.send_grip_command(commands.CLAW_OPEN)
         #camera to block
         if self.camera_angle < self.switch_point:
             block_pos = self.__get_block_pos__()
         else:
+            if not self.claw_open:
+                commands.send_drive_vel_command(0, 0)
+                self.claw_open = True
+                commands.send_grip_command(commands.CLAW_OPEN)
+                t.sleep(1)
             block_pos = self.__get_block_close_pos__()
 
         if block_pos.y < 0:
             if t.time() - self.last_seen > self.SEEN_TIMEOUT:
-                drive_utils.drive(-2)
-                self.camera_angle -= 1
+                if self.rotate_index % 2 == 0 and self.rotate_index > 0:
+                    drive_utils.drive(-4)
+                if self.rotate_index == len(self.rotate_angles):
+                    globals.block_queue.append(globals.block_queue.popleft())
+                    return DriveToBlockState()
+                drive_utils.turn(self.rotate_angles[self.rotate_index])
+                self.rotate_index += 1
+                #self.camera_angle -= 1
                 commands.send_cam_command(int(self.camera_angle))
                 self.last_seen = t.time()
             else:
                 self.__reset__()
             return self
         else:
+            self.rotate_index = 0
             self.last_seen = t.time()
             self.__camera_to_block__(block_pos)
             self.__drive_to_block__(block_pos)

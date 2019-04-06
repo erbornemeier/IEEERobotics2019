@@ -124,8 +124,8 @@ def get_block_contour(img, debug=False):
         print(max_contrast[1])
         return max_contrast[0]
     return None
-'''
 
+'''
 def get_block_contour(img, debug=False):                                        
     orange_lower = np.array([0,60,0])                                              
     orange_upper = np.array([22,255,255])                                               
@@ -171,10 +171,11 @@ def get_block_contour(img, debug=False):
                                                                                 
     _, letters, _ = cv2.findContours(diff, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    #dont touch left, right, or top
     def no_edge_touch(img, contour):                                            
         h,w = img.shape[:2]                                                     
         x, y, ww, hh = cv2.boundingRect(contour)                                
-        if x <= 0 or y <= 0 or ww >= w or hh >= h:                              
+        if x <= 0 or x+ww >= w or y+hh >= h:                              
             return False                                                        
         return True                                                             
     letters = list(filter(lambda c: no_edge_touch(img, c), letters))            
@@ -202,7 +203,7 @@ def get_block_pos(_):
         print (e)
         response.x = -1
         response.y = -1
-        return response
+        return False 
 
 rospy.init_node("block_position_find")
 rospy.Subscriber("camera_image", Image, image_recieved)
