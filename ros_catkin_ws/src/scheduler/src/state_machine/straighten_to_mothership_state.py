@@ -34,7 +34,7 @@ class StraightenToMothershipState(State):
         commands.send_claw_command(commands.CARRY_ANGLE)
         commands.set_display_state(commands.NORMAL)
 
-        self.lookup_table = [(-83, -90),(-63.37, -80), (-47, -70), (-35.3, -60), (-26.45, -50),\
+        self.lookup_table = [(-63.37, -80), (-47, -70), (-35.3, -60), (-26.45, -50),\
                         (-19.35, -40), (-13.55, -30), (-8.35, -20), (-4, -10),\
                         (0,0), (4.55, 10), (9.6, 20), (14.9, 30), (21.35, 40), (29, 50),\
                         (40.1, 60), (53.6, 70), (72.45, 80)]
