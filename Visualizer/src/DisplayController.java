@@ -113,33 +113,27 @@ public class DisplayController {
                 ".*\\s*x:(\\d*\\.?\\d*)"
                 + "\\s*y:(\\d*\\.?\\d*)"
                 + "\\s*theta:(-?\\d*\\.?\\d*)\\s*"
-                + "\\s*abc_x:(\\d*\\.?\\d*)"
-                + "\\s*abc_y:(\\d*\\.?\\d*)"
-                + "\\s*af_x:(\\d*\\.?\\d*)"
-                + "\\s*af_y:(\\d*\\.?\\d*)"
-                + "\\s*def_x:(\\d*\\.?\\d*)"
-                + "\\s*def_y:(\\d*\\.?\\d*)"
-                + "\\s*cd_x:(\\d*\\.?\\d*)"
-                + "\\s*cd_y:(\\d*\\.?\\d*)"
+                + "\\s*abc_approach_x:(\\d*\\.?\\d*)"
+                + "\\s*abc_approach_y:(\\d*\\.?\\d*)"
+                + "\\s*def_approach_x:(\\d*\\.?\\d*)"
+                + "\\s*def_approach_y:(\\d*\\.?\\d*)"
         );
+        System.out.println(msg);
 
         Matcher m = p.matcher(msg);
         if(m.matches()) {
+            System.out.println("matches");
             double x = Double.parseDouble(m.group(1));
             double y = Double.parseDouble(m.group(2));
             double theta = Double.parseDouble(m.group(3));
+            double approachAbcX = Double.parseDouble(m.group(4));
+            double approachAbcY = Double.parseDouble(m.group(5));
+            double approachDefX = Double.parseDouble(m.group(6));
+            double approachDefY = Double.parseDouble(m.group(7));
 
-            BoardPoint[] points = new BoardPoint[4];
-            int group = 4;
-            for(int i = 0; i < 4; i++) {
-                double pointX = (Double.parseDouble(m.group(group)) * Board.PIXELS_PER_INCH);
-                double pointY = (Double.parseDouble(m.group(group + 1)) * Board.PIXELS_PER_INCH);
-
-                points[i] = new BoardPoint(pointX, pointY);
-                group += 2;
-            }
-
-            mothership = new Mothership(x, y, theta, points);
+            mothership = new Mothership(x, y, theta,
+                    new BoardPoint(approachAbcX, approachAbcY),
+                    new BoardPoint(approachDefX, approachDefY));
             entities.add(mothership);
         }
     }
