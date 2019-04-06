@@ -325,7 +325,7 @@ void loop() {
                 stopMotors();
                 claw.Gripper_Open();
                 claw.Servo_SetAngle(58);
-                cameraServo.writeMicroseconds(DEG_TO_US(47));
+                cameraServo.writeMicroseconds(DEG_TO_US(45));
                 distDrive();
             }
             break;
