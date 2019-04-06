@@ -128,7 +128,8 @@ class DriveToBlockState(State):
 
         # If the block it needs to drive to has been detected
         if globals.block_queue[0] in globals.detected_letters:
-            letter = globals.detected_letters[globals.block_queue[0]]
+            # letter = globals.detected_letters[globals.block_queue[0]]
+            letter = globals.current_letter
             from_pt = self.block_pos
             
             if letter < 3:
@@ -162,6 +163,7 @@ class DriveToBlockState(State):
                         print("DANGER - Current letter: {}, dangerous to place in normal slot so taking up slot: {}", 
                                 globals.letterToCharacter(globals.current_letter), 
                                 globals.letterToCharacter(slot))
+                        globals.current_letter = slot
                     else:
                         # Otherwise, send it? or wait?
                         drive_utils.set_grid(3, 6) 
