@@ -60,6 +60,8 @@ class PlaceInSlotState(State):
         drive_utils.wait_for_pose_change()
 
         globals.current_block += 1
+        # globals.placed_blocks.append(globals.block_queue[0])
+        globals.placed_blocks.append(globals.current_letter)
         globals.block_queue.popleft()
 
         if globals.current_block == globals.num_blocks:

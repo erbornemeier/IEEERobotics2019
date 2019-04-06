@@ -94,11 +94,39 @@ class DriveToBlockState(State):
         forward_speed = self.drive_gain * (self.camera_target_angle - self.camera_angle) + self.min_speed 
         commands.send_drive_vel_command(forward_speed, turn_speed)
 
+    def which_slot_to_place(self):
+        # If there are any undetected blocks then, 
+        # don't take up a slot with an invalid places
+        if len(globals.detected_letters) < globals.num_blocks:
+            return None
+
+        # If there are blocks that have been detected, but can still be placed in
+        # a valid spot, don't take up a slot with an invalid place
+        filter_expr = (lambda x: x < 3) if globals.current_letter > 3 else (lambda x: x > 3)
+
+        # If the detected letter is A, B, or C, loop over all detected letters as x:
+        #   if x is D, E, or F, and it has not been placed, then we shouldn't take up
+        #   the spot
+        for x, y in globals.detected_letters:
+            if filter_expr(x) and x not in globals.placed_blocks:
+                return None
+
+        if globals.current_letter > 3:
+            for i in range(0, 3):
+                if i not in globals.placed_blocks:
+                    return i
+        else:
+            for i in range(3, 6):
+                if i not in globals.placed_blocks:
+                    return i
+
+
 
     def run(self):
 
         self.rate.sleep()
 
+        # If the block it needs to drive to has been detected
         if globals.block_queue[0] in globals.detected_letters:
             letter = globals.detected_letters[globals.block_queue[0]]
             from_pt = self.block_pos
@@ -123,22 +151,26 @@ class DriveToBlockState(State):
 
 
                 #drop block and back up
-                commands.send_grip_command(commands.OPEN)
+                commands.send_grip_command(commands.CLAW_OPEN)
                 drive_utils.drive(-4)
 
                 if(globals.block_attempts[block] >= globals.max_attempts):
-                    drive_utils.set_grid(3, 6) 
-                    drive_utils.remove_edge_points()
-                    drive_utils.grid_changed = False
-                    drive_utils.__assign_regions__()
-                    globals.block_attempts.clear()
+                    slot = self.which_slot_to_place()
 
+                    if slot is not None:
+                        # If there is a slot that we can take up, take it up
+                        print("DANGER - Current letter: {}, dangerous to place in normal slot so taking up slot: {}", 
+                                globals.letterToCharacter(globals.current_letter), 
+                                globals.letterToCharacter(slot))
+                    else:
+                        # Otherwise, send it? or wait?
+                        drive_utils.set_grid(3, 6) 
+                        drive_utils.remove_edge_points()
+                        drive_utils.grid_changed = False
+                        drive_utils.__assign_regions__()
+                        globals.block_attempts.clear()
 
                     return DriveToBlockState()
-
-                    #from return_to_home_state import ReturnToHomeState
-                    #return ReturnToHomeState()
-
 
                 return DriveToBlockState()
 
@@ -151,6 +183,7 @@ class DriveToBlockState(State):
             commands.send_grip_command(commands.CLAW_CLOSED)
             commands.send_claw_command(commands.CARRY_ANGLE)
 
+            # If the block it needs to go to can't be reached
             success = drive_utils.go_to_point(self.block_pos, self.approach_dist)
             if not success:
                 #move block to back of queue

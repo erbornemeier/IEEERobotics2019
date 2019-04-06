@@ -33,8 +33,19 @@ af_bb_y = -1
 cd_bb_x = -1
 cd_bb_y = -1
 
+abc_approach_x = -1
+abc_approach_y = -1
+def_approach_x = -1
+def_approach_y = -1
+
 bad_points = set()
 mothership_bad_points = set()
 block_attempts = dict()
 max_attempts = 5
 detected_letters = dict()
+
+# Letters of blocks currently placed
+placed_blocks = []
+
+def letterToCharacter(letter):
+    return chr(int('A') + letter)
