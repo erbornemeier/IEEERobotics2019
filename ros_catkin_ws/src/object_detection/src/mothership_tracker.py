@@ -81,7 +81,7 @@ class mothership_tracker:
         quad_min = None
         for tri in permutations(centers, 3):
             l, m, r = tri
-            if r[0] - l[0] > 10:
+            if r[0] - l[0] < 10:
                 continue
             line_dist = self.__dist__(l,r)
             l_m_dist  = self.__dist__(l,m)
@@ -129,7 +129,7 @@ class mothership_tracker:
 
         for quad in permutations(centers, 4):
             l, lm, rm, r = quad
-            if r[0] - l[0] > 10:
+            if r[0] - l[0] < 10:
                 continue
             line_dist = self.__dist__(l,r)
             l_lm_dist = self.__dist__(l, lm)

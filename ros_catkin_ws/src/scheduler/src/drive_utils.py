@@ -271,7 +271,7 @@ def get_approach_point(from_pt, to_pt, approach_dist):
     from_pt_approx = __approx_to_grid__(from_pt)
     for p in closest:
         if p not in globals.bad_points:
-            if approach_dist*0.95 <= dist(p, to_pt) <= approach_dist*1.25 \
+            if approach_dist*0.95 <= dist(p, to_pt) <= approach_dist*1.1 \
              and __path_exists__(p, from_pt_approx):
                 mid_pt = list(avg(p, to_pt, weight=0.5)) + [0]
                 mid_pt = __approx_to_grid__(mid_pt)

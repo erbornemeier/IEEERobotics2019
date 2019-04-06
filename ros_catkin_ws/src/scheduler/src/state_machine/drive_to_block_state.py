@@ -151,9 +151,6 @@ class DriveToBlockState(State):
                 globals.block_attempts[block] += 1
 
 
-                #drop block and back up
-                commands.send_grip_command(commands.CLAW_OPEN)
-                drive_utils.drive(-4)
 
                 if(globals.block_attempts[block] >= globals.max_attempts):
                     slot = self.which_slot_to_place()
@@ -177,8 +174,6 @@ class DriveToBlockState(State):
                 return DriveToBlockState()
 
 
-
-
         if self.needs_approach:
 
             commands.send_cam_command(self.camera_angle)
@@ -191,6 +186,7 @@ class DriveToBlockState(State):
                 #move block to back of queue
                 block = globals.block_queue.popleft()
                 globals.block_queue.append(block)
+
 
                 #update attempts
                 if block not in globals.block_attempts:

@@ -49,4 +49,4 @@ placed_blocks = []
 tmp_slot = -1
 
 def letterToCharacter(letter):
-    return chr(int('A') + letter)
+    return chr(ord('A') + letter)
