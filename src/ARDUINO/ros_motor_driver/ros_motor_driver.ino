@@ -152,7 +152,7 @@ void rosUpdate(bool busy){
 #define ROS_UPDATE_RATE         1
 #define DEG2RAD                 (PI/180)
 #define OVERSHOOT_DELAY_MS      100
-#define MOVE_TIMEOUT            1q000
+#define MOVE_TIMEOUT            1000
 // Velocity Controller
 #define K_P                     19
 #define K_I                     217 
@@ -420,7 +420,7 @@ float posErrorToAngVel(float* errors, int motor, float maximumSpeed){
  * Turns the robot the angle stored in angleSetpoint. Returns when the angle is achieved. 
  */
 void turn(){
-//resetEncoderCounts();
+    resetEncoderCounts();
     //CCW rotation, left is reverse, right is forward
     //angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
     //angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
@@ -470,13 +470,28 @@ float angErrorToAngVel(float error, int motor){
     turnIntegral[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
     float angVel = (error*K_P_ANG + turnIntegral[motor]*K_I_ANG);
     if (motor == L) angVel = -angVel;
+
     if (abs(angVel) > MAX_TURN_SPEED) {
-        return angVel > 0 ? MAX_TURN_SPEED : -MAX_TURN_SPEED;
+        angVel = angVel > 0 ? MAX_TURN_SPEED : -MAX_TURN_SPEED;
     }
+    
     else if (abs(angVel) < MIN_SPEED) {
-        return angVel > 0 ? MIN_SPEED : -MIN_SPEED;
+        angVel = angVel > 0 ? MIN_SPEED : -MIN_SPEED;
     }
-    else return angVel;
+
+
+    // Do error correction to keep wheels consistent with each other
+    
+    /*int otherMotor = (motor == L) ? R : L;
+    long encCount = encCounts[motor];
+    long encCountsOther = -encCounts[otherMotor];
+    float motorDiff = encCount - encCountsOther;
+    float motorDiffCorrection = K_DIFF * motorDiff;
+    if (motorDiffCorrection > MAX_CORRECTION) motorDiffCorrection = MAX_CORRECTION;
+    if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
+    */
+    return angVel;
+    
 } 
 
 
