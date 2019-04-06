@@ -273,13 +273,13 @@ int errorToMotorOut(long* errors, int motor, bool turning){
     if (baseVal < -MAX_SPEED) baseVal = -MAX_SPEED;
     
     // motor balance correction: logical only for 2 motor setup
-    int otherMotor = (motor+1)%NUM_MOTORS; 
-    long otherMotorError = (turning?-errors[otherMotor]:errors[otherMotor]);
-    int motorDiffCorrection = (int) (K_DIFF * (errors[motor] - otherMotorError));
-    if (motorDiffCorrection > MAX_CORRECTION)  motorDiffCorrection =  MAX_CORRECTION;
-    if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
+    //int otherMotor = (motor+1)%NUM_MOTORS; 
+    //long otherMotorError = (turning?-errors[otherMotor]:errors[otherMotor]);
+    //int motorDiffCorrection = (int) (K_DIFF * (errors[motor] - otherMotorError));
+    //if (motorDiffCorrection > MAX_CORRECTION)  motorDiffCorrection =  MAX_CORRECTION;
+    //if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
     
-    return baseVal + motorDiffCorrection;
+    return baseVal;
 }
 
 /*                                                                              

@@ -35,6 +35,9 @@ class ApproachMothershipState(State):
         self.BACKUP_DIST = 2.0
 	self.adjusted = True
 
+        self.rotate_angles = [5, -10, 15, -20]
+        self.rotate_index = 0
+
 
     def __get_mothership_pos__(self):
         # Coordinate system [0,1] top left corner is (0,0)
@@ -82,9 +85,18 @@ class ApproachMothershipState(State):
             
 	if mothership_pos.y < 0:
             if t.time() - self.found_time > self.MOTHERSHIP_TIMEOUT:
-                drive_utils.drive(-self.BACKUP_DIST) 
-                self.cameraAngle -= 2
-                commands.send_cam_command(int(self.cameraAngle))
+                success = drive_utils.drive(-self.BACKUP_DIST) 
+                if success:
+                    self.cameraAngle -= 2
+                    commands.send_cam_command(int(self.cameraAngle))
+                else:
+                    if self.rotate_index == len(self.rotate_angles):
+                        print("no more angles :( didnt find mothership")
+                        return self
+
+                    drive_utils.turn(self.rotate_angles[self.rotate_index])
+                    self.rotate_index += 1
+                    
                 self.found_time = t.time()
             else:
                 self.__reset__()

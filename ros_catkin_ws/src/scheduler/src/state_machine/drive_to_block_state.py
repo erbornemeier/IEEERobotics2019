@@ -17,23 +17,30 @@ class DriveToBlockState(State):
     def start(self):
         super(DriveToBlockState, self).start()
 
-        self.block_pos = ( (globals.x_coords[globals.current_block]+0.5)*12,\
-                           (globals.y_coords[globals.current_block]+0.5)*12 )
+        #self.block_pos = ( (globals.x_coords[globals.current_block])*12 + 6,\
+        #                   (globals.y_coords[globals.current_block])*12 + 6)
+        next_block = globals.block_queue[0]
+        self.block_pos = ( (next_block[0])*12 + 6,\
+                           (next_block[1])*12 + 6 )
         self.needs_approach = True
 
-        self.cam_gain = 6 
+        self.cam_gain = 8 
         self.drive_gain = 2/27.
         self.min_speed = 0.5
-        self.turn_gain = 4
+        self.turn_gain = 3
         self.rate = rospy.Rate(5)
 
         self.camera_start_angle = 20
         self.camera_target_angle = 49 
-        self.approach_dist = 18 #inches
+        self.switch_point = 34 
+        self.approach_dist = 18 #inches 
 
         commands.set_display_state(commands.NORMAL)
 
         self.camera_angle = self.camera_start_angle
+
+        self.SEEN_TIMEOUT = 2
+        self.last_seen = t.time()
 
 
     def __get_block_pos__(self):
@@ -41,7 +48,18 @@ class DriveToBlockState(State):
         try:
             return commands.block_srv()
         except Exception as e:
-            print(e)
+            #print(e)
+            block_pos = BlockResponse()
+            block_pos.x = -1
+            block_pos.y = -1
+            return block_pos
+
+    def __get_block_close_pos__(self):
+        # Coordinate system [0,1] top left corner is (0,0)
+        try:
+            return commands.block_srv_close()
+        except Exception as e:
+            #print(e)
             block_pos = BlockResponse()
             block_pos.x = -1
             block_pos.y = -1
@@ -78,22 +96,57 @@ class DriveToBlockState(State):
         self.rate.sleep()
 
         if self.needs_approach:
+
             commands.send_cam_command(self.camera_angle)
-            commands.send_claw_command(commands.DROP_ANGLE)
-            drive_utils.go_to_point(self.block_pos, self.approach_dist)
-            #drive_utils.wait_for_pose_update()
+            commands.send_grip_command(commands.CLAW_CLOSED)
+            commands.send_claw_command(commands.CARRY_ANGLE)
+
+            success = drive_utils.go_to_point(self.block_pos, self.approach_dist)
+            if not success:
+                #move block to back of queue
+                block = globals.block_queue.popleft()
+                globals.block_queue.append(block)
+
+                #update attempts
+                if block not in globals.block_attempts:
+                    globals.block_attempts[block] = 0
+                globals.block_attempts[block] += 1
+
+                if(globals.block_attempts[block] >= globals.max_attempts):
+                    #drive_utils.set_grid(3, 6) 
+                    #drive_utils.remove_edge_points()
+                    #drive_utils.grid_changed = False
+                    #drive_utils.__assign_regions__()
+                    from return_to_home_state import ReturnToHomeState
+                    return ReturnToHomeState()
+
+
+                return DriveToBlockState()
+
             turn_angle, _ = drive_utils.get_drive_instructions(self.block_pos)
             #print("TURNING TO FACE BLOCK: {}".format(turn_angle))
             drive_utils.turn(turn_angle)
-
             self.needs_approach = False
-
+            self.last_seen = t.time()
+        
+        commands.send_grip_command(commands.CLAW_OPEN)
         #camera to block
-        block_pos = self.__get_block_pos__()
+        if self.camera_angle < self.switch_point:
+            block_pos = self.__get_block_pos__()
+        else:
+            block_pos = self.__get_block_close_pos__()
+
         if block_pos.y < 0:
-            self.__reset__()
+            if t.time() - self.last_seen > self.SEEN_TIMEOUT:
+                drive_utils.drive(-2)
+                self.camera_angle -= 1
+                commands.send_cam_command(int(self.camera_angle))
+                self.last_seen = t.time()
+            else:
+                self.__reset__()
             return self
         else:
+            self.last_seen = t.time()
             self.__camera_to_block__(block_pos)
             self.__drive_to_block__(block_pos)
 

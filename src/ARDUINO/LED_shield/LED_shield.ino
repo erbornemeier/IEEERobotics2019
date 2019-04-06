@@ -7,7 +7,9 @@
 #define NORMAL 0
 #define LETTER 1
 #define WAITING 2
-volatile uint8_t display_state = WAITING;
+#define LOADING 3
+#define FINISHED 4
+volatile uint8_t display_state = LOADING;
 
 volatile uint8_t block_positions[6] = {0};
 volatile uint8_t num_blocks_recieved = 0;
@@ -55,7 +57,7 @@ void setup()
     nh.subscribe(cds);
 
     while(!nh.connected()){
-        loading_screen();
+        loading_screen(nh);
         nh.spinOnce();
     }
 }
@@ -75,6 +77,12 @@ void loop (){
             break;
         case WAITING:
             Colorduino.ColorFill(0x0, 0x20, 0x00);
+            break;
+        case LOADING:
+            loading_screen(nh);
+            break;
+        case FINISHED:
+            Colorduino.ColorFill(0x0, 0x00, 0x20);
             break;
         default:
             break;

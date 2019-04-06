@@ -6,11 +6,13 @@ import rospy
 from std_msgs.msg import UInt8, Bool
 from geometry_msgs.msg import Pose2D
 import drive_utils
+import geometry_utils
 import math
 
 class PlaceInSlotState(State):
-    def __init__(self):
+    def __init__(self, is_dynamic=False):
         super(PlaceInSlotState, self).__init__("Place in Slot")
+        self.is_dynamic = is_dynamic
 
     def start(self):
         super(PlaceInSlotState, self).start()
@@ -19,9 +21,28 @@ class PlaceInSlotState(State):
         #               (globals.def_approach_x, globals.def_approach_y)
         #commands.send_override_position_command(new_x, new_y)
 
-        self.forward_dist = 5 #inches
-        slot_turn = 15
+        drive_utils.wait_for_pose_update()
+        robot_pos = (drive_utils.robot_x, drive_utils.robot_y)
+        mothership_pos = (globals.mothership_x, globals.mothership_y)
+        dist_to_mothership = geometry_utils.dist(robot_pos, mothership_pos)
+        print("Dropping blocks: distance to mothership: {}", geometry_utils.dist(robot_pos, mothership_pos))
+
+        #self.forward_dist = 5 #inches       
         
+        #move forward 5 if distance is 16.5ish, move forward 0 if distance is 16.5-5 = 11.5,
+        self.forward_dist = 5
+        slot_turn = 15
+        if self.is_dynamic:
+            max_dist = 16.5
+            min_dist = 11.5
+            if dist_to_mothership > max_dist:
+                dist_to_mothership = max_dist
+            if dist_to_mothership < min_dist:
+                dist_to_mothership = min_dist
+            perc = (dist_to_mothership - min_dist) / (max_dist - min_dist)
+
+            self.forward_dist = self.forward_dist * perc
+            
         if globals.current_letter not in [1,4]:
             self.forward_dist = self.forward_dist / math.cos(math.radians(slot_turn)) 
         self.turn_angle = 0
@@ -30,14 +51,16 @@ class PlaceInSlotState(State):
         elif globals.current_letter % 3 == 2:
             self.turn_angle = -slot_turn
 
+        print("Place in Slot, forward dist: {}".format(self.forward_dist))
+
     def run(self):
 
         #drop it off
         commands.send_drop_block_command(self.forward_dist, self.turn_angle)
         drive_utils.wait_for_pose_change()
 
-        drive_utils.remove_bad_points_around_block(globals.x_coords[globals.current_block], globals.y_coords[globals.current_block])
         globals.current_block += 1
+        globals.block_queue.popleft()
 
         if globals.current_block == globals.num_blocks:
             from return_to_home_state import ReturnToHomeState

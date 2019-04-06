@@ -4,7 +4,7 @@
 #include <Colorduino.h>
 enum LETTERS{A,B,C,D,E,F};
 
-void loading_screen(){
+void loading_screen(ros::NodeHandle_<ArduinoHardware, 4, 0, 80, 105>& nh){
 
   uint8_t letter_m[] = {
                     0x11,
@@ -33,9 +33,14 @@ void loading_screen(){
         Colorduino.SetPixel(x,y, 0x21, 0x31, 0x8d);
         Colorduino.FlipPage();
         delay(50);
+        nh.spinOnce();
         
     }
-    delay(1000);
+    for (int i = 0; i < 20; i++){
+        delay(50);
+        nh.spinOnce();
+    }
+    
     
     //blue off
     for (int i = 0; i < 16; i++){
@@ -45,6 +50,7 @@ void loading_screen(){
         Colorduino.SetPixel(x,y, 0x0, 0x0, 0x0);
         Colorduino.FlipPage();
         delay(50);
+        nh.spinOnce();
         
     }
 }

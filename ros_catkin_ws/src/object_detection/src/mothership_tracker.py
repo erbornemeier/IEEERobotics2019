@@ -14,6 +14,7 @@ class mothership_tracker:
     LED_MASK = np.array([[ 20,   0,   250],
                           [100, 255, 255]])
     MAX_ERROR = 0.18
+    MAX_THREE_ERROR = 0.1
      
     def get_LED_locations(self, frame, show=False):
         #get potential LED locations
@@ -74,6 +75,56 @@ class mothership_tracker:
     def __avg__(self, p1, p2, weight=0.5):
         return tuple([p1[i]*weight + p2[i]*(1-weight) for i in range(len(p1))])
 
+    def __three_line__(self, frame, centers, show=False):
+        
+        min_error = float('inf')
+        quad_min = None
+        for tri in permutations(centers, 3):
+            l, m, r = tri
+            if l[0] > r[0]:
+                continue
+            line_dist = self.__dist__(l,r)
+            l_m_dist  = self.__dist__(l,m)
+            m_r_dist  = self.__dist__(m,r)
+            if max(line_dist, l_m_dist, m_r_dist) != line_dist:
+                continue
+            m_ideal_l = self.__avg__(l,r, 0.75)
+            error_m_ml = self.__dist__(m, m_ideal_l)
+            m_ideal_m = self.__avg__(l,r, 0.50)
+            error_m_mm = self.__dist__(m, m_ideal_m)
+            m_ideal_r = self.__avg__(l,r, 0.25)
+            error_m_mr = self.__dist__(m, m_ideal_r)
+
+            mid_pt = m_ideal_m
+            #better left than right
+            if error_m_ml < error_m_mr: 
+                #better than mid
+                if error_m_ml < error_m_mm:
+                    mid_pt = m_ideal_l
+            #better right than left 
+            else:
+                #better than mid
+                if error_m_mr < error_m_mm:
+                    mid_pt = m_ideal_r
+
+            if mid_pt == m_ideal_l:
+                quad = (l, m, m_ideal_r, r)
+            elif mid_pt == m_ideal_r:
+                quad = (l, m_ideal_l, m, r)
+            else:
+                quad = (l, m, r)
+
+
+            error = self.__dist__(m, mid_pt)
+            error += abs(line_dist - l_m_dist - m_r_dist)
+            error /= float(line_dist)
+
+            if error < self.MAX_THREE_ERROR:
+                print ("THREE LINE ERROR: {}".format(error))
+                return quad
+        return False
+            
+
     def __find_LED_line__(self, frame, centers, show=False):
 
         for quad in permutations(centers, 4):
@@ -104,7 +155,7 @@ class mothership_tracker:
                     cv2.line(frame, tuple(map(int, l)), tuple(map(int, r)), (255,0,0), 3)
                     print(error)
                 return quad 
-        return False
+        return self.__three_line__(frame, centers)
 
 def image_recieved(data):
     global img
@@ -120,8 +171,12 @@ def get_line_params(_):
         leds = tracker.get_LED_locations(img)
         if not leds:
             raise Exception("Mothership not found.")
-        left, mid_l, mid_r, right = leds 
-        midpt = tracker.__avg__(mid_l, mid_r)
+        if len(leds) == 4:
+            left, mid_l, mid_r, right = leds 
+            midpt = tracker.__avg__(mid_l, mid_r)
+        else:
+            left, mid, right = leds
+            midpt = mid
         msg.x, msg.y = midpt[0]/float(width), midpt[1] / float(height)
         dx, dy = right[0] - left[0], right[1] - left[1]
         msg.theta = math.atan2(dy, dx) * 180.0/math.pi
@@ -130,10 +185,40 @@ def get_line_params(_):
         #print(e)
         msg.x, msg.y = -1, -1
         return msg
-    
+
+orange_lower = np.array([4, 50, 100])
+orange_upper = np.array([18, 255, 255])
+kernel = np.ones((3,3),np.uint8)                                                
+
+def find_biggest_orange(_):
+    msg = MothershipResponse()
+    try:
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+       	orange_mask = cv2.inRange(hsv, orange_lower, orange_upper)
+    	orange_mask = cv2.morphologyEx(orange_mask, cv2.MORPH_CLOSE, kernel)
+
+	_, contours, hier = cv2.findContours(orange_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+	if len(contours) > 0:
+	    maxIndex = np.argmax([cv2.contourArea(c) for c in contours])
+	    interiors = []
+	    AREA_THRESH = 100
+	    for i, h in enumerate(hier[0]):
+		if h[3] == maxIndex:
+		    if cv2.contourArea(contours[i]) > AREA_THRESH:
+			interiors.append(contours[i])
+	    if len(interiors) > 0:
+		maxContour = max(interiors, key = cv2.contourArea)  
+		msg.x = cv2.contourArea(maxContour)
+		return msg 
+	raise Exception('no contour found')
+    except Exception as e:
+        #print(e)
+        msg.x, msg.y = -1, -1
+        return msg
 
 rospy.init_node("mothership_tracker")
 rospy.Subscriber("camera_image", Image, image_recieved)
 block_pos_srv = rospy.Service("mothership", Mothership, get_line_params)
+orange_pos_srv = rospy.Service("big_orange", Mothership, find_biggest_orange)
 rospy.spin()
 

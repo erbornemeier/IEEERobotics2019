@@ -8,7 +8,7 @@ import drive_utils
 PICKUP_ANGLE = 40
 DROP_ANGLE = 13
 CARRY_ANGLE = 16
-CLAW_DETERMINE_MOTHERSHIP_ANGLE = 63
+CLAW_DETERMINE_MOTHERSHIP_ANGLE = 58 
 
 CAMERA_DETERMINE_MOTHERSHIP_ANGLE = 45
 
@@ -29,12 +29,16 @@ print("Publishers Initialized")
 #Services
 rospy.wait_for_service("block_pos")
 block_srv = rospy.ServiceProxy("block_pos", Block)
+rospy.wait_for_service("block_pos_close")
+block_srv_close = rospy.ServiceProxy("block_pos_close", Block)
 rospy.wait_for_service("mothership")
 mothership_srv = rospy.ServiceProxy("mothership", Mothership)
 rospy.wait_for_service("letter_identifier")
 letter_srv = rospy.ServiceProxy("letter_identifier", Letter)
+rospy.wait_for_service("big_orange")
+big_orange_srv = rospy.ServiceProxy("big_orange", Mothership)
 rospy.wait_for_service("slot_identifier")
-slot_srv = rospy.ServiceProxy("slot_identifier", Letter) #TODO: Check here
+slot_srv = rospy.ServiceProxy("slot_identifier", Letter) 
 print("Services Initialized")
 
 def send_claw_command(cmd):
@@ -131,6 +135,8 @@ def send_vis_command(data):
 NORMAL = 0
 LETTER = 1
 WAITING = 2
+LOADING = 3
+FINISHED = 4
 def set_display_state(state):
     msg = UInt8()
     msg.data = state

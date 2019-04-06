@@ -1,3 +1,4 @@
+from collections import deque
 
 #block information
 current_letter = -1
@@ -6,6 +7,7 @@ current_block = 0
 num_blocks = -1
 x_coords = []
 y_coords = []
+block_queue = deque()
 current_block = 0
 
 #mothership position and mothership safety diamond
@@ -31,6 +33,7 @@ af_bb_y = -1
 cd_bb_x = -1
 cd_bb_y = -1
 
-pathfinding_resolution = 4
 bad_points = set()
 mothership_bad_points = set()
+block_attempts = dict()
+max_attempts = 5
