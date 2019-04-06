@@ -39,7 +39,7 @@ class mothership_tracker:
     def __find_potential_LEDs__(self, frame, show=False):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         _, mask = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY)
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5)) 
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1,1)) 
         mask = cv2.dilate(mask, kernel)
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask_green = cv2.inRange(hsv, self.LED_MASK[0], self.LED_MASK[1])

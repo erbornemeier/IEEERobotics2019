@@ -145,6 +145,8 @@ def classify_slot(_):
             bx, by, bw, bh = cv2.boundingRect(middle_black)
             out = thresh[by-padding:by+bh+padding, bx-padding:bx+bw+padding]
             out = cv2.resize(out, (40,60))
+        else:
+            raise Exception('could not find letter')
 
         input_img = out.astype('float32')
         input_img /= 255.
