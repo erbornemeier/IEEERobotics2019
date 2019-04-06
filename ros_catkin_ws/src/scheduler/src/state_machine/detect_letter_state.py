@@ -17,13 +17,17 @@ class DetectLetterState(State):
         
     def run(self):
         try:
-            detected_letter = commands.letter_srv()
+            if globals.tmp_slot == -1:
+                detected_letter = commands.letter_srv().letter
+            else:
+                detected_letter = globals.tmp_slot
+                globals.tmp_slot = -1
             if detected_letter == 0xFF:
                 return self
-            globals.current_letter = detected_letter.letter
-            commands.display_letter(detected_letter.letter)
+            globals.current_letter = detected_letter
+            commands.display_letter(detected_letter)
             commands.set_display_state(commands.LETTER)
-            globals.detected_letters[globals.block_queue[0]] = detected_letter.letter
+            globals.detected_letters[globals.block_queue[0]] = detected_letter
             t.sleep(0.5)
 
         except Exception as e:

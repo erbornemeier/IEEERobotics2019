@@ -41,7 +41,7 @@ def_approach_y = -1
 bad_points = set()
 mothership_bad_points = set()
 block_attempts = dict()
-max_attempts = 5
+max_attempts = 2
 detected_letters = dict()
 
 # Letters of blocks currently placed

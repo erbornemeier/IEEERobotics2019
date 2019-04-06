@@ -33,7 +33,7 @@ class DriveToBlockState(State):
         self.camera_start_angle = 20
         self.camera_target_angle = 49 
         self.switch_point = 30 
-        self.approach_dist = 16 #inches 
+        self.approach_dist = 18 #inches 
 
         commands.set_display_state(commands.NORMAL)
 
@@ -42,7 +42,7 @@ class DriveToBlockState(State):
         self.SEEN_TIMEOUT = 2
         self.last_seen = t.time()
 
-        self.rotate_angles = [10, -20, 20, -20, 20, -20]
+        self.rotate_angles = [10, -20, 25, -30, 35, -40]
         self.rotate_index = 0
         self.claw_open = False
 
@@ -95,23 +95,26 @@ class DriveToBlockState(State):
         commands.send_drive_vel_command(forward_speed, turn_speed)
 
     def which_slot_to_place(self):
+        letter = globals.detected_letters[globals.block_queue[0]]
         # If there are any undetected blocks then, 
         # don't take up a slot with an invalid places
         if len(globals.detected_letters) < globals.num_blocks:
+            print("Undetected blocks!")
             return None
 
         # If there are blocks that have been detected, but can still be placed in
         # a valid spot, don't take up a slot with an invalid place
-        filter_expr = (lambda x: x < 3) if globals.current_letter > 3 else (lambda x: x > 3)
+        filter_expr = (lambda x: x < 3) if letter >= 3 else (lambda x: x >= 3)
 
         # If the detected letter is A, B, or C, loop over all detected letters as x:
         #   if x is D, E, or F, and it has not been placed, then we shouldn't take up
         #   the spot
-        for x, y in globals.detected_letters:
-            if filter_expr(x) and x not in globals.placed_blocks:
+        for pos, let in globals.detected_letters.iteritems():
+            if filter_expr(let) and let not in globals.placed_blocks:
+                print("Letter {}  has not been placed: pos: {}!".format(let, pos))
                 return None
 
-        if globals.current_letter > 3:
+        if letter >= 3:
             for i in range(0, 3):
                 if i not in globals.placed_blocks:
                     return i
@@ -127,9 +130,11 @@ class DriveToBlockState(State):
         self.rate.sleep()
 
         # If the block it needs to drive to has been detected
+        print("Block Queue: {}".format(globals.block_queue))
+        print("Detected Letters: {}".format(globals.detected_letters))
         if globals.block_queue[0] in globals.detected_letters:
-            # letter = globals.detected_letters[globals.block_queue[0]]
-            letter = globals.current_letter
+            print("Block has been detected!")
+            letter = globals.detected_letters[globals.block_queue[0]]
             from_pt = self.block_pos
             
             if letter < 3:
@@ -141,6 +146,7 @@ class DriveToBlockState(State):
             to_pt = drive_utils.__approx_to_grid__((to_pt[0], to_pt[1], 0))
 
             if not drive_utils.__path_exists__(from_pt, to_pt):
+                print("Path doesnt exist")
                 #move block to back of queue
                 block = globals.block_queue.popleft()
                 globals.block_queue.append(block)
@@ -151,16 +157,17 @@ class DriveToBlockState(State):
                 globals.block_attempts[block] += 1
 
 
-
-                if(globals.block_attempts[block] >= globals.max_attempts):
+                print("Block attempts: {}".format(globals.block_attempts[block]))
+                if globals.block_attempts[block] >= globals.max_attempts:
                     slot = self.which_slot_to_place()
+                    print("Determined slot: {}".format(slot))
 
                     if slot is not None:
                         # If there is a slot that we can take up, take it up
-                        print("DANGER - Current letter: {}, dangerous to place in normal slot so taking up slot: {}", 
-                                globals.letterToCharacter(globals.current_letter), 
-                                globals.letterToCharacter(slot))
-                        globals.current_letter = slot
+                        print("DANGER - Current letter: {}, dangerous to place in normal slot so taking up slot: {}".format(\
+                                globals.letterToCharacter(globals.current_letter),\
+                                globals.letterToCharacter(slot)))
+                        globals.tmp_slot = slot
                     else:
                         # Otherwise, send it? or wait?
                         drive_utils.set_grid(3, 6) 
@@ -168,10 +175,7 @@ class DriveToBlockState(State):
                         drive_utils.grid_changed = False
                         drive_utils.__assign_regions__()
                         globals.block_attempts.clear()
-
-                    return DriveToBlockState()
-
-                return DriveToBlockState()
+                        return DriveToBlockState()
 
 
         if self.needs_approach:

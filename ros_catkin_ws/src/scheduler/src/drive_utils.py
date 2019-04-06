@@ -176,6 +176,8 @@ def __get_path__(from_pt, to_pt):
       
     from_pt_approx = __approx_to_grid__(from_pt)
     to_pt_approx = __approx_to_grid__(to_pt)
+    if dist(to_pt, to_pt_approx) > 2*RESOLUTION:
+        return False
     
     if __path_exists__(from_pt_approx, to_pt_approx):
         path = finder(from_pt_approx, to_pt_approx)[1]
