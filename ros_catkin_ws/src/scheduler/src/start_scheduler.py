@@ -57,8 +57,8 @@ rospy.init_node("scheduler")
 
 commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(drive_utils.RESOLUTION, drive_utils.MARGIN))
 
-wait_for_flash_drive()
-t.sleep(0.25)
+#wait_for_flash_drive()
+#t.sleep(0.25)
 commands.set_display_state(commands.WAITING)
 t.sleep(0.25)
 commands.set_display_state(commands.WAITING)
@@ -75,7 +75,7 @@ t.sleep(5)
 START_TIME = t.time()
 has_displayed_time = False
 
-state_machine = StateMachine(FindMothershipState(True))
+state_machine = StateMachine(DriveToBlockState())
 try:
     while not rospy.is_shutdown():
         if not state_machine.isFinished():

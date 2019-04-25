@@ -4,9 +4,12 @@ from collections import deque
 current_letter = -1
 current_block = 0
 
-num_blocks = -1
-x_coords = []
-y_coords = []
+num_blocks = 3
+x_coords = [1,2,3]
+y_coords = [1,2,3]
+target_x_coords = [6.5, 6.5, 6.5]
+target_y_coords = [0.5,1.5,2.5]
+target_facing_angle = 0
 block_queue = deque()
 current_block = 0
 

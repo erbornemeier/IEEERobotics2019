@@ -34,5 +34,5 @@ class DetectLetterState(State):
             print(e)
             return self
 
-        from drive_to_mothership_state import DriveToMothershipState
-        return DriveToMothershipState()
+        from drop_at_target_state import DropAtTargetState  
+        return DropAtTargetState() 
