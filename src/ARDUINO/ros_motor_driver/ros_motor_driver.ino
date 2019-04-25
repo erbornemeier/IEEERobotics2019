@@ -7,16 +7,16 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/UInt8.h>
 #include <geometry_msgs/Pose2D.h>
-//#include "claw.h"
+#include "claw.h"
 
 /*****************************************
  *       HARDWARE DEFINITIONS            * 
  *****************************************/
 #define cameraServoPin 44
-//Servo cameraServo;
+Servo cameraServo;
 uint8_t cameraAngle = 0;
 
-//Claw claw;
+Claw claw;
 uint8_t clawAngle = 10;
 
 //helper enums
@@ -56,7 +56,9 @@ volatile float lastTurnError[NUM_MOTORS] = {0,0};
 volatile float turnIntegral[NUM_MOTORS] = {0,0};
 bool turboAvailible = false;
 bool turning = false;
-
+volatile float angleOffset = 0;
+//IMU creation
+Adafruit_BNO055 bno = Adafruit_BNO055(55);
 /*****************************************
  *               ROS                     *
 ******************************************/
@@ -66,6 +68,15 @@ ros::NodeHandle_<ArduinoHardware, 25, 25, 1024, 512> nh;
 void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
     //String logg = String(moveCmd.x) + String(", ") + String(moveCmd.y) + String(", ") + String(moveCmd.theta);
     //nh.loginfo(logg.c_str());
+    static bool first = true;
+    if (first){
+        sensors_event_t orientationData;
+        bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+        angleOffset = orientationData.orientation.x;
+        first = false;
+        //String loggy = String("Angle offset: ") + String(angleOffset);
+        //nh.loginfo(loggy.c_str());
+    }
     switch((uint8_t)moveCmd.y){
         case CONST_VEL:
             velocitySetpoints[L] = -moveCmd.theta;
@@ -106,18 +117,18 @@ void dcCallback(const geometry_msgs::Pose2D& moveCmd) {
 
 void ccCallback(const std_msgs::UInt8& clawCmd) {
     clawAngle = clawCmd.data;
-//    claw.Servo_SetAngle(clawAngle);
+    claw.Servo_SetAngle(clawAngle);
 }
 
 
 void gcCallback(const std_msgs::Bool& gripCmd) {
     bool doClose = gripCmd.data;
-//    doClose ? claw.Gripper_Close():claw.Gripper_Open();
+    doClose ? claw.Gripper_Close():claw.Gripper_Open();
 }
 
 void camCallback(const std_msgs::UInt8& camCmd) {
     cameraAngle = camCmd.data;
-//    cameraServo.writeMicroseconds(DEG_TO_US(cameraAngle));
+    cameraServo.writeMicroseconds(DEG_TO_US(cameraAngle));
     //nh.loginfo("Got it!");
 }
 
@@ -179,7 +190,7 @@ void rosUpdate(bool busy){
 #define SECONDS_PER_MILLISECOND 0.001
 // robot specs
 #define COUNTS_PER_REV          3200
-#define WHEEL_DIAMETER          3.45 //inches //3.45 orig
+#define WHEEL_DIAMETER          3.40 //inches //3.45 orig
 #define WHEEL_CIRC              WHEEL_DIAMETER*PI //inches
 #define ROBOT_WIDTH             7.63 //inches
 #define TURN_CIRCUMFERENCE      (ROBOT_WIDTH*PI)
@@ -188,15 +199,14 @@ void rosUpdate(bool busy){
 #define INCHES_PER_COUNT        (WHEEL_CIRC/COUNTS_PER_REV)
 
 #define CLAW_PICKUP_ANGLE       40
-//IMU creation
-Adafruit_BNO055 bno = Adafruit_BNO055(55);
+
 
 /*
    void setup()
 */
 void setup() {
-//    cameraServo.attach(cameraServoPin);
-//    cameraServo.writeMicroseconds(DEG_TO_US(0));
+    cameraServo.attach(cameraServoPin);
+    cameraServo.writeMicroseconds(DEG_TO_US(0));
     
     pinMode(SEARCH_LIGHT_PIN, OUTPUT);
     analogWrite(SEARCH_LIGHT_PIN, LIGHT_BRIGHTNESS);
@@ -206,7 +216,7 @@ void setup() {
 
     pinMode(STOP_PIN, INPUT);
   
-//    claw.Claw_init();
+    claw.Claw_init();
   
     nh.getHardware()->setBaud(115200);
     nh.initNode();
@@ -216,9 +226,9 @@ void setup() {
     nh.subscribe(cam);
     nh.advertise(pose_pub);
     
-    /*while (!nh.connected()) {
+    while (!nh.connected()) {
         nh.spinOnce();
-    }*/
+    }
 
     // Robot initial conditions
     robot_pose.x = 4.5*12;
@@ -234,6 +244,7 @@ void setup() {
         nh.loginfo("Imu not connected.");
         bno = Adafruit_BNO055(55);
         analogWrite(SEARCH_LIGHT_PIN, flash ? LIGHT_BRIGHTNESS:0);
+        delay(250);
     }
   
     for (int i = 0; i < NUM_MOTORS; i++) {
@@ -259,11 +270,9 @@ void setup() {
 /*
    void loop()
 */
-
-long encCountsToDrive = 7*COUNTS_PER_REV;
 void loop() {
 
-    /*if (newDriveCmd) digitalWrite(DRIVE_BUSY, HIGH);
+    if (newDriveCmd) digitalWrite(DRIVE_BUSY, HIGH);
   
     switch(moveState){
         case CONST_VEL:
@@ -314,6 +323,7 @@ void loop() {
             if (newDriveCmd){
                 newDriveCmd = false;
                 stopMotors();
+                claw.Gripper_Open();
                 claw.Servo_SetAngle(58);
                 cameraServo.writeMicroseconds(DEG_TO_US(45));
                 distDrive();
@@ -322,18 +332,7 @@ void loop() {
         default:
             break;
         }
-  rosUpdate(false); //done with commands, ack back to pi*/
-  static bool first = true;
-  if (first){
-      delay(5000);
-      distanceSetpoint = encCountsToDrive*(WHEEL_CIRC/COUNTS_PER_REV);
-      distDrive();
-      first = false;
-  }
-
-  
-
-  
+  rosUpdate(false); //done with commands, ack back to pi
 }
 
 /*
@@ -391,6 +390,7 @@ void distDrive(){
             posError[i] = distanceSetpoint - ((encCounts[i]*WHEEL_CIRC)/COUNTS_PER_REV);
         }
     } while (!isZero(posError, false) && moving);
+    float endAngle = getHeading();
     stopMotors();
     turboAvailible = false;
     float avgError = 0;
@@ -398,8 +398,8 @@ void distDrive(){
         avgError += posError[i];
     }
     avgError = avgError/NUM_MOTORS;
-    robot_pose.x += (distanceSetpoint-avgError)*cos(DEG2RAD*getHeading());
-    robot_pose.y += (distanceSetpoint-avgError)*sin(DEG2RAD*getHeading());
+    robot_pose.x += (distanceSetpoint-avgError)*cos(DEG2RAD*endAngle);
+    robot_pose.y += (distanceSetpoint-avgError)*sin(DEG2RAD*endAngle);
     robot_pose.theta = getHeading();
 }
 
@@ -430,7 +430,7 @@ float posErrorToAngVel(float* errors, int motor, float maximumSpeed){
  * Turns the robot the angle stored in angleSetpoint. Returns when the angle is achieved. 
  */
 void turn(){
-//resetEncoderCounts();
+    resetEncoderCounts();
     //CCW rotation, left is reverse, right is forward
     //angleSetpoints[L] = -angleSetpoint - TURN_ESS_GAIN*angleSetpoint;
     //angleSetpoints[R] = angleSetpoint + TURN_ESS_GAIN*angleSetpoint;
@@ -480,13 +480,28 @@ float angErrorToAngVel(float error, int motor){
     turnIntegral[motor] += SAMPLE_PERIOD * SECONDS_PER_MILLISECOND * error;
     float angVel = (error*K_P_ANG + turnIntegral[motor]*K_I_ANG);
     if (motor == L) angVel = -angVel;
+
     if (abs(angVel) > MAX_TURN_SPEED) {
-        return angVel > 0 ? MAX_TURN_SPEED : -MAX_TURN_SPEED;
+        angVel = angVel > 0 ? MAX_TURN_SPEED : -MAX_TURN_SPEED;
     }
+    
     else if (abs(angVel) < MIN_SPEED) {
-        return angVel > 0 ? MIN_SPEED : -MIN_SPEED;
+        angVel = angVel > 0 ? MIN_SPEED : -MIN_SPEED;
     }
-    else return angVel;
+
+
+    // Do error correction to keep wheels consistent with each other
+    
+    /*int otherMotor = (motor == L) ? R : L;
+    long encCount = encCounts[motor];
+    long encCountsOther = -encCounts[otherMotor];
+    float motorDiff = encCount - encCountsOther;
+    float motorDiffCorrection = K_DIFF * motorDiff;
+    if (motorDiffCorrection > MAX_CORRECTION) motorDiffCorrection = MAX_CORRECTION;
+    if (motorDiffCorrection < -MAX_CORRECTION) motorDiffCorrection = -MAX_CORRECTION;
+    */
+    return angVel;
+    
 } 
 
 
@@ -631,8 +646,10 @@ bool isZero(float* errors, bool turning){
 double getHeading(){
     sensors_event_t orientationData;
     bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-    double angle = (360 - orientationData.orientation.x) + 90;
+    double angle = (360 - (orientationData.orientation.x - angleOffset)) + 90;
     angle = boundAngle(angle);
+    //String loggy = String("My angle is: ") + String(angle);
+    //nh.loginfo(loggy.c_str());
     return angle;
 }
 
