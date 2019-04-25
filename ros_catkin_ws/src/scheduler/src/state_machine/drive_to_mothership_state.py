@@ -32,6 +32,11 @@ class DriveToMothershipState(State):
             current_block = globals.block_queue[0]
             drive_utils.add_bad_points_around_block(current_block[0],\
                                                     current_block[1])
+            #update attempts
+            if current_block not in globals.block_attempts:
+                globals.block_attempts[current_block] = 0
+            globals.block_attempts[current_block] += 1
+
             #move to back of queue
             globals.block_queue.append(globals.block_queue.popleft())
             drive_utils.drive(-self.BACKUP_DIST)
