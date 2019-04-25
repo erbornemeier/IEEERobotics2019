@@ -57,8 +57,10 @@ rospy.init_node("scheduler")
 
 commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(drive_utils.RESOLUTION, drive_utils.MARGIN))
 
-#wait_for_flash_drive()
-#t.sleep(0.25)
+blocks = zip(globals.x_coords, globals.y_coords)
+for x,y in blocks:
+    globals.block_queue.append((x,y))
+
 commands.set_display_state(commands.WAITING)
 t.sleep(0.25)
 commands.set_display_state(commands.WAITING)
