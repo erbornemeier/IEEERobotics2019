@@ -36,6 +36,11 @@ class DriveToBlockState(State):
         self.approach_dist = 18 #inches 
 
         commands.set_display_state(commands.NORMAL)
+        t.sleep(0.25)
+        commands.send_claw_command(commands.CARRY_ANGLE)
+        t.sleep(0.25)
+        commands.send_grip_command(commands.CLAW_CLOSED)
+        t.sleep(0.25)
 
         self.camera_angle = self.camera_start_angle
 
@@ -185,6 +190,8 @@ class DriveToBlockState(State):
             commands.send_claw_command(commands.CARRY_ANGLE)
 
             # If the block it needs to go to can't be reached
+            drive_utils.wait_for_pose_update()
+            print("**************POSE: {},{},{}".format(drive_utils.robot_x, drive_utils.robot_y, drive_utils.robot_theta))
             success = drive_utils.go_to_point(self.block_pos, self.approach_dist)
             if not success:
                 #move block to back of queue

@@ -57,6 +57,12 @@ rospy.init_node("scheduler")
 
 commands.send_vis_command("init-pathfinding resolution:{} margin:{}".format(drive_utils.RESOLUTION, drive_utils.MARGIN))
 
+for x in range(drive_utils.RESOLUTION, 12*8-drive_utils.MARGIN+1, drive_utils.RESOLUTION):
+    for y in range(0, 12*4+drive_utils.MARGIN+1, drive_utils.RESOLUTION):
+        print((x,y))
+        globals.bad_points.add((x,y))
+
+
 blocks = zip(globals.x_coords, globals.y_coords)
 for x,y in blocks:
     globals.block_queue.append((x,y))
@@ -72,7 +78,6 @@ print("**Starting in 5 seconds**")
 commands.set_display_state(commands.NORMAL)
 t.sleep(0.25)
 display_blocks()
-t.sleep(5)
 
 START_TIME = t.time()
 has_displayed_time = False

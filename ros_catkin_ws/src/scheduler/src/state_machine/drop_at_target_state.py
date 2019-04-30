@@ -13,10 +13,10 @@ import geometry_utils
 
 class DropAtTargetState(State):
     def __init__(self):
-        super(DriveToMothershipState, self).__init__("Drive to Mothership State")
+        super(DropAtTargetState, self).__init__("Drop At Target State")
 
     def start(self):
-        super(DriveToMothershipState, self).start()
+        super(DropAtTargetState, self).start()
         commands.set_display_state(commands.LETTER)
         
         target_index = globals.current_letter
@@ -35,7 +35,15 @@ class DropAtTargetState(State):
         drive_utils.turn(turn_angle)
 
         #send drop block command
-        commands.send_drop_block_command(self.dropoff_dist)
+        commands.send_claw_command(commands.CARRY_ANGLE)
+        t.sleep(0.5)
+        commands.send_drop_block_command(self.dropoff_dist, 0)
+        globals.block_queue.popleft()
+        t.sleep(4)
 
-        from drive_to_block_state import DriveToBlockState
-        return DriveToBlockState()
+        if (len(globals.block_queue) > 0):
+            from drive_to_block_state import DriveToBlockState
+            return DriveToBlockState()
+        else:
+            from wait_state import WaitState
+            return WaitState()
